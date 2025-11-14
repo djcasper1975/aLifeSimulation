@@ -134,7 +134,7 @@
         const WOOD_SPAWN_RATE = 80;
         
         // Farming Parameters (SYNCHRONIZED)
-        const FOOD_FRESHNESS = 180;
+        const FOOD_FRESHNESS = 180; // Python uses 185
         const GROW_TIME = 10;
         const TREE_GROW_TIME = 10;
         const WOOD_SEED_CHANCE = 0.5;
@@ -179,7 +179,7 @@
             GREEN_BRIGHT: '#4ade80', // F, G
             GREEN_NORMAL: '#10b981', // p, P
             GREEN_DIM: '#059669', // T (Tree)
-            LIBRARY: '#a855f7', // L
+            LIBRARY: '#a855f7', // L (Used for the library structure AND the SEEKING_LIBRARY/SOCIAL_HAPPY state)
         };
         
         // --- CHARACTER MAPPING FOR RENDERING (UPDATED) ---
@@ -206,7 +206,8 @@
             'RETALIATING': { char: 'r', color: COLORS.RED_BRIGHT, dim: false },
             'SEEKING_SOCIAL': { char: 't', color: COLORS.WHITE_NORMAL, dim: false },
             'COMMUNICATING': { char: 'T', color: COLORS.WHITE_BRIGHT, dim: false },
-            'SEEKING_LIBRARY': { char: 'L', color: COLORS.MAGENTA_BRIGHT, dim: false }, // Only L when moving to Library
+            'SEEKING_LIBRARY': { char: 'L', color: COLORS.LIBRARY, dim: false }, // L when moving to Library
+            'SOCIAL_HAPPY': { char: 'L', color: COLORS.LIBRARY, dim: false }, // L when pausing at Library/Contentment spot
             'SOCIAL_SAD': { char: 's', color: COLORS.MAGENTA_DIM, dim: true },
         };
 
@@ -522,7 +523,18 @@
                                 }
                             }
                         } else {
-                            this.state = "WANDERING_TO_BUILD";
+                            // If social and near other homes, seek a clear spot near the community
+                            if (isSocial && nearbyHomes.length > 0) {
+                                this.state = "WANDERING_TO_BUILD";
+                            }
+                            // If not social and near other homes, seek a remote spot to wander to
+                            else if (!isSocial && nearbyHomes.length > 0) {
+                                this.state = "SEEKING_REMOTE_SPOT"; 
+                            }
+                            // Otherwise, just wander to a build spot
+                            else {
+                                this.state = "WANDERING_TO_BUILD";
+                            }
                         }
                         return;
                     }
@@ -596,15 +608,19 @@
                 
                 // Default State: Wandering/Happy
                 
-                // FIX: Priority 8: Library seeking added to Wandering when content
+                // FIX: Priority 8: Contentment check (for Library seeking/lingering)
                 if (this.energy > PAUSE_ENERGY_THRESHOLD && this.social > PAUSE_SOCIAL_THRESHOLD) {
-                    if (Math.random() < 0.2) { // 20% chance to move towards Library/Knowledge center
-                        const [lx, ly] = this.world.libraryLocation;
-                        if (getDistance(this.x, this.y, lx, ly) > 5.0) {
-                            this.state = "SEEKING_LIBRARY"; 
-                            return;
-                        }
+                    
+                    // 20% chance to move towards Library/Knowledge center if far away
+                    const [lx, ly] = this.world.libraryLocation;
+                    if (Math.random() < 0.2 && getDistance(this.x, this.y, lx, ly) > 5.0) { 
+                        this.state = "SEEKING_LIBRARY"; 
+                        return;
                     }
+                    
+                    // If not moving to library, Linger (SOCIAL_HAPPY state)
+                    this.state = "SOCIAL_HAPPY";
+                    return;
                 }
 
                 this.state = "WANDERING";
@@ -870,9 +886,18 @@
                         if (getDistance(this.x, this.y, lx, ly) < 2.0) {
                             // Arrived at library, gaining knowledge buff
                             this.skills.social = clamp(this.skills.social + 0.1, 0, 10.0);
-                            this.state = "WANDERING";
+                            this.state = "SOCIAL_HAPPY"; // Transition to happy linger state
                         } else {
                             this.moveTowards(lx, ly);
+                        }
+                        break;
+
+                    case "SOCIAL_HAPPY":
+                        // Lingering (pause movement, which is default for wandering if needs are met)
+                        // If near the library, gain passive knowledge.
+                        const [llx, lly] = this.world.libraryLocation;
+                        if (getDistance(this.x, this.y, llx, lly) < 2.0) {
+                            this.skills.social = clamp(this.skills.social + 0.1, 0, 10.0);
                         }
                         break;
 
@@ -896,20 +921,10 @@
                         break;
 
                     case "WANDERING":
-                        if (this.energy > PAUSE_ENERGY_THRESHOLD && this.social > PAUSE_SOCIAL_THRESHOLD) {
-                            // Agent is content, check if they *should* seek library (20% chance if far away).
-                            const [lx, ly] = this.world.libraryLocation;
-                            if (Math.random() < 0.2 && getDistance(this.x, this.y, lx, ly) > 5.0) { 
-                                this.state = "SEEKING_LIBRARY"; 
-                                return;
-                            }
-                            // Otherwise, just linger (pause movement)
-                        } else {
-                            // Log resources in sight to memory
-                            foodInSight.forEach(posKey => this.memory.food.add(posKey));
-                            woodInSight.forEach(posKey => this.memory.wood.add(posKey));
-                            this.moveExploring();
-                        }
+                        // Log resources in sight to memory
+                        foodInSight.forEach(posKey => this.memory.food.add(posKey));
+                        woodInSight.forEach(posKey => this.memory.wood.add(posKey));
+                        this.moveExploring();
                         break;
                     
                     case "MATING":
@@ -1654,7 +1669,7 @@
                     this.drawCell(x, y, char, color, false);
                 }
                 
-                // Draw the LIBRARY
+                // Draw the LIBRARY 
                 const [lx, ly] = this.world.libraryLocation;
                 this.drawCell(lx, ly, 'L', COLORS.LIBRARY, false);
 
@@ -1776,6 +1791,7 @@
                     items: [
                         { char: 'A', color: COLORS.CYAN_BRIGHT, desc: 'Wander (Default)' },
                         { char: 'f', color: COLORS.CYAN_NORMAL, desc: 'Forage/Eat' },
+                        { char: 'L', color: COLORS.LIBRARY, desc: 'Library/Happy' }, // <--- ADDED
                         { char: 's', color: COLORS.MAGENTA_DIM, desc: 'Sad/Crisis' },
                         { char: 't', color: COLORS.WHITE_NORMAL, desc: 'Seek Social' },
                         { char: 'T', color: COLORS.WHITE_BRIGHT, desc: 'Communicate/Share Knowledge' },
@@ -1791,6 +1807,9 @@
                         { char: 'b', color: COLORS.YELLOW_BRIGHT, desc: 'Build Home' },
                         { char: 'k', color: COLORS.BLUE_BRIGHT, desc: 'Claim Home' },
                         { char: 'E', color: COLORS.YELLOW_NORMAL, desc: 'Repair Home' },
+                        { char: 'B', color: COLORS.BLUE_NORMAL, desc: 'Wander to Build (General)' }, // <--- ADDED
+                        { char: 'S', color: COLORS.BLUE_DIM, desc: 'Seek Remote Spot' }, // <--- ADDED
+                        { char: 'C', color: COLORS.BLUE_BRIGHT, desc: 'Seek Community Spot' },
                         { char: 'c', color: COLORS.RED_NORMAL, desc: 'Build Fire' },
                         { char: 'R', color: COLORS.RED_BRIGHT, desc: 'Refuel Fire' },
                     ]
