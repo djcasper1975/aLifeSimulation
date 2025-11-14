@@ -165,7 +165,7 @@
         const COLORS = {
             CYAN_BRIGHT: '#22d3ee', // A
             CYAN_NORMAL: '#06b6d4', // f
-            MAGENTA_BRIGHT: '#d946ef', // m, S
+            MAGENTA_BRIGHT: '#d946ef', // m, L, o (split)
             MAGENTA_DIM: '#a855f7', // s
             WHITE_BRIGHT: '#ffffff', // T, g, wellbeing
             WHITE_NORMAL: '#f3f4f6', // t
@@ -179,10 +179,10 @@
             GREEN_BRIGHT: '#4ade80', // F, G
             GREEN_NORMAL: '#10b981', // p, P
             GREEN_DIM: '#059669', // T (Tree)
-            LIBRARY: '#a855f7', // L (Used for the library structure AND the SEEKING_LIBRARY/SOCIAL_HAPPY state)
+            LIBRARY: '#a855f7', // L (Used for the library structure)
         };
         
-        // --- CHARACTER MAPPING FOR RENDERING (UPDATED) ---
+        // --- CHARACTER MAPPING FOR RENDERING (UPDATED to split happy/seek library) ---
         const CHAR_MAP = {
             // Agent States (Used for foreground/char color)
             'WANDERING': { char: 'A', color: COLORS.CYAN_BRIGHT, dim: false },
@@ -206,9 +206,11 @@
             'RETALIATING': { char: 'r', color: COLORS.RED_BRIGHT, dim: false },
             'SEEKING_SOCIAL': { char: 't', color: COLORS.WHITE_NORMAL, dim: false },
             'COMMUNICATING': { char: 'T', color: COLORS.WHITE_BRIGHT, dim: false },
-            // MODIFIED: Changed 'L' to 'o' for agent state
-            'SEEKING_LIBRARY': { char: 'o', color: COLORS.MAGENTA_BRIGHT, dim: false }, 
-            'SOCIAL_HAPPY': { char: 'o', color: COLORS.MAGENTA_BRIGHT, dim: false }, // 'o' when pausing at Library/Contentment spot
+            
+            // MODIFIED: Separate 'o' and 'L'
+            'SEEKING_LIBRARY': { char: 'L', color: COLORS.MAGENTA_BRIGHT, dim: false }, 
+            'SOCIAL_HAPPY': { char: 'o', color: COLORS.MAGENTA_BRIGHT, dim: false }, // 'o' for general Contentment/Observing
+            
             'SOCIAL_SAD': { char: 's', color: COLORS.MAGENTA_DIM, dim: true },
         };
 
@@ -1792,8 +1794,9 @@
                     items: [
                         { char: 'A', color: COLORS.CYAN_BRIGHT, desc: 'Wander (Default)' },
                         { char: 'f', color: COLORS.CYAN_NORMAL, desc: 'Forage/Eat' },
-                        // MODIFIED: Changed 'L' to 'o' for agent state
-                        { char: 'o', color: COLORS.MAGENTA_BRIGHT, desc: 'Happy/Library Seek' }, 
+                        // MODIFIED: Corrected to use 'o' and 'L' separately
+                        { char: 'o', color: COLORS.MAGENTA_BRIGHT, desc: 'Happy/Observing' }, 
+                        { char: 'L', color: COLORS.MAGENTA_BRIGHT, desc: 'Seeking Library' }, 
                         { char: 's', color: COLORS.MAGENTA_DIM, desc: 'Sad/Crisis' },
                         { char: 't', color: COLORS.WHITE_NORMAL, desc: 'Seek Social' },
                         { char: 'T', color: COLORS.WHITE_BRIGHT, desc: 'Communicate/Share Knowledge' },
@@ -1832,7 +1835,8 @@
                     items: [
                         { char: 'H/h', color: COLORS.BLUE_BRIGHT, desc: 'Home (Healthy/Damaged)' },
                         { char: 'C', color: COLORS.RED_BRIGHT, desc: 'Active Campfire' },
-                        { char: 'L', color: COLORS.LIBRARY, desc: 'Library (Global Knowledge)' },
+                        // MODIFIED: Added (World Object) to avoid confusion with new 'L' agent state
+                        { char: 'L', color: COLORS.LIBRARY, desc: 'Library (World Object)' }, 
                         { char: 'Any', color: COLORS.WHITE_BRIGHT, desc: 'Agent with Wellbeing Buff' },
                     ]
                 }

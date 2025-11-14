@@ -690,7 +690,7 @@ class Agent:
             else:
                 self.move_exploring() 
                 
-        elif self.state == "SOCIAL_HAPPY": # 'S'
+        elif self.state == "SOCIAL_HAPPY": # 'o'
             # If highly satisfied, pause movement
             if self.energy > PAUSE_ENERGY_THRESHOLD and self.social > PAUSE_SOCIAL_THRESHOLD:
                 pass 
@@ -1411,8 +1411,12 @@ class World:
                 char = 'T'
                 color = Style.BRIGHT + Fore.WHITE 
             
-            # --- MODIFIED: Changed 'L' to 'o' for Happy/Library Seeking Agent State ---
-            elif agent.state == "SOCIAL_HAPPY" or agent.state == "SEEKING_LIBRARY":
+            # --- START MODIFIED: Split Happy/Library Seek States ---
+            elif agent.state == "SEEKING_LIBRARY":
+                char = 'L' # Use 'L' for Library Seek
+                color = Style.BRIGHT + Fore.MAGENTA 
+
+            elif agent.state == "SOCIAL_HAPPY": 
                 char = 'o' # Use 'o' for 'Observing/Optimistic' agent state
                 color = Style.BRIGHT + Fore.MAGENTA 
             # --- END MODIFIED ---
@@ -1461,12 +1465,11 @@ class World:
         output_buffer.append(
             (Style.BRIGHT + Fore.CYAN + " A" + Style.RESET_ALL + ": Wander") + " | " +
             (Style.NORMAL + Fore.CYAN + " f" + Style.RESET_ALL + ": Forage") + " | " +
-            # --- MODIFIED: Changed 'L' to 'o' in the Legend ---
-            (Style.BRIGHT + Fore.MAGENTA + " o" + Style.RESET_ALL + ": Happy/Library Seek") + " | " +
-            (Style.DIM + Fore.MAGENTA + " s" + Style.RESET_ALL + ": Sad/Crisis")
-            # --- END MODIFIED ---
+            (Style.BRIGHT + Fore.MAGENTA + " o" + Style.RESET_ALL + ": Happy/Observing") + " | " +
+            (Style.BRIGHT + Fore.MAGENTA + " L" + Style.RESET_ALL + ": Seeking Library") 
         )
         output_buffer.append(
+            (Style.DIM + Fore.MAGENTA + " s" + Style.RESET_ALL + ": Sad/Crisis") + " | " +
             (Style.NORMAL + Fore.WHITE + " t" + Style.RESET_ALL + ": Seek Social") + " | " +
             (Style.BRIGHT + Fore.WHITE + " T" + Style.RESET_ALL + ": Communicate") + " | " +
             (Style.BRIGHT + Fore.WHITE + " g" + Style.RESET_ALL + ": Share Wood/Food")
@@ -1508,7 +1511,7 @@ class World:
             (Style.BRIGHT + Fore.BLUE + " H" + Style.RESET_ALL + ": Home") + " | " +
             (Style.NORMAL + Fore.BLUE + " h" + Style.RESET_ALL + ": Damaged Home") + " | " +
             (Style.BRIGHT + Fore.RED + " C" + Style.RESET_ALL + ": Campfire") + " | " +
-            (Style.BRIGHT + Fore.MAGENTA + " L" + Style.RESET_ALL + ": Library")
+            (Style.BRIGHT + Fore.MAGENTA + " L" + Style.RESET_ALL + ": Library (World Object)")
         )
         
         output_buffer.append(Style.BRIGHT + "\n--- SIMULATION STATS ---" + Style.RESET_ALL)
