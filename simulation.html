@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>A-Life Simulation</title>
-    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -62,35 +61,26 @@
         }
     </style>
 </head>
-<!-- Body uses minimal padding to create the tiny border around the content -->
 <body class="p-4 sm:p-8 bg-gray-800 text-white min-h-screen">
 
-    <!-- Wrapper uses full width, removed max-width limit -->
     <div class="w-full">
         <h1 class="text-4xl font-bold mb-4 text-cyan-400">A-Life: Web Simulation</h1>
         <p class="text-gray-400 mb-6">A JavaScript implementation of the Python Life Simulation. See evolution in action!</p>
 
-        <!-- Use flex to lay out content -->
         <div class="flex flex-col lg:flex-row gap-6">
 
-            <!-- World Canvas (Left/Top) - Takes up remaining space (lg:flex-1) -->
             <div class="lg:flex-1 min-w-0"> 
-                <!-- Added id="canvasWrapper" and removed overflow-x-auto, added p-2 back for visual space around canvas -->
                 <div id="canvasWrapper" class="bg-gray-900 p-2 rounded-lg shadow-2xl">
                     <canvas id="worldCanvas"></canvas>
                 </div>
                 
-                <!-- Legend Cleanup -->
-                <div class="mt-4 p-4 bg-gray-900 rounded-lg text-sm font-mono">
+                <div class="mt-4 p-4 bg-gray-900 rounded-lg shadow-2xl text-sm font-mono">
                     <h2 class="text-lg font-semibold mb-2 text-yellow-300">Legend</h2>
-                    <!-- Changed from grid-cols to flex-wrap for better organization and grouping -->
                     <div id="legend" class="flex flex-wrap gap-x-6 gap-y-1">
-                        <!-- Legend items will be populated by JS -->
-                    </div>
+                        </div>
                 </div>
             </div>
 
-            <!-- Stats Panel (Right/Bottom) - Fixed width on desktop (lg:w-80) -->
             <div id="statsPanel" class="lg:w-80 bg-gray-900 p-6 rounded-lg shadow-2xl font-mono text-xs">
                 <div class="mb-4">
                     <p class="text-yellow-400 text-sm">Turn: <span id="turnCounter" class="font-bold text-base">0</span></p>
@@ -133,7 +123,7 @@
         const WORLD_WIDTH = 70;
         const WORLD_HEIGHT = 30;
         const STARTING_AGENTS = 15;
-        const STARTING_FOOD = 120;
+        const STARTING_FOOD = 120; // UPDATED from 80
         const STARTING_WOOD = 80;
         const FOOD_SPAWN_RATE = 25;
         const WOOD_SPAWN_RATE = 80;
@@ -145,7 +135,7 @@
         const CAMPFIRE_WOOD_COST = 3;
         const CAMPFIRE_REFUEL_THRESHOLD = 50;
         const HOME_DURABILITY_START = 3;
-        const HOME_DECAY_RATE = 1500;
+        const HOME_DECAY_RATE = 1500; // UPDATED from 5000 to 1500
         const SIM_SPEED = 150; // Milliseconds for simulation tick
 
         const GENE_RANGES = {
@@ -154,7 +144,7 @@
             'metabolism': [0.5, 2.0, 0.1],
             'aggression': [0.0, 0.5, 0.1],
             'builder': [0.0, 1.0, 0.1],
-            'mating_drive': [60, 130, 5.0],
+            'mating_drive': [60, 130, 5.0], // UPDATED min to 60
             'sociability': [0.0, 1.0, 0.1],
             'farming': [0.0, 1.0, 0.1]
         };
@@ -163,17 +153,17 @@
         const COLORS = {
             CYAN_BRIGHT: '#22d3ee', // A
             CYAN_NORMAL: '#06b6d4', // f
-            MAGENTA_BRIGHT: '#d946ef', // m, S
-            MAGENTA_DIM: '#a855f7', // s
+            MAGENTA_BRIGHT: '#d946ef', // m, S (Social Happy)
+            MAGENTA_DIM: '#a855f7', // s (Social Sad)
             WHITE_BRIGHT: '#ffffff', // T, g, wellbeing
             WHITE_NORMAL: '#f3f4f6', // t
             YELLOW_BRIGHT: '#fcd34d', // b, W
             YELLOW_NORMAL: '#f59e0b', // w, E
-            RED_BRIGHT: '#f87171', // X, r, R, C
-            RED_NORMAL: '#ef4444', // c
-            BLUE_BRIGHT: '#60a5fa', // H, C, k
-            BLUE_NORMAL: '#3b82f6', // B, h
-            BLUE_DIM: '#1d4ed8', // S(remote spot), .
+            RED_BRIGHT: '#f87171', // X, r, R, C (Campfire)
+            RED_NORMAL: '#ef4444', // c (Build Campfire)
+            BLUE_BRIGHT: '#60a5fa', // H, C (Seek Community), k (Claim Home)
+            BLUE_NORMAL: '#3b82f6', // B (Wander to Build), h (Damaged Home)
+            BLUE_DIM: '#1d4ed8', // S(remote spot), . (dim dot)
             GREEN_BRIGHT: '#4ade80', // F, G
             GREEN_NORMAL: '#10b981', // p, P
             GREEN_DIM: '#059669', // T (Tree)
@@ -188,12 +178,12 @@
             'BUILDING': { char: 'b', color: COLORS.YELLOW_BRIGHT, dim: false },
             'WANDERING_TO_BUILD': { char: 'B', color: COLORS.BLUE_NORMAL, dim: false },
             'SEEKING_COMMUNITY': { char: 'C', color: COLORS.BLUE_BRIGHT, dim: false },
-            'SEEKING_REMOTE_SPOT': { char: 'S', color: COLORS.BLUE_DIM, dim: false },
+            'SEEKING_REMOTE_SPOT': { char: 'S', color: COLORS.BLUE_DIM, dim: true }, // Changed char to S, set dim true
             'GETTING_WOOD': { char: 'w', color: COLORS.YELLOW_NORMAL, dim: false },
             'PLANTING': { char: 'p', color: COLORS.GREEN_NORMAL, dim: false },
-            'PLANTING_WOOD': { char: 'p', color: COLORS.GREEN_NORMAL, dim: false },
+            'PLANTING_WOOD': { char: 'p', color: COLORS.GREEN_NORMAL, dim: false }, // Same char as PLANTING
             'GOING_HOME_TO_FARM': { char: 'G', color: COLORS.GREEN_BRIGHT, dim: false },
-            'GOING_HOME_TO_PLANT_WOOD': { char: 'G', color: COLORS.GREEN_BRIGHT, dim: false },
+            'GOING_HOME_TO_PLANT_WOOD': { char: 'G', color: COLORS.GREEN_BRIGHT, dim: false }, // Same char as GOING_HOME_TO_FARM
             'SHARING': { char: 'g', color: COLORS.WHITE_BRIGHT, dim: false },
             'BUILDING_CAMPFIRE': { char: 'c', color: COLORS.RED_NORMAL, dim: false },
             'REPAIRING_HOME': { char: 'E', color: COLORS.YELLOW_NORMAL, dim: false },
@@ -201,11 +191,11 @@
             'REFUELING_CAMPFIRE': { char: 'R', color: COLORS.RED_BRIGHT, dim: false },
             'MATING': { char: 'm', color: COLORS.MAGENTA_BRIGHT, dim: false },
             'ATTACKING': { char: 'X', color: COLORS.RED_BRIGHT, dim: false },
-            'RETALIATING': { char: 'r', color: COLORS.RED_BRIGHT, dim: false },
+            'RETALIATING': { char: 'r', color: COLORS.RED_BRIGHT, dim: false }, // New state
             'SEEKING_SOCIAL': { char: 't', color: COLORS.WHITE_NORMAL, dim: false },
             'COMMUNICATING': { char: 'T', color: COLORS.WHITE_BRIGHT, dim: false },
-            'SOCIAL_HAPPY': { char: 'S', color: COLORS.MAGENTA_BRIGHT, dim: false },
-            'SOCIAL_SAD': { char: 's', color: COLORS.MAGENTA_DIM, dim: true },
+            'SOCIAL_HAPPY': { char: 'S', color: COLORS.MAGENTA_BRIGHT, dim: false }, // S is also used for seeking remote spot
+            'SOCIAL_SAD': { char: 's', color: COLORS.MAGENTA_DIM, dim: true }, // New state
         };
 
         // --- HELPERS ---
@@ -239,13 +229,13 @@
                 this.id = this.world.getNextAgentId();
                 this.energy = 150;
                 this.wood_carried = 0;
-                this.food_carried = 0;
+                this.food_carried = 0; // Max 2
                 this.mate_cooldown = 0;
                 this.seeds_carried = Math.floor(Math.random() * 3);
-                this.wood_seeds_carried = Math.floor(Math.random() * 2);
+                this.wood_seeds_carried = Math.floor(Math.random() * 2); // NEW property
                 this.social = Math.random() * (80.0 - 30.0) + 30.0;
                 this.home_location = null;
-                this.campfire_location = null; // NEW: Agent's owned campfire (key string)
+                this.campfire_location = null; // Agent's owned campfire (key string)
                 this.social_buff_timer = 0;
                 this.contentment_buff_timer = 0;
                 this.state = "WANDERING";
@@ -274,8 +264,10 @@
                     const [minVal, maxVal] = GENE_RANGES[gene];
                     if (stabilize) {
                         if (gene === 'metabolism') {
+                            // Stabilized metabolism to the low end (0.5 to 0.8)
                             genes[gene] = Math.random() * (0.8 - 0.5) + 0.5;
                         } else if (gene === 'speed') {
+                            // Stabilized speed
                             genes[gene] = Math.random() * (3.0 - 1.0) + 1.0;
                         } else {
                             genes[gene] = Math.random() * (maxVal - minVal) + minVal;
@@ -290,7 +282,7 @@
             update() {
                 this.age += 1;
                 
-                // NEW: Check for natural death/frailty after OLD_AGE
+                // NEW: Check for natural death/frailty after OLD_AGE (1500)
                 if (this.age >= OLD_AGE && this.energy < 100) { 
                     this.die('NATURAL_DEATH_OLD');
                     return;
@@ -304,16 +296,17 @@
                 let metabolismCost = this.genes['metabolism'];
                 let livingChildrenUnderAge = 0;
 
+                // --- Parental Cost Calculation ---
                 for (const childId of Array.from(this.children_ids)) {
                     const child = this.world.getAgentById(childId);
                     if (child) {
                         if (child.age < ADULT_AGE) {
                             livingChildrenUnderAge++;
                         } else {
-                            this.children_ids.delete(childId);
+                            this.children_ids.delete(childId); // Child is adult, stop tracking
                         }
                     } else {
-                        this.children_ids.delete(childId);
+                        this.children_ids.delete(childId); // Child died, stop tracking
                     }
                 }
 
@@ -321,14 +314,16 @@
 
                 if (this.age < ADULT_AGE) {
                     metabolismCost = parentalCost;
-                    if (this.energy < 50) { 
+                    if (this.energy < 50) { // Child starves quicker
                         this.die('STARVATION_CHILD');
                         return;
                     }
                 } else {
                     metabolismCost += parentalCost;
                 }
+                // --- End Parental Cost ---
 
+                // --- Home Buff (Family/Owner only) ---
                 const currentPosKey = arrayToKey([this.x, this.y]);
                 if (this.world.homes[currentPosKey]) {
                     const homeData = this.world.homes[currentPosKey];
@@ -346,23 +341,26 @@
                     if (isOwner || isFamily) {
                         metabolismCost *= 0.5;
                         if (this.energy < 150) {
-                            this.energy = clamp(this.energy + 2.0, 0, 150);
+                            this.energy = clamp(this.energy + 2.0, 0, 150); // Increased home regen to 2.0
                         }
                         this.social = clamp(this.social + 0.5, 0, 100);
                     }
                 }
+                // --- End Home Buff ---
 
                 // Check if owned campfire is burnt out
                 if (this.campfire_location && !this.world.campfires[this.campfire_location]) {
                     this.campfire_location = null;
                 }
 
+                // Campfire Cozy Buff (Communal)
                 const nearbyCampfirePosKey = this.world.getNearest(this.x, this.y, 2, this.world.campfires);
                 if (nearbyCampfirePosKey) {
                     metabolismCost *= 0.9;
                     this.social = clamp(this.social + 0.5, 0, 100);
                 }
 
+                // Social Lingering Buff
                 if (this.social_buff_timer > 0) {
                     metabolismCost *= 0.8;
                     this.social_buff_timer--;
@@ -373,12 +371,13 @@
                     this.mate_cooldown--;
                 }
 
+                // Social Need
                 if (this.contentment_buff_timer > 0) {
                     this.contentment_buff_timer--;
                 } else {
                     const visionRadius = Math.floor(this.genes['vision']);
                     const nearbyAgents = this.world.getNearestAgents(this.x, this.y, visionRadius, this);
-                    if (nearbyAgents.length === 0 && !nearbyCampfirePosKey) {
+                    if (nearbyAgents.length === 0 && !nearbyCampfirePosKey) { // Campfire also prevents social drain
                         this.social -= this.genes['sociability'] * 0.5;
                     } else {
                         this.social += 0.1;
@@ -386,6 +385,7 @@
                     this.social = clamp(this.social, 0, 100);
                 }
 
+                // Struggle / Love System
                 if (this.energy < 30 || this.social < 20) {
                     this.struggle_timer++;
                     this.love = clamp(this.love - LOVE_LOSS_STRUGGLE, 0, STARTING_LOVE);
@@ -394,6 +394,7 @@
                     this.love = clamp(this.love + 0.1, 0, STARTING_LOVE);
                 }
 
+                // Global Knowledge Retrieval (Library Effect)
                 for (const skillKey in this.skills) {
                     const globalValue = this.world.globalSkillKnowledge[skillKey] || 0.0;
                     const currentSkill = this.skills[skillKey];
@@ -413,6 +414,7 @@
 
             decideState() {
                 const visionRadius = Math.floor(this.genes['vision']);
+                // Use getNearestInSet which returns an array of keys
                 const foodInSight = this.world.getNearestInSet(this.x, this.y, visionRadius, this.world.food);
                 
                 const conserveEnergy = this.genes['metabolism'] < 0.8 && this.energy < 100;
@@ -423,7 +425,7 @@
                     return;
                 }
 
-                // Priority 0.5: Hopeless/Sad
+                // Priority 0.5: Hopeless/Sad (Low Love/Social + No food in sight/memory)
                 if ((this.energy < 20 || this.social < 10) && foodInSight.length === 0 && this.memory.food.size === 0) {
                     this.state = "SOCIAL_SAD";
                     return;
@@ -433,6 +435,7 @@
                 let forageThreshold = 70;
                 if (this.age < ADULT_AGE) forageThreshold = 100;
 
+                // If energy is low, OR we have food but need to eat it
                 if (this.energy < forageThreshold || (this.food_carried > 0 && this.energy < 150)) {
                     this.state = "FORAGING";
                     return;
@@ -468,8 +471,8 @@
                     }
                 }
 
-                // Priority 3: Social Need
-                if (this.social < 30 && this.genes['sociability'] > 0.2) {
+                // Priority 3: Social Need (only if not already communicating, i.e., lingering)
+                if (this.state !== "COMMUNICATING" && this.social < 30 && this.genes['sociability'] > 0.2) {
                     this.state = "SEEKING_SOCIAL";
                     return;
                 }
@@ -514,7 +517,16 @@
                                 }
                             }
                         } else {
-                            this.state = "WANDERING_TO_BUILD";
+                            // If spot is not clear, wander to an open spot near/far from community
+                            if (isSocial && (nearbyHomes.length > 0 || Object.keys(this.world.homes).length === 0)) {
+                                this.state = "WANDERING_TO_BUILD";
+                            } else if (!isSocial && nearbyHomes.length === 0) {
+                                this.state = "WANDERING_TO_BUILD";
+                            } else if (isSocial) {
+                                this.state = "SEEKING_COMMUNITY";
+                            } else {
+                                this.state = "SEEKING_REMOTE_SPOT";
+                            }
                         }
                         return;
                     }
@@ -536,7 +548,7 @@
                     return;
                 }
 
-                // Priority 5.5: Planting Trees
+                // Priority 5.5: Planting Trees (if wood is scarce)
                 if (this.wood_seeds_carried > 0 && this.energy > 80 &&
                     (Object.keys(this.world.wood).length < STARTING_WOOD) && (this.genes['builder'] > Math.random())) { 
                     
@@ -563,6 +575,7 @@
 
                     let woodCostNeeded = Math.max(1, CAMPFIRE_WOOD_COST - Math.floor(this.skills['building'] * 0.5));
                     
+                    // Priority to build if wood is carried
                     if (this.wood_carried >= woodCostNeeded) {
                          this.state = "BUILDING_CAMPFIRE";
                          return;
@@ -614,10 +627,13 @@
                 switch (this.state) {
                     case "FORAGING":
                         const currentPosKey = arrayToKey([this.x, this.y]);
+                        // 1. Prioritize eating carried food if energy is low
                         if (this.food_carried > 0 && this.energy < 150) { 
                             this.consumeFood();
+                        // 2. Pickup food from tile (if not full)
                         } else if (this.world.food[currentPosKey] && this.food_carried < 2) { 
                             this.pickupFood();
+                        // 3. Move toward target
                         } else if (bestFoodTarget) { 
                             this.moveTowards(bestFoodTarget[0], bestFoodTarget[1]);
                             if (getDistance(this.x, this.y, bestFoodTarget[0], bestFoodTarget[1]) < 2.0 && !this.world.food[arrayToKey(bestFoodTarget)]) {
@@ -630,12 +646,15 @@
 
                     case "GETTING_WOOD":
                         const currentWoodPosKey = arrayToKey([this.x, this.y]);
+                        // 1. Max wood capacity is 3
                         if (this.wood_carried >= 3) { 
                             this.state = "WANDERING";
                             return;
                         }
+                        // 2. Pick up wood
                         if (this.world.wood[currentWoodPosKey] && this.wood_carried < 3) {
                             this.takeWood();
+                        // 3. Move toward target
                         } else if (bestWoodTarget) { 
                             this.moveTowards(bestWoodTarget[0], bestWoodTarget[1]);
                             if (getDistance(this.x, this.y, bestWoodTarget[0], bestWoodTarget[1]) < 2.0 && !this.world.wood[arrayToKey(bestWoodTarget)]) {
@@ -780,17 +799,17 @@
                         break;
 
                     case "SHARING":
-                        const nearbyAgents = this.world.getNearestAgents(this.x, this.y, visionRadius, this);
-                        const needyAgents = nearbyAgents.filter(a => a.energy < 70 && a.food_carried < 1);
+                        const nearbyAgentsShare = this.world.getNearestAgents(this.x, this.y, visionRadius, this);
+                        const needyAgentsShare = nearbyAgentsShare.filter(a => a.energy < 70 && a.food_carried < 1);
                         
-                        if (needyAgents.length > 0) {
-                            const target = needyAgents[0];
+                        if (needyAgentsShare.length > 0) {
+                            const target = needyAgentsShare[0];
                             if (getDistance(this.x, this.y, target.x, target.y) < 2.0) {
                                 if (this.food_carried >= 1) {
                                     this.food_carried--;
                                     target.food_carried++;
                                     this.state = "WANDERING"; 
-                                } else if (this.wood_carried >= 1) {
+                                } else if (this.wood_carried >= 1) { // Share wood if no food
                                     this.wood_carried--;
                                     target.wood_carried++;
                                     this.state = "WANDERING";
@@ -827,9 +846,11 @@
                         if (nearestCampfireKey) {
                             const [cx, cy] = keyToArray(nearestCampfireKey);
                             const agentsAtFire = agents.filter(a => getDistance(a.x, a.y, cx, cy) < 3.0);
-                            if (agentsAtFire.length > 0) {
+                            
+                            if (getDistance(this.x, this.y, cx, cy) > 2.0) { // Move to fire first
+                                this.moveTowards(cx, cy);
+                            } else if (agentsAtFire.length > 0) { // At fire, find agent
                                 const targetAgent = agentsAtFire[0];
-                                this.love = clamp(this.love + LOVE_GAIN_SOCIAL, 0, STARTING_LOVE);
                                 
                                 if (getDistance(this.x, this.y, targetAgent.x, targetAgent.y) < 2.0) {
                                     this.communicate(targetAgent);
@@ -837,7 +858,7 @@
                                     this.moveTowards(targetAgent.x, targetAgent.y);
                                 }
                             } else {
-                                this.moveTowards(cx, cy);
+                                // Linger at fire if alone
                             }
                         } else if (agents.length > 0) {
                             const targetAgent = agents[0];
@@ -851,10 +872,30 @@
                         }
                         break;
 
+                    case "COMMUNICATING":
+                        const nearbyAgentsComm = this.world.getNearestAgents(this.x, this.y, 2, this);
+                        if (this.social_buff_timer > 0 && nearbyAgentsComm.length > 0) {
+                            const target = nearbyAgentsComm[0];
+                            
+                            // Recalculate communication effects each turn
+                            this.skills.social = clamp(this.skills.social + 0.05, 0, 10.0);
+                            this.social = clamp(this.social + 5 + (this.skills.social * 2), 0, 100);
+                            this.love = clamp(this.love + LOVE_GAIN_SOCIAL * 0.1, 0, STARTING_LOVE);
+
+                            if (this.social_buff_timer % 5 === 0) {
+                                this.shareSkills(target);
+                            }
+                        } else {
+                            this.state = "WANDERING";
+                        }
+                        break;
+
                     case "SOCIAL_SAD":
                         this.love = clamp(this.love + LOVE_GAIN_REST, 0, STARTING_LOVE);
+                        // Priority 1: Food
                         if (this.energy < 20 && bestFoodTarget) {
                             this.moveTowards(bestFoodTarget[0], bestFoodTarget[1]);
+                        // Priority 2: Social
                         } else if (this.social < 10) {
                             const nearestCampfireSad = this.world.getNearest(this.x, this.y, visionRadius, this.world.campfires);
                             if (agents.length > 0) {
@@ -871,6 +912,7 @@
                         break;
 
                     case "WANDERING":
+                    case "SOCIAL_HAPPY":
                         if (this.energy > PAUSE_ENERGY_THRESHOLD && this.social > PAUSE_SOCIAL_THRESHOLD) {
                             // Linger/observe - Pause movement
                         } else {
@@ -882,9 +924,7 @@
                         break;
                     
                     case "MATING":
-                    case "COMMUNICATING":
-                    case "SOCIAL_HAPPY":
-                        // Agent is occupied or happy, do nothing (pass)
+                        // Agent is occupied
                         break;
                 }
             }
@@ -916,10 +956,10 @@
                     this.y = clamp(this.y + dy, 0, this.world.height - 1);
                     
                     this.skills.navigation = clamp(this.skills.navigation + 0.01, 0, 5.0); 
-                    const costMultiplier = 1.0 - (this.skills.navigation * 0.15); 
+                    const costMultiplier = 1.0 - (this.skills.navigation * 0.15); // Updated from 0.1 to 0.15
                     const finalMultiplier = Math.max(0.25, costMultiplier);
                     
-                    this.energy -= (0.05) * finalMultiplier; 
+                    this.energy -= (0.05) * finalMultiplier; // Base cost 0.05
                 }
             }
 
@@ -951,10 +991,10 @@
                     this.y = clamp(this.y + dy, 0, this.world.height - 1);
                     
                     this.skills.navigation = clamp(this.skills.navigation + 0.01, 0, 5.0); 
-                    const costMultiplier = 1.0 - (this.skills.navigation * 0.15); 
+                    const costMultiplier = 1.0 - (this.skills.navigation * 0.15); // Updated from 0.1 to 0.15
                     const finalMultiplier = Math.max(0.25, costMultiplier);
                     
-                    this.energy -= (0.05) * finalMultiplier;
+                    this.energy -= (0.05) * finalMultiplier; // Base cost 0.05
                 }
             }
 
@@ -988,7 +1028,7 @@
                 if (this.food_carried > 0) {
                     this.food_carried--;
                     this.skills.foraging = clamp(this.skills.foraging + 0.1, 0, 10.0); 
-                    const energyGain = 120 + (this.skills.foraging * 20); 
+                    const energyGain = 120 + (this.skills.foraging * 20); // Updated energy formula
                     this.energy += energyGain;
                     this.love = clamp(this.love + LOVE_GAIN_EAT, 0, STARTING_LOVE);
                     this.state = "WANDERING";
@@ -997,7 +1037,7 @@
 
             pickupFood() {
                 const posKey = arrayToKey([this.x, this.y]);
-                if (this.world.food[posKey] && this.food_carried < 2) {
+                if (this.world.food[posKey] && this.food_carried < 2) { // Max 2 food capacity
                     delete this.world.food[posKey];
                     delete this.world.foodFreshness[posKey];
                     this.food_carried++;
@@ -1008,11 +1048,11 @@
 
             takeWood() {
                 const posKey = arrayToKey([this.x, this.y]);
-                if (this.world.wood[posKey] && this.wood_carried < 3) {
+                if (this.world.wood[posKey] && this.wood_carried < 3) { // Max 3 wood capacity
                     delete this.world.wood[posKey];
                     this.wood_carried++;
                     
-                    if (Math.random() < WOOD_SEED_CHANCE) {
+                    if (Math.random() < WOOD_SEED_CHANCE) { // Wood seed chance
                         this.wood_seeds_carried++;
                     }
 
@@ -1041,7 +1081,7 @@
                 if (this.wood_carried >= woodCost) {
                     this.wood_carried -= woodCost;
                     this.world.campfires[posKey] = CAMPFIRE_BURN_TIME;
-                    this.campfire_location = posKey; // NEW: Track owned campfire
+                    this.campfire_location = posKey; // Track owned campfire
                     this.skills.building = clamp(this.skills.building + 0.2, 0, 4.0);
                     this.state = "WANDERING";
                 }
@@ -1053,25 +1093,25 @@
                 
                 this.state = "ATTACKING";
                 this.energy -= energyCost;
-                this.energy += 10; 
+                this.energy += 10; // Attacker gains energy back
                 
                 target.energy -= damage;
                 this.skills.combat = clamp(this.skills.combat + 0.2, 0, 10.0); 
                 
-                target.was_attacked_by = this.id;
+                target.was_attacked_by = this.id; // Set retaliation target
             }
             
             mate(partner) {
                 this.state = "MATING";
                 partner.state = "MATING";
                 
-                this.energy -= 10;
+                this.energy -= 10; // Reduced cost
                 partner.energy -= 10;
                 
-                this.mate_cooldown = 70;
+                this.mate_cooldown = 70; // Increased cooldown
                 partner.mate_cooldown = 70;
                 
-                const numChildren = Math.floor(Math.random() * 3) + 1; 
+                const numChildren = Math.floor(Math.random() * 3) + 1; // 1 to 3 children
                 
                 for (let i = 0; i < numChildren; i++) {
                     const newGenes = {};
@@ -1107,7 +1147,7 @@
                     
                     if (selfSkill > partnerSkill) {
                         partner.skills[skill] = clamp(partnerSkill + learningRate, 0, 10.0);
-                        if (selfSkill > 2.0) { 
+                        if (selfSkill > 2.0) { // Global contribution if skill is high
                             this.world.globalSkillKnowledge[skill] = clamp((this.world.globalSkillKnowledge[skill] || 0.0) + 0.05, 0, 10.0);
                         }
                     } else if (partnerSkill > selfSkill) {
@@ -1123,6 +1163,11 @@
                 this.state = "COMMUNICATING";
                 partner.state = "COMMUNICATING";
                 
+                // NEW: Set multi-turn social timer
+                this.social_buff_timer = 20; 
+                partner.social_buff_timer = 20; 
+                
+                // One-time initial gains
                 this.skills.social = clamp(this.skills.social + 0.2, 0, 10.0); 
                 partner.skills.social = clamp(partner.skills.social + 0.2, 0, 10.0); 
                 
@@ -1131,9 +1176,6 @@
                 
                 this.social = clamp(this.social + socialGain, 0, 100);
                 partner.social = clamp(partner.social + partnerSocialGain, 0, 100);
-                
-                this.social_buff_timer = 20; 
-                partner.social_buff_timer = 20; 
                 
                 this.love = clamp(this.love + LOVE_GAIN_SOCIAL, 0, STARTING_LOVE);
                 partner.love = clamp(partner.love + LOVE_GAIN_SOCIAL, 0, STARTING_LOVE);
@@ -1151,13 +1193,13 @@
                         let plantLocKey = libraryPosKey;
                         
                         if (!this.isClearTile(this.world.libraryLocation[0], this.world.libraryLocation[1])) {
-                            plantLocKey = arrayToKey([this.x, this.y]);
+                            plantLocKey = arrayToKey([this.x, this.y]); // Fallback to current location
                         }
                         
                         this.world.food[plantLocKey] = true;
                         this.world.foodFreshness[plantLocKey] = FOOD_FRESHNESS;
                         
-                        this.state = "FORAGING";
+                        this.state = "FORAGING"; // Agents move to eat the new food
                         partner.state = "FORAGING";
                         return;
                     }
@@ -1168,6 +1210,7 @@
                    partner.age >= ADULT_AGE && partner.energy > partner.genes['mating_drive'] && partner.mate_cooldown === 0) {
                     this.mate(partner);
                 }
+                // Do not set state to WANDERING here, it is a multi-turn action via social_buff_timer
             }
 
             plantSeed() {
@@ -1201,6 +1244,7 @@
                 
                 const deathLocationKey = arrayToKey([this.x, this.y]);
                 
+                // Drop carried resources
                 for (let i = 0; i < this.wood_carried; i++) {
                     this.world.wood[deathLocationKey] = true;
                 }
@@ -1210,6 +1254,7 @@
                     this.world.foodFreshness[deathLocationKey] = FOOD_FRESHNESS;
                 }
                 
+                // Remove child reference from parents
                 const dyingAgentId = this.id;
                 this.world.agents.forEach(agent => {
                     if (agent.children_ids.has(dyingAgentId)) {
@@ -1217,12 +1262,14 @@
                     }
                 });
                 
+                // Remove agent from the world
                 this.world.agents = this.world.agents.filter(a => a.id !== this.id);
                 
+                // Unclaim home
                 if (this.home_location && this.world.homes[this.home_location]) {
                     this.world.homes[this.home_location].owner_id = null;
                 }
-                // Clear owned campfire reference if it exists
+                // Clear owned campfire reference
                 this.campfire_location = null;
             }
         }
@@ -1242,10 +1289,10 @@
                 this.wood = {}; // { "x,y": true }
                 
                 this.generationCount = 0;
-                this.deathCauses = { 'MAX_AGE': 0, 'STARVATION_ADULT': 0, 'STARVATION_CHILD': 0, 'COMBAT': 0, 'NATURAL_DEATH_OLD': 0, 'UNKNOWN': 0 };
+                this.deathCauses = { 'MAX_AGE': 0, 'STARVATION_ADULT': 0, 'STARVATION_CHILD': 0, 'COMBAT': 0, 'NATURAL_DEATH_OLD': 0, 'UNKNOWN': 0 }; // UPDATED
                 this.homes = {}; // { "x,y": { owner_id: int, durability: int } }
                 this.growingPlants = {}; // { "x,y": turns_left } (Food)
-                this.growingTrees = {}; // { "x,y": turns_left } (Wood)
+                this.growingTrees = {}; // { "x,y": turns_left } (Wood - NEW)
                 this.foodFreshness = {}; // { "x,y": turns_left }
                 this.campfires = {}; // { "x,y": turns_left }
 
@@ -1285,9 +1332,12 @@
             }
 
             spawnResources() {
+                // Food spawn limit check uses 10% of total tiles
+                const foodLimit = this.width * this.height * 0.1;
+
                 if (this.turn % FOOD_SPAWN_RATE === 0) {
                     for (let i = 0; i < 5; i++) { 
-                        if (Object.keys(this.food).length < (this.width * this.height * 0.1)) {
+                        if (Object.keys(this.food).length < foodLimit) {
                             const tile = this.getRandomEmptyTile();
                             if (tile) {
                                 const posKey = arrayToKey(tile);
@@ -1298,9 +1348,12 @@
                     }
                 }
 
+                // Wood spawn limit check uses 5% of total tiles
+                const woodLimit = this.width * this.height * 0.05;
+
                 if (this.turn % WOOD_SPAWN_RATE === 0) {
                     for (let i = 0; i < 3; i++) { 
-                        if (Object.keys(this.wood).length < (this.width * this.height * 0.05)) {
+                        if (Object.keys(this.wood).length < woodLimit) {
                             const tile = this.getRandomEmptyTile();
                             if (tile) {
                                 this.wood[arrayToKey(tile)] = true;
@@ -1312,30 +1365,30 @@
 
             updateWorldObjects() {
                 // 1. Update Growing Plants (Food)
-                for (const pos in this.growingPlants) {
+                for (const pos in Object.keys(this.growingPlants)) {
                     this.growingPlants[pos]--;
                     if (this.growingPlants[pos] <= 0) {
                         delete this.growingPlants[pos];
-                        if (!this.food[pos] && !this.homes[pos] && !this.wood[pos]) {
+                        if (!this.food[pos] && !this.homes[pos] && !this.wood[pos] && !this.campfires[pos]) {
                             this.food[pos] = true;
                             this.foodFreshness[pos] = FOOD_FRESHNESS;
                         }
                     }
                 }
                 
-                // 1.5. Update Growing Trees (Wood)
-                for (const pos in this.growingTrees) {
+                // 1.5. Update Growing Trees (Wood - NEW)
+                for (const pos in Object.keys(this.growingTrees)) {
                     this.growingTrees[pos]--;
                     if (this.growingTrees[pos] <= 0) {
                         delete this.growingTrees[pos];
-                        if (!this.food[pos] && !this.homes[pos] && !this.wood[pos]) {
+                        if (!this.food[pos] && !this.homes[pos] && !this.wood[pos] && !this.campfires[pos]) {
                             this.wood[pos] = true;
                         }
                     }
                 }
                 
                 // 2. Update Food Spoilage
-                for (const pos in this.foodFreshness) {
+                for (const pos in Object.keys(this.foodFreshness)) {
                     this.foodFreshness[pos]--;
                     if (this.foodFreshness[pos] <= 0) {
                         delete this.foodFreshness[pos];
@@ -1344,7 +1397,7 @@
                 }
                 
                 // 3. Update Campfires
-                for (const pos in this.campfires) {
+                for (const pos in Object.keys(this.campfires)) {
                     this.campfires[pos]--;
                     if (this.campfires[pos] <= 0) {
                         delete this.campfires[pos];
@@ -1353,7 +1406,7 @@
                 
                 // 4. Update Home Decay
                 if (this.turn % HOME_DECAY_RATE === 0) {
-                    for (const pos in this.homes) {
+                    for (const pos in Object.keys(this.homes)) {
                         this.homes[pos].durability--;
                         if (this.homes[pos].durability <= 0) {
                             
@@ -1413,11 +1466,15 @@
             }
 
             calculateStats() {
+                // Calculate stats for agents who have reached ADULT_AGE (100)
                 const adultAgents = this.agents.filter(agent => agent.age >= ADULT_AGE);
                 let agentsForStats = adultAgents.length > 0 ? adultAgents : this.agents;
                 
                 if (agentsForStats.length === 0) {
                     this.stats = { population: 0, homes_built: 0, active_campfires: 0 };
+                    for (const gene in GENE_RANGES) { this.stats[`avg_${gene}`] = 0.0; }
+                    const skillList = ['foraging', 'social', 'building', 'navigation', 'combat', 'farming'];
+                    for (const skill of skillList) { this.stats[`avg_${skill}_skill`] = 0.0; }
                     return;
                 }
                     
@@ -1671,7 +1728,16 @@
             geneStatsDiv.innerHTML = '';
             for (const gene in GENE_RANGES) {
                 const avg = world.stats[`avg_${gene}`] || 0;
-                const color = (gene === 'aggression' || gene === 'metabolism') ? 'text-red-400' : (gene === 'builder' ? 'text-blue-400' : 'text-cyan-400');
+                let color;
+                if (gene === 'aggression' || gene === 'metabolism') {
+                    color = 'text-red-400';
+                } else if (gene === 'builder') {
+                    color = 'text-blue-400';
+                } else if (gene === 'mating_drive') {
+                    color = 'text-purple-400';
+                } else {
+                    color = 'text-cyan-400';
+                }
                 geneStatsDiv.innerHTML += `<p><span class="${color}">${gene.padEnd(12, ' ')}</span>: ${avg.toFixed(2)}</p>`;
             }
 
@@ -1681,7 +1747,18 @@
             const skillList = ['foraging', 'social', 'building', 'navigation', 'combat', 'farming'];
             for (const skill of skillList) {
                 const avg = world.stats[`avg_${skill}_skill`] || 0;
-                const color = (skill === 'combat' ? 'text-red-400' : (skill === 'building' ? 'text-blue-400' : 'text-green-400'));
+                let color;
+                if (skill === 'combat') {
+                    color = 'text-red-400';
+                } else if (skill === 'building') {
+                    color = 'text-blue-400';
+                } else if (skill === 'foraging' || skill === 'farming') {
+                    color = 'text-green-400';
+                } else if (skill === 'social') {
+                    color = 'text-white';
+                } else {
+                    color = 'text-cyan-400';
+                }
                 skillStatsDiv.innerHTML += `<p><span class="${color}">${skill.padEnd(12, ' ')}</span>: ${avg.toFixed(2)}</p>`;
             }
 
@@ -1724,14 +1801,14 @@
                         { char: 'f', color: COLORS.CYAN_NORMAL, desc: 'Forage/Eat' },
                         { char: 's', color: COLORS.MAGENTA_DIM, desc: 'Sad/Crisis' },
                         { char: 't', color: COLORS.WHITE_NORMAL, desc: 'Seek Social' },
-                        { char: 'T', color: COLORS.WHITE_BRIGHT, desc: 'Communicate/Share Knowledge' },
+                        { char: 'T', color: COLORS.WHITE_BRIGHT, desc: 'Communicate/Linger' },
                         { char: 'm', color: COLORS.MAGENTA_BRIGHT, desc: 'Mate' },
                         { char: 'X/r', color: COLORS.RED_BRIGHT, desc: 'Attack/Retaliate' },
                         { char: 'g', color: COLORS.WHITE_BRIGHT, desc: 'Share Resources' },
                     ]
                 },
                 {
-                    title: 'Building & Wood',
+                    title: 'Building & Home',
                     items: [
                         { char: 'w', color: COLORS.YELLOW_NORMAL, desc: 'Get Wood' },
                         { char: 'b', color: COLORS.YELLOW_BRIGHT, desc: 'Build Home' },
@@ -1739,6 +1816,8 @@
                         { char: 'E', color: COLORS.YELLOW_NORMAL, desc: 'Repair Home' },
                         { char: 'c', color: COLORS.RED_NORMAL, desc: 'Build Fire' },
                         { char: 'R', color: COLORS.RED_BRIGHT, desc: 'Refuel Fire' },
+                        { char: 'B', color: COLORS.BLUE_NORMAL, desc: 'Seek Build Spot' },
+                        { char: 'C', color: COLORS.BLUE_BRIGHT, desc: 'Seek Community' },
                     ]
                 },
                 {
@@ -1788,7 +1867,7 @@
             for (let i = 0; i < STARTING_AGENTS; i++) {
                 world.addAgent(); 
             }
-            for (let i = 0; i < STARTING_FOOD; i++) {
+            for (let i = 0; i < STARTING_FOOD; i++) { // UPDATED starting food
                 const tile = world.getRandomEmptyTile();
                 if (tile) {
                     const posKey = arrayToKey(tile);
