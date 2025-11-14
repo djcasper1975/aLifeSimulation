@@ -33,13 +33,11 @@
             <p class="text-lg text-gray-500 mt-2">A look under the hood at the rules, goals, and evolution of the simulation agents.</p>
         </header>
 
-        <!-- CORE MECHANICS -->
         <section class="mb-10">
             <h2 class="text-2xl font-semibold mb-4 section-header">1. Core Mechanics & Needs</h2>
             <p class="mb-4">Agents are driven by six primary needs and attributes. Their decision-making process is a strict priority list to manage these needs.</p>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Energy -->
                 <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-red-500">
                     <h3 class="font-semibold text-lg mb-1">Energy (Survival)</h3>
                     <ul class="list-disc ml-5 text-sm space-y-1">
@@ -49,17 +47,15 @@
                     </ul>
                 </div>
 
-                <!-- Social -->
                 <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-blue-500">
                     <h3 class="font-semibold text-lg mb-1">Social (Community)</h3>
                     <ul class="list-disc ml-5 text-sm space-y-1">
                         <li>**Drain:** Lost when the agent is alone, based on the <code class="code-block inline-block p-1">sociability</code> gene.</li>
                         <li>**Gain:** Gained by communicating with other agents or resting near a Campfire or Home.</li>
-                        <li>**Crisis:** Low social (< 10) causes the 'Sad/Crisis' state ('s').</li>
+                        <li>**Crisis:** Low social (below **20**) causes the 'Sad/Crisis' state ('s').</li>
                     </ul>
                 </div>
 
-                <!-- Love -->
                 <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-pink-500">
                     <h3 class="font-semibold text-lg mb-1">Love (Well-being/Morality)</h3>
                     <ul class="list-disc ml-5 text-sm space-y-1">
@@ -69,7 +65,6 @@
                     </ul>
                 </div>
 
-                <!-- Age -->
                 <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-gray-500">
                     <h3 class="font-semibold text-lg mb-1">Age & Life Cycle</h3>
                     <ul class="list-disc ml-5 text-sm space-y-1">
@@ -81,13 +76,11 @@
             </div>
         </section>
         
-        <!-- CONFLICT RESOLUTION (NEW SECTION) -->
         <section class="mb-10">
             <h2 class="text-2xl font-semibold mb-4 section-header">2. Conflict Resolution (Combat & Retaliation)</h2>
             <p class="mb-4">Conflict is rare, as it is heavily restricted by the **Love** mechanic. It is usually triggered by desperation.</p>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Attack Trigger -->
                 <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-red-500">
                     <h3 class="font-semibold text-lg mb-1">Attack Trigger ('X')</h3>
                     <ul class="list-disc ml-5 text-sm space-y-1">
@@ -97,11 +90,10 @@
                     </ul>
                 </div>
 
-                <!-- Retaliation -->
                 <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-red-800">
                     <h3 class="font-semibold text-lg mb-1">Retaliation Priority ('r')</h3>
                     <ul class="list-disc ml-5 text-sm space-y-1">
-                        <li>**Priority:** Retaliation is the **highest priority state** (Section 5, Priority 1). The agent will immediately ignore all other needs (even starvation) to seek the attacker.</li>
+                        <li>**Priority:** Retaliation is the **highest priority state** (Section 6, Priority 1). The agent will immediately ignore all other needs (even starvation) to seek the attacker.</li>
                         <li>**Skill Gain:** Both the attacker and the defender gain points in their **Combat Skill** regardless of the outcome.</li>
                         <li>**Consequence:** Once the retaliating agent reaches the attacker and completes the attack, they reset their state and lose the retaliation trigger.</li>
                     </ul>
@@ -109,7 +101,6 @@
             </div>
         </section>
         
-        <!-- GENES (EVOLUTION) -->
         <section class="mb-10">
             <h2 class="text-2xl font-semibold mb-4 section-header">3. Genes (Evolutionary Traits)</h2>
             <p class="mb-4">Genes are fixed at birth, inherited from parents, and modified slightly by mutation. They determine the agent's potential and default behavior.</p>
@@ -126,7 +117,6 @@
             </ul>
         </section>
 
-        <!-- SKILLS (LEARNING) -->
         <section class="mb-10">
             <h2 class="text-2xl font-semibold mb-4 section-header">4. Skills (Individual Learning)</h2>
             <p class="mb-4">Skills are learned through practice (e.g., building) and social interaction. They improve the efficiency of actions.</p>
@@ -141,13 +131,11 @@
             </ul>
         </section>
         
-        <!-- NEW SECTION: SOCIAL AND CULTURAL EXCHANGE -->
         <section class="mb-10">
             <h2 class="text-2xl font-semibold mb-4 section-header">5. Social & Cultural Exchange (Communal Life)</h2>
             <p class="mb-4">When agents engage in the **Communicate ('T')** state, they perform several critical cultural activities:</p>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Skill Sharing -->
                 <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-yellow-500">
                     <h3 class="font-semibold text-lg mb-1">Peer-to-Peer Skill Sharing</h3>
                     <ul class="list-disc ml-5 text-sm space-y-1">
@@ -156,7 +144,6 @@
                     </ul>
                 </div>
 
-                <!-- Global Library -->
                 <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-purple-500">
                     <h3 class="font-semibold text-lg mb-1">Global Knowledge Library ('L')</h3>
                     <ul class="list-disc ml-5 text-sm space-y-1">
@@ -165,7 +152,6 @@
                     </ul>
                 </div>
                 
-                <!-- Communal Planting -->
                 <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-green-700 md:col-span-2">
                     <h3 class="font-semibold text-lg mb-1">Communal Planting (Crisis Response)</h3>
                     <ul class="list-disc ml-5 text-sm space-y-1">
@@ -176,7 +162,6 @@
             </div>
         </section>
 
-        <!-- DECISION PRIORITY (The Agent's "Brain") -->
         <section class="mb-10">
             <h2 class="text-2xl font-semibold mb-4 section-header">6. Decision Priority List</h2>
             <p class="mb-4">Agents decide what to do in a strict hierarchical order. The first satisfied condition determines their state for the turn:</p>
@@ -186,19 +171,19 @@
                 <p class="font-normal text-gray-700 ml-4">If the agent was attacked, they immediately seek and attack the aggressor.</p>
 
                 <li class="font-bold text-red-600">Crisis State:</li>
-                <p class="font-normal text-gray-700 ml-4">If Energy is below 20 or Social is below 10, they enter the 'Sad/Crisis' state ('s') to prioritize immediate survival/social contact.</p>
+                <p class="font-normal text-gray-700 ml-4">If Energy is below 20 or Social is below 20, they enter the 'Sad/Crisis' state ('s') to prioritize immediate survival/social contact.</p>
 
                 <li class="font-bold text-orange-600">Energy & Survival:</li>
                 <p class="font-normal text-gray-700 ml-4">If Energy is low (below 70, or 100 for children), or they are carrying food and need to eat it, they enter the 'Foraging' state ('f').</p>
 
                 <li class="font-bold text-yellow-600">Campfire Refueling:</li>
-                <p class="font-normal text-gray-700 ml-4">If a nearby Campfire is about to burn out (timer below 50), they seek wood and enter 'Refueling Fire' ('R').</p>
+                <p class="font-normal text-gray-700 ml-4">If a nearby Campfire is about to burn out (timer below **100**), they seek wood and enter 'Refueling Fire' ('R').</p>
 
                 <li class="font-bold text-blue-600">Home Repair:</li>
                 <p class="font-normal text-gray-700 ml-4">If they own a Home and it is damaged, they seek wood and enter 'Repair Home' ('E').</p>
 
                 <li class="font-bold text-blue-600">Social Needs:</li>
-                <p class="font-normal text-gray-700 ml-4">If Social is low (below 30), they enter 'Seek Social' ('t') to find agents or Campfires.</p>
+                <p class="font-normal text-gray-700 ml-4">If Social is low (below **60**), they enter 'Seek Social' ('t') to find agents or Campfires.</p>
 
                 <li class="font-bold text-blue-600">Home Building/Claiming:</li>
                 <p class="font-normal text-gray-700 ml-4">If they have no Home, they try to 'Claim Home' ('k') or gather wood/seek a spot to 'Build Home' ('b').</p>
@@ -209,12 +194,14 @@
                 <li class="font-bold text-red-500">Campfire Building:</li>
                 <p class="font-normal text-gray-700 ml-4">If they have no Campfire and high energy/social, they gather wood to 'Build Fire' ('c').</p>
                 
+                <li class="font-bold text-purple-600">Seeking Library:</li>
+                <p class="font-normal text-gray-700 ml-4">If content, they have a 20% chance to move toward the Library ('L') to passively gain knowledge.</p>
+
                 <li class="font-bold text-gray-500">Wandering & Contentment:</li>
-                <p class="font-normal text-gray-700 ml-4">If all needs are sufficiently met, they enter 'Wandering' ('A'). They **pause movement** if Energy > 100 and Social > 50.</p>
+                <p class="font-normal text-gray-700 ml-4">If all needs are sufficiently met, they enter 'Wandering' ('A'). They **pause movement** if Energy > 100 and Social > **80**.</p>
             </ol>
         </section>
 
-        <!-- WORLD OBJECTS -->
         <section class="mb-10">
             <h2 class="text-2xl font-semibold mb-4 section-header">7. World Objects & Interaction</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
