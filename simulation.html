@@ -1,0 +1,1836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A-Life Simulation</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Consolas', 'Monaco', 'monospace'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom styles for the grid visualization */
+        #worldCanvas {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            background-color: #0d1117; /* Dark background for console feel */
+            border-radius: 0.5rem;
+            /* CRITICAL: Ensures characters are drawn without interpolation/blurring */
+            image-rendering: pixelated; 
+            
+            /* Ensure the canvas size defined by JS is respected and centered */
+            display: block; 
+            margin: 0 auto; 
+        }
+
+        /* Fixed height for the stats panel for stability */
+        #statsPanel {
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        /* Ensure the main container uses the full width */
+        body, html {
+            height: 100%;
+            margin: 0;
+            background-color: #1f2937;
+        }
+
+        /* NEW: Styles for the canvas wrapper to ensure it shrinks on mobile */
+        #canvasWrapper {
+            /* For mobile/tablet, force the container width to match the canvas size, and center it */
+            width: fit-content;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        @media (min-width: 1024px) {
+            /* On desktop (lg breakpoint), allow it to expand fully */
+            #canvasWrapper {
+                width: 100%;
+                margin: 0;
+            }
+        }
+    </style>
+</head>
+<!-- Body uses minimal padding to create the tiny border around the content -->
+<body class="p-4 sm:p-8 bg-gray-800 text-white min-h-screen">
+
+    <!-- Wrapper uses full width, removed max-width limit -->
+    <div class="w-full">
+        <h1 class="text-4xl font-bold mb-4 text-cyan-400">A-Life: Web Simulation</h1>
+        <p class="text-gray-400 mb-6">A JavaScript implementation of the Python Life Simulation. See evolution in action!</p>
+
+        <!-- Use flex to lay out content -->
+        <div class="flex flex-col lg:flex-row gap-6">
+
+            <!-- World Canvas (Left/Top) - Takes up remaining space (lg:flex-1) -->
+            <div class="lg:flex-1 min-w-0"> 
+                <!-- Added id="canvasWrapper" and removed overflow-x-auto, added p-2 back for visual space around canvas -->
+                <div id="canvasWrapper" class="bg-gray-900 p-2 rounded-lg shadow-2xl">
+                    <canvas id="worldCanvas"></canvas>
+                </div>
+                
+                <!-- Legend Cleanup -->
+                <div class="mt-4 p-4 bg-gray-900 rounded-lg text-sm font-mono">
+                    <h2 class="text-lg font-semibold mb-2 text-yellow-300">Legend</h2>
+                    <!-- Changed from grid-cols to flex-wrap for better organization and grouping -->
+                    <div id="legend" class="flex flex-wrap gap-x-6 gap-y-1">
+                        <!-- Legend items will be populated by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Panel (Right/Bottom) - Fixed width on desktop (lg:w-80) -->
+            <div id="statsPanel" class="lg:w-80 bg-gray-900 p-6 rounded-lg shadow-2xl font-mono text-xs">
+                <div class="mb-4">
+                    <p class="text-yellow-400 text-sm">Turn: <span id="turnCounter" class="font-bold text-base">0</span></p>
+                    <p class="text-yellow-400 text-sm">Generation: <span id="generationCounter" class="font-bold text-base">0</span></p>
+                </div>
+
+                <div class="space-y-4">
+                    <h2 class="text-base font-semibold text-cyan-400">Overview</h2>
+                    <p>Population: <span id="statPopulation" class="text-white">0</span> | Homes: <span id="statHomes" class="text-white">0</span> | Fires: <span id="statFires" class="text-white">0</span></p>
+
+                    <h2 class="text-base font-semibold text-cyan-400">Average Genes (Evolution)</h2>
+                    <div id="geneStats"></div>
+
+                    <h2 class="text-base font-semibold text-cyan-400">Average Skills (Learning)</h2>
+                    <div id="skillStats"></div>
+
+                    <h2 class="text-base font-semibold text-cyan-400">Global Knowledge Library</h2>
+                    <div id="knowledgeStats"></div>
+
+                    <h2 class="text-base font-semibold text-cyan-400">Death Analysis</h2>
+                    <div id="deathStats"></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // --- CONSTANTS MAPPING FROM PYTHON ---
+        const ADULT_AGE = 100;
+        const OLD_AGE = 1500;
+        const MAX_AGE = 2000;
+        const STARTING_LOVE = 25;
+        const LOVE_GAIN_EAT = 2.5;
+        const LOVE_GAIN_SOCIAL = 5;
+        const LOVE_GAIN_REST = 0.5;
+        const LOVE_LOSS_STRUGGLE = 1.0;
+        const PAUSE_ENERGY_THRESHOLD = 100;
+        const PAUSE_SOCIAL_THRESHOLD = 50;
+        const WORLD_WIDTH = 70;
+        const WORLD_HEIGHT = 30;
+        const STARTING_AGENTS = 15;
+        const STARTING_FOOD = 120;
+        const STARTING_WOOD = 80;
+        const FOOD_SPAWN_RATE = 25;
+        const WOOD_SPAWN_RATE = 80;
+        const FOOD_FRESHNESS = 180;
+        const GROW_TIME = 10;
+        const TREE_GROW_TIME = 10;
+        const WOOD_SEED_CHANCE = 0.5;
+        const CAMPFIRE_BURN_TIME = 300;
+        const CAMPFIRE_WOOD_COST = 3;
+        const CAMPFIRE_REFUEL_THRESHOLD = 50;
+        const HOME_DURABILITY_START = 3;
+        const HOME_DECAY_RATE = 1500;
+        const SIM_SPEED = 150; // Milliseconds for simulation tick
+
+        const GENE_RANGES = {
+            'vision': [3, 10, 0.1],
+            'speed': [1, 3, 0.1],
+            'metabolism': [0.5, 2.0, 0.1],
+            'aggression': [0.0, 0.5, 0.1],
+            'builder': [0.0, 1.0, 0.1],
+            'mating_drive': [60, 130, 5.0],
+            'sociability': [0.0, 1.0, 0.1],
+            'farming': [0.0, 1.0, 0.1]
+        };
+
+        // --- VISUAL STYLING MAPPING ---
+        const COLORS = {
+            CYAN_BRIGHT: '#22d3ee', // A
+            CYAN_NORMAL: '#06b6d4', // f
+            MAGENTA_BRIGHT: '#d946ef', // m, S
+            MAGENTA_DIM: '#a855f7', // s
+            WHITE_BRIGHT: '#ffffff', // T, g, wellbeing
+            WHITE_NORMAL: '#f3f4f6', // t
+            YELLOW_BRIGHT: '#fcd34d', // b, W
+            YELLOW_NORMAL: '#f59e0b', // w, E
+            RED_BRIGHT: '#f87171', // X, r, R, C
+            RED_NORMAL: '#ef4444', // c
+            BLUE_BRIGHT: '#60a5fa', // H, C, k
+            BLUE_NORMAL: '#3b82f6', // B, h
+            BLUE_DIM: '#1d4ed8', // S(remote spot), .
+            GREEN_BRIGHT: '#4ade80', // F, G
+            GREEN_NORMAL: '#10b981', // p, P
+            GREEN_DIM: '#059669', // T (Tree)
+            LIBRARY: '#a855f7', // L
+        };
+        
+        // --- CHARACTER MAPPING FOR RENDERING ---
+        const CHAR_MAP = {
+            // Agent States (Used for foreground/char color)
+            'WANDERING': { char: 'A', color: COLORS.CYAN_BRIGHT, dim: false },
+            'FORAGING': { char: 'f', color: COLORS.CYAN_NORMAL, dim: false },
+            'BUILDING': { char: 'b', color: COLORS.YELLOW_BRIGHT, dim: false },
+            'WANDERING_TO_BUILD': { char: 'B', color: COLORS.BLUE_NORMAL, dim: false },
+            'SEEKING_COMMUNITY': { char: 'C', color: COLORS.BLUE_BRIGHT, dim: false },
+            'SEEKING_REMOTE_SPOT': { char: 'S', color: COLORS.BLUE_DIM, dim: false },
+            'GETTING_WOOD': { char: 'w', color: COLORS.YELLOW_NORMAL, dim: false },
+            'PLANTING': { char: 'p', color: COLORS.GREEN_NORMAL, dim: false },
+            'PLANTING_WOOD': { char: 'p', color: COLORS.GREEN_NORMAL, dim: false },
+            'GOING_HOME_TO_FARM': { char: 'G', color: COLORS.GREEN_BRIGHT, dim: false },
+            'GOING_HOME_TO_PLANT_WOOD': { char: 'G', color: COLORS.GREEN_BRIGHT, dim: false },
+            'SHARING': { char: 'g', color: COLORS.WHITE_BRIGHT, dim: false },
+            'BUILDING_CAMPFIRE': { char: 'c', color: COLORS.RED_NORMAL, dim: false },
+            'REPAIRING_HOME': { char: 'E', color: COLORS.YELLOW_NORMAL, dim: false },
+            'CLAIMING_HOME': { char: 'k', color: COLORS.BLUE_BRIGHT, dim: false },
+            'REFUELING_CAMPFIRE': { char: 'R', color: COLORS.RED_BRIGHT, dim: false },
+            'MATING': { char: 'm', color: COLORS.MAGENTA_BRIGHT, dim: false },
+            'ATTACKING': { char: 'X', color: COLORS.RED_BRIGHT, dim: false },
+            'RETALIATING': { char: 'r', color: COLORS.RED_BRIGHT, dim: false },
+            'SEEKING_SOCIAL': { char: 't', color: COLORS.WHITE_NORMAL, dim: false },
+            'COMMUNICATING': { char: 'T', color: COLORS.WHITE_BRIGHT, dim: false },
+            'SOCIAL_HAPPY': { char: 'S', color: COLORS.MAGENTA_BRIGHT, dim: false },
+            'SOCIAL_SAD': { char: 's', color: COLORS.MAGENTA_DIM, dim: true },
+        };
+
+        // --- HELPERS ---
+
+        function clamp(value, minVal, maxVal) {
+            return Math.max(minVal, Math.min(value, maxVal));
+        }
+
+        function getDistance(x1, y1, x2, y2) {
+            return Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2));
+        }
+        
+        // Helper to convert array [x, y] to "x,y" string key
+        function arrayToKey(arr) {
+            return `${arr[0]},${arr[1]}`;
+        }
+        
+        // Helper to convert "x,y" string key to [x, y] array
+        function keyToArray(key) {
+            return key.split(',').map(Number);
+        }
+
+        // --- AGENT CLASS ---
+
+        class Agent {
+            constructor(x, y, world, genes = null) {
+                this.world = world;
+                this.x = x;
+                this.y = y;
+                this.char = 'A';
+                this.id = this.world.getNextAgentId();
+                this.energy = 150;
+                this.wood_carried = 0;
+                this.food_carried = 0;
+                this.mate_cooldown = 0;
+                this.seeds_carried = Math.floor(Math.random() * 3);
+                this.wood_seeds_carried = Math.floor(Math.random() * 2);
+                this.social = Math.random() * (80.0 - 30.0) + 30.0;
+                this.home_location = null;
+                this.campfire_location = null; // NEW: Agent's owned campfire (key string)
+                this.social_buff_timer = 0;
+                this.contentment_buff_timer = 0;
+                this.state = "WANDERING";
+                this.exploration_vector = [0, 0];
+                this.memory = { 'food': new Set(), 'wood': new Set() };
+                this.struggle_timer = 0;
+                this.was_attacked_by = null;
+                this.age = 0;
+                this.children_ids = new Set();
+                this.love = STARTING_LOVE;
+                this.skills = {
+                    'foraging': 0.0, 'social': 0.0, 'building': 0.0,
+                    'navigation': 0.0, 'combat': 0.0, 'farming': 0.0
+                };
+
+                if (genes) {
+                    this.genes = genes;
+                } else {
+                    this.genes = this.createRandomGenes(this.world.agents.length < STARTING_AGENTS);
+                }
+            }
+
+            createRandomGenes(stabilize = false) {
+                const genes = {};
+                for (const gene in GENE_RANGES) {
+                    const [minVal, maxVal] = GENE_RANGES[gene];
+                    if (stabilize) {
+                        if (gene === 'metabolism') {
+                            genes[gene] = Math.random() * (0.8 - 0.5) + 0.5;
+                        } else if (gene === 'speed') {
+                            genes[gene] = Math.random() * (3.0 - 1.0) + 1.0;
+                        } else {
+                            genes[gene] = Math.random() * (maxVal - minVal) + minVal;
+                        }
+                    } else {
+                        genes[gene] = Math.random() * (maxVal - minVal) + minVal;
+                    }
+                }
+                return genes;
+            }
+
+            update() {
+                this.age += 1;
+                
+                // NEW: Check for natural death/frailty after OLD_AGE
+                if (this.age >= OLD_AGE && this.energy < 100) { 
+                    this.die('NATURAL_DEATH_OLD');
+                    return;
+                }
+                
+                if (this.age >= MAX_AGE) {
+                    this.die('MAX_AGE');
+                    return;
+                }
+
+                let metabolismCost = this.genes['metabolism'];
+                let livingChildrenUnderAge = 0;
+
+                for (const childId of Array.from(this.children_ids)) {
+                    const child = this.world.getAgentById(childId);
+                    if (child) {
+                        if (child.age < ADULT_AGE) {
+                            livingChildrenUnderAge++;
+                        } else {
+                            this.children_ids.delete(childId);
+                        }
+                    } else {
+                        this.children_ids.delete(childId);
+                    }
+                }
+
+                const parentalCost = livingChildrenUnderAge * 0.2;
+
+                if (this.age < ADULT_AGE) {
+                    metabolismCost = parentalCost;
+                    if (this.energy < 50) { 
+                        this.die('STARVATION_CHILD');
+                        return;
+                    }
+                } else {
+                    metabolismCost += parentalCost;
+                }
+
+                const currentPosKey = arrayToKey([this.x, this.y]);
+                if (this.world.homes[currentPosKey]) {
+                    const homeData = this.world.homes[currentPosKey];
+                    const ownerId = homeData.owner_id;
+                    const isOwner = (this.id === ownerId);
+                    let isFamily = false;
+
+                    if (ownerId !== null) {
+                        const ownerAgent = this.world.getAgentById(ownerId);
+                        if (ownerAgent && ownerAgent.children_ids.has(this.id)) {
+                            isFamily = true;
+                        }
+                    }
+
+                    if (isOwner || isFamily) {
+                        metabolismCost *= 0.5;
+                        if (this.energy < 150) {
+                            this.energy = clamp(this.energy + 2.0, 0, 150);
+                        }
+                        this.social = clamp(this.social + 0.5, 0, 100);
+                    }
+                }
+
+                // Check if owned campfire is burnt out
+                if (this.campfire_location && !this.world.campfires[this.campfire_location]) {
+                    this.campfire_location = null;
+                }
+
+                const nearbyCampfirePosKey = this.world.getNearest(this.x, this.y, 2, this.world.campfires);
+                if (nearbyCampfirePosKey) {
+                    metabolismCost *= 0.9;
+                    this.social = clamp(this.social + 0.5, 0, 100);
+                }
+
+                if (this.social_buff_timer > 0) {
+                    metabolismCost *= 0.8;
+                    this.social_buff_timer--;
+                }
+
+                this.energy -= metabolismCost;
+                if (this.mate_cooldown > 0) {
+                    this.mate_cooldown--;
+                }
+
+                if (this.contentment_buff_timer > 0) {
+                    this.contentment_buff_timer--;
+                } else {
+                    const visionRadius = Math.floor(this.genes['vision']);
+                    const nearbyAgents = this.world.getNearestAgents(this.x, this.y, visionRadius, this);
+                    if (nearbyAgents.length === 0 && !nearbyCampfirePosKey) {
+                        this.social -= this.genes['sociability'] * 0.5;
+                    } else {
+                        this.social += 0.1;
+                    }
+                    this.social = clamp(this.social, 0, 100);
+                }
+
+                if (this.energy < 30 || this.social < 20) {
+                    this.struggle_timer++;
+                    this.love = clamp(this.love - LOVE_LOSS_STRUGGLE, 0, STARTING_LOVE);
+                } else {
+                    this.struggle_timer = 0;
+                    this.love = clamp(this.love + 0.1, 0, STARTING_LOVE);
+                }
+
+                for (const skillKey in this.skills) {
+                    const globalValue = this.world.globalSkillKnowledge[skillKey] || 0.0;
+                    const currentSkill = this.skills[skillKey];
+                    if (currentSkill < globalValue) {
+                        this.skills[skillKey] = clamp(currentSkill + 0.0001, 0, 10.0);
+                    }
+                }
+
+                if (this.energy <= 0) {
+                    this.die('STARVATION_ADULT');
+                    return;
+                }
+
+                this.decideState();
+                this.executeAction();
+            }
+
+            decideState() {
+                const visionRadius = Math.floor(this.genes['vision']);
+                const foodInSight = this.world.getNearestInSet(this.x, this.y, visionRadius, this.world.food);
+                
+                const conserveEnergy = this.genes['metabolism'] < 0.8 && this.energy < 100;
+
+                // Priority 0: Retaliation
+                if (this.was_attacked_by !== null) {
+                    this.state = "RETALIATING";
+                    return;
+                }
+
+                // Priority 0.5: Hopeless/Sad
+                if ((this.energy < 20 || this.social < 10) && foodInSight.length === 0 && this.memory.food.size === 0) {
+                    this.state = "SOCIAL_SAD";
+                    return;
+                }
+                
+                // Priority 1: Survival (Energy)
+                let forageThreshold = 70;
+                if (this.age < ADULT_AGE) forageThreshold = 100;
+
+                if (this.energy < forageThreshold || (this.food_carried > 0 && this.energy < 150)) {
+                    this.state = "FORAGING";
+                    return;
+                }
+                
+                // Priority 1.5: Campfire Refuel
+                const nearbyCampfirePosKey = this.world.getNearest(this.x, this.y, visionRadius, this.world.campfires);
+                if (nearbyCampfirePosKey) {
+                    const campfireTimer = this.world.campfires[nearbyCampfirePosKey];
+                    if (campfireTimer < CAMPFIRE_REFUEL_THRESHOLD) {
+                        if (this.wood_carried < 1) {
+                            this.state = "GETTING_WOOD";
+                            return;
+                        } else {
+                            this.state = "REFUELING_CAMPFIRE";
+                            return;
+                        }
+                    }
+                }
+
+                // Priority 2: Home Repair
+                if (this.home_location) {
+                    const homeData = this.world.homes[this.home_location];
+                    const isOwner = homeData && homeData.owner_id === this.id;
+                    if (homeData && homeData.durability < HOME_DURABILITY_START && isOwner) {
+                        if (this.wood_carried < 1) {
+                            this.state = "GETTING_WOOD";
+                            return;
+                        } else {
+                            this.state = "REPAIRING_HOME";
+                            return;
+                        }
+                    }
+                }
+
+                // Priority 3: Social Need
+                if (this.social < 30 && this.genes['sociability'] > 0.2) {
+                    this.state = "SEEKING_SOCIAL";
+                    return;
+                }
+                
+                // Priority 4: Claim or Build Home
+                if (this.home_location === null) {
+                    const emptyHomePos = this.world.getEmptyHome();
+                    if (emptyHomePos) {
+                        this.state = "CLAIMING_HOME";
+                        return;
+                    }
+                    
+                    if ((Object.keys(this.world.homes).length < this.world.agents.length) && (this.genes['builder'] > Math.random())) {
+                        if (conserveEnergy) {
+                            this.state = "FORAGING";
+                            return;
+                        }
+
+                        let woodCostNeeded = Math.max(1, CAMPFIRE_WOOD_COST - Math.floor(this.skills['building'] * 0.5));
+                        
+                        if (this.wood_carried < woodCostNeeded) {
+                            this.state = "GETTING_WOOD";
+                            return;
+                        }
+
+                        const communityRadius = visionRadius + 5; 
+                        const nearbyHomes = this.world.getNearestInSet(this.x, this.y, communityRadius, this.world.homes);
+                        const isSocial = this.genes['sociability'] > 0.5;
+                        
+                        if (this.isClearTile(this.x, this.y)) {
+                            if (isSocial) {
+                                if (nearbyHomes.length > 0 || Object.keys(this.world.homes).length === 0) {
+                                    this.state = "BUILDING";
+                                } else {
+                                    this.state = "SEEKING_COMMUNITY";
+                                }
+                            } else {
+                                if (nearbyHomes.length === 0) {
+                                    this.state = "BUILDING";
+                                } else {
+                                    this.state = "SEEKING_REMOTE_SPOT";
+                                }
+                            }
+                        } else {
+                            this.state = "WANDERING_TO_BUILD";
+                        }
+                        return;
+                    }
+                }
+                
+                // Priority 5: Farming (Food Seeds)
+                if (this.seeds_carried > 0 && this.energy > 80 && this.genes['farming'] > Math.random()) {
+                    if (this.home_location) {
+                        const [hx, hy] = keyToArray(this.home_location);
+                        const dist = getDistance(this.x, this.y, hx, hy);
+                        if (dist > 5) {
+                            this.state = "GOING_HOME_TO_FARM";
+                        } else {
+                            this.state = "PLANTING";
+                        }
+                    } else {
+                        this.state = "PLANTING";
+                    }
+                    return;
+                }
+
+                // Priority 5.5: Planting Trees
+                if (this.wood_seeds_carried > 0 && this.energy > 80 &&
+                    (Object.keys(this.world.wood).length < STARTING_WOOD) && (this.genes['builder'] > Math.random())) { 
+                    
+                    if (this.home_location) {
+                        const [hx, hy] = keyToArray(this.home_location);
+                        const dist = getDistance(this.x, this.y, hx, hy);
+                        if (dist > 5) {
+                            this.state = "GOING_HOME_TO_PLANT_WOOD"; 
+                        } else {
+                            this.state = "PLANTING_WOOD";
+                        }
+                    } else {
+                        this.state = "PLANTING_WOOD";
+                    }
+                    return;
+                }
+                    
+                // Priority 6: Build Campfire
+                if (this.energy > 120 && this.social > 50 && this.genes['builder'] > 0.5 && this.campfire_location === null) {
+                    if (conserveEnergy) {
+                        this.state = "FORAGING";
+                        return;
+                    }
+
+                    let woodCostNeeded = Math.max(1, CAMPFIRE_WOOD_COST - Math.floor(this.skills['building'] * 0.5));
+                    
+                    if (this.wood_carried >= woodCostNeeded) {
+                         this.state = "BUILDING_CAMPFIRE";
+                         return;
+                    } else if (this.wood_carried < woodCostNeeded) {
+                         this.state = "GETTING_WOOD";
+                         return;
+                    }
+                }
+                
+                // Priority 7: Share Resources
+                if (this.energy > 100 && this.social > 50 && (this.wood_carried > 3 || this.food_carried >= 1)) {
+                    const nearbyAgents = this.world.getNearestAgents(this.x, this.y, visionRadius, this);
+                    const needyAgents = nearbyAgents.filter(a => a.energy < 70 && a.food_carried < 1); 
+                    if (needyAgents.length > 0) {
+                        this.state = "SHARING";
+                        return;
+                    }
+                }
+                
+                // Default State: Wandering/Happy
+                this.state = "WANDERING";
+            }
+
+            executeAction() {
+                const visionRadius = Math.floor(this.genes['vision']);
+                const foodInSight = this.world.getNearestInSet(this.x, this.y, visionRadius, this.world.food);
+                const woodInSight = this.world.getNearestInSet(this.x, this.y, visionRadius, this.world.wood);
+                const agents = this.world.getNearestAgents(this.x, this.y, visionRadius, this);
+
+                const bestFoodTarget = this.getClosestCombinedTarget('food', foodInSight);
+                const bestWoodTarget = this.getClosestCombinedTarget('wood', woodInSight);
+
+                // Handle "Anger" (Aggression)
+                const agentsOnTile = this.world.agents.filter(a => a.x === this.x && a.y === this.y && a !== this);
+                if (agentsOnTile.length > 0) {
+                    const target = agentsOnTile[Math.floor(Math.random() * agentsOnTile.length)];
+                    
+                    const baseAggression = this.genes['aggression'];
+                    const struggleBonus = Math.min(this.struggle_timer * 0.0005, 0.5); 
+                    const dynamicAggression = baseAggression + struggleBonus;
+                    
+                    if (this.love <= 0 && this.energy > 80 && Math.random() < dynamicAggression) {
+                        this.attack(target);
+                        return; 
+                    }
+                }
+                
+                // --- Execute State ---
+                switch (this.state) {
+                    case "FORAGING":
+                        const currentPosKey = arrayToKey([this.x, this.y]);
+                        if (this.food_carried > 0 && this.energy < 150) { 
+                            this.consumeFood();
+                        } else if (this.world.food[currentPosKey] && this.food_carried < 2) { 
+                            this.pickupFood();
+                        } else if (bestFoodTarget) { 
+                            this.moveTowards(bestFoodTarget[0], bestFoodTarget[1]);
+                            if (getDistance(this.x, this.y, bestFoodTarget[0], bestFoodTarget[1]) < 2.0 && !this.world.food[arrayToKey(bestFoodTarget)]) {
+                                this.memory.food.delete(arrayToKey(bestFoodTarget));
+                            }
+                        } else {
+                            this.moveExploring(); 
+                        }
+                        break;
+
+                    case "GETTING_WOOD":
+                        const currentWoodPosKey = arrayToKey([this.x, this.y]);
+                        if (this.wood_carried >= 3) { 
+                            this.state = "WANDERING";
+                            return;
+                        }
+                        if (this.world.wood[currentWoodPosKey] && this.wood_carried < 3) {
+                            this.takeWood();
+                        } else if (bestWoodTarget) { 
+                            this.moveTowards(bestWoodTarget[0], bestWoodTarget[1]);
+                            if (getDistance(this.x, this.y, bestWoodTarget[0], bestWoodTarget[1]) < 2.0 && !this.world.wood[arrayToKey(bestWoodTarget)]) {
+                                this.memory.wood.delete(arrayToKey(bestWoodTarget));
+                            }
+                        } else {
+                            this.moveExploring();
+                        }
+                        break;
+
+                    case "BUILDING":
+                        this.buildHome();
+                        break;
+
+                    case "REPAIRING_HOME":
+                        if (this.home_location) {
+                            const [hx, hy] = keyToArray(this.home_location);
+                            const dist = getDistance(this.x, this.y, hx, hy);
+                            if (dist < 2.0) {
+                                if (this.wood_carried > 0) {
+                                    this.world.homes[this.home_location].durability = HOME_DURABILITY_START;
+                                    this.wood_carried--;
+                                    this.skills.building = clamp(this.skills.building + 0.2, 0, 4.0);
+                                    this.state = "WANDERING";
+                                } else {
+                                    this.state = "GETTING_WOOD";
+                                }
+                            } else {
+                                this.moveTowards(hx, hy);
+                            }
+                        } else {
+                            this.state = "WANDERING";
+                        }
+                        break;
+
+                    case "REFUELING_CAMPFIRE":
+                        const nearbyCampfireKey = this.world.getNearest(this.x, this.y, visionRadius, this.world.campfires);
+                        if (nearbyCampfireKey) {
+                            const [cx, cy] = keyToArray(nearbyCampfireKey);
+                            const dist = getDistance(this.x, this.y, cx, cy);
+                            if (dist < 2.0) {
+                                if (this.wood_carried > 0) {
+                                    this.world.campfires[nearbyCampfireKey] = CAMPFIRE_BURN_TIME;
+                                    this.wood_carried--;
+                                    this.state = "WANDERING";
+                                } else {
+                                    this.state = "GETTING_WOOD";
+                                }
+                            } else {
+                                this.moveTowards(cx, cy);
+                            }
+                        } else {
+                            this.state = "WANDERING";
+                        }
+                        break;
+
+                    case "CLAIMING_HOME":
+                        const emptyHomePos = this.world.getEmptyHome();
+                        if (emptyHomePos) {
+                            const [hx, hy] = keyToArray(emptyHomePos);
+                            const dist = getDistance(this.x, this.y, hx, hy);
+                            if (dist < 2.0) {
+                                this.world.homes[emptyHomePos].owner_id = this.id;
+                                this.home_location = emptyHomePos;
+                                this.state = "WANDERING";
+                            } else {
+                                this.moveTowards(hx, hy);
+                            }
+                        } else {
+                            this.state = "WANDERING";
+                        }
+                        break;
+
+                    case "WANDERING_TO_BUILD":
+                        this.moveRandomly(0.5, 0.0);
+                        break;
+
+                    case "SEEKING_COMMUNITY":
+                        const allHomes = this.world.getNearestInSet(this.x, this.y, 999, this.world.homes); 
+                        if (allHomes.length > 0) {
+                            const [hx, hy] = keyToArray(allHomes[0]);
+                            this.moveTowards(hx, hy);
+                        } else {
+                            this.moveExploring();
+                        }
+                        break;
+
+                    case "SEEKING_REMOTE_SPOT":
+                        this.moveExploring();
+                        break;
+                    
+                    case "GOING_HOME_TO_FARM":
+                        if (this.home_location) {
+                            const [hx, hy] = keyToArray(this.home_location);
+                            const dist = getDistance(this.x, this.y, hx, hy);
+                            if (dist <= 5.0) {
+                                this.state = "PLANTING";
+                            } else {
+                                this.moveTowards(hx, hy);
+                            }
+                        } else {
+                            this.state = "PLANTING";
+                        }
+                        break;
+
+                    case "PLANTING":
+                        if (this.isClearTile(this.x, this.y)) {
+                            this.plantSeed();
+                        } else {
+                            this.moveRandomly(0.5, 0.0);
+                        }
+                        break;
+
+                    case "GOING_HOME_TO_PLANT_WOOD":
+                        if (this.home_location) {
+                            const [hx, hy] = keyToArray(this.home_location);
+                            const dist = getDistance(this.x, this.y, hx, hy);
+                            if (dist <= 5.0) {
+                                this.state = "PLANTING_WOOD";
+                            } else {
+                                this.moveTowards(hx, hy);
+                            }
+                        } else {
+                            this.state = "PLANTING_WOOD";
+                        }
+                        break;
+
+                    case "PLANTING_WOOD":
+                        if (this.isClearTile(this.x, this.y)) {
+                            this.plantTree();
+                        } else {
+                            this.moveRandomly(0.5, 0.0);
+                        }
+                        break;
+                        
+                    case "BUILDING_CAMPFIRE":
+                        if (this.isClearTile(this.x, this.y)) {
+                            this.buildCampfire();
+                        } else {
+                            this.moveRandomly(0.5, 0.0);
+                        }
+                        break;
+
+                    case "SHARING":
+                        const nearbyAgents = this.world.getNearestAgents(this.x, this.y, visionRadius, this);
+                        const needyAgents = nearbyAgents.filter(a => a.energy < 70 && a.food_carried < 1);
+                        
+                        if (needyAgents.length > 0) {
+                            const target = needyAgents[0];
+                            if (getDistance(this.x, this.y, target.x, target.y) < 2.0) {
+                                if (this.food_carried >= 1) {
+                                    this.food_carried--;
+                                    target.food_carried++;
+                                    this.state = "WANDERING"; 
+                                } else if (this.wood_carried >= 1) {
+                                    this.wood_carried--;
+                                    target.wood_carried++;
+                                    this.state = "WANDERING";
+                                } else {
+                                     this.state = "WANDERING";
+                                }
+                            } else {
+                                this.moveTowards(target.x, target.y);
+                            }
+                        } else {
+                            this.state = "WANDERING";
+                        }
+                        break;
+
+                    case "RETALIATING":
+                        const attacker = this.world.getAgentById(this.was_attacked_by);
+                        if (attacker) {
+                            const dist = getDistance(this.x, this.y, attacker.x, attacker.y);
+                            if (dist < 2.0) {
+                                this.attack(attacker);
+                                this.was_attacked_by = null;
+                            } else {
+                                this.moveTowards(attacker.x, attacker.y);
+                            }
+                        } else {
+                            this.was_attacked_by = null;
+                            this.state = "WANDERING";
+                        }
+                        break;
+                    
+                    case "SEEKING_SOCIAL":
+                        const nearestCampfireKey = this.world.getNearest(this.x, this.y, visionRadius, this.world.campfires);
+                        
+                        if (nearestCampfireKey) {
+                            const [cx, cy] = keyToArray(nearestCampfireKey);
+                            const agentsAtFire = agents.filter(a => getDistance(a.x, a.y, cx, cy) < 3.0);
+                            if (agentsAtFire.length > 0) {
+                                const targetAgent = agentsAtFire[0];
+                                this.love = clamp(this.love + LOVE_GAIN_SOCIAL, 0, STARTING_LOVE);
+                                
+                                if (getDistance(this.x, this.y, targetAgent.x, targetAgent.y) < 2.0) {
+                                    this.communicate(targetAgent);
+                                } else {
+                                    this.moveTowards(targetAgent.x, targetAgent.y);
+                                }
+                            } else {
+                                this.moveTowards(cx, cy);
+                            }
+                        } else if (agents.length > 0) {
+                            const targetAgent = agents[0];
+                            if (getDistance(this.x, this.y, targetAgent.x, targetAgent.y) < 2.0) {
+                                this.communicate(targetAgent);
+                            } else {
+                                this.moveTowards(targetAgent.x, targetAgent.y);
+                            }
+                        } else {
+                            this.moveExploring(); 
+                        }
+                        break;
+
+                    case "SOCIAL_SAD":
+                        this.love = clamp(this.love + LOVE_GAIN_REST, 0, STARTING_LOVE);
+                        if (this.energy < 20 && bestFoodTarget) {
+                            this.moveTowards(bestFoodTarget[0], bestFoodTarget[1]);
+                        } else if (this.social < 10) {
+                            const nearestCampfireSad = this.world.getNearest(this.x, this.y, visionRadius, this.world.campfires);
+                            if (agents.length > 0) {
+                                this.moveTowards(agents[0].x, agents[0].y);
+                            } else if (nearestCampfireSad) {
+                                const [cx, cy] = keyToArray(nearestCampfireSad);
+                                this.moveTowards(cx, cy);
+                            } else {
+                                this.moveExploring();
+                            }
+                        } else {
+                            this.moveExploring();
+                        }
+                        break;
+
+                    case "WANDERING":
+                        if (this.energy > PAUSE_ENERGY_THRESHOLD && this.social > PAUSE_SOCIAL_THRESHOLD) {
+                            // Linger/observe - Pause movement
+                        } else {
+                            // Log resources in sight to memory
+                            foodInSight.forEach(posKey => this.memory.food.add(posKey));
+                            woodInSight.forEach(posKey => this.memory.wood.add(posKey));
+                            this.moveExploring();
+                        }
+                        break;
+                    
+                    case "MATING":
+                    case "COMMUNICATING":
+                    case "SOCIAL_HAPPY":
+                        // Agent is occupied or happy, do nothing (pass)
+                        break;
+                }
+            }
+
+            isClearTile(x, y) {
+                const posKey = arrayToKey([x, y]);
+                if (this.world.homes[posKey]) return false;
+                if (this.world.food[posKey]) return false;
+                if (this.world.wood[posKey]) return false;
+                if (this.world.growingPlants[posKey]) return false;
+                if (this.world.growingTrees[posKey]) return false;
+                if (this.world.campfires[posKey]) return false;
+                return true;
+            }
+
+            moveTowards(targetX, targetY) {
+                this.exploration_vector = [0, 0];
+                let steps = Math.floor(this.genes['speed']);
+                if (steps < 1) steps = 1;
+                
+                for (let i = 0; i < steps; i++) {
+                    let dx = 0, dy = 0;
+                    if (this.x < targetX) dx = 1;
+                    else if (this.x > targetX) dx = -1;
+                    if (this.y < targetY) dy = 1;
+                    else if (this.y > targetY) dy = -1;
+                    
+                    this.x = clamp(this.x + dx, 0, this.world.width - 1);
+                    this.y = clamp(this.y + dy, 0, this.world.height - 1);
+                    
+                    this.skills.navigation = clamp(this.skills.navigation + 0.01, 0, 5.0); 
+                    const costMultiplier = 1.0 - (this.skills.navigation * 0.15); 
+                    const finalMultiplier = Math.max(0.25, costMultiplier);
+                    
+                    this.energy -= (0.05) * finalMultiplier; 
+                }
+            }
+
+            moveRandomly(speedFactor, persistentChance) {
+                let steps = Math.floor(this.genes['speed'] * speedFactor);
+                if (steps < 1) steps = 1;
+
+                for (let i = 0; i < steps; i++) {
+                    let stuck = false;
+                    if (this.exploration_vector[0] !== 0 || this.exploration_vector[1] !== 0) {
+                        const newX = clamp(this.x + this.exploration_vector[0], 0, this.world.width - 1);
+                        const newY = clamp(this.y + this.exploration_vector[1], 0, this.world.height - 1);
+                        if (newX === this.x && newY === this.y) {
+                            stuck = true; 
+                        }
+                    }
+
+                    if (this.exploration_vector[0] === 0 && this.exploration_vector[1] === 0 || stuck || Math.random() > persistentChance) {
+                        while (true) { 
+                            this.exploration_vector = [Math.floor(Math.random() * 3) - 1, Math.floor(Math.random() * 3) - 1];
+                            if (this.exploration_vector[0] !== 0 || this.exploration_vector[1] !== 0) {
+                                break;
+                            }
+                        }
+                    }
+                    
+                    const [dx, dy] = this.exploration_vector;
+                    this.x = clamp(this.x + dx, 0, this.world.width - 1);
+                    this.y = clamp(this.y + dy, 0, this.world.height - 1);
+                    
+                    this.skills.navigation = clamp(this.skills.navigation + 0.01, 0, 5.0); 
+                    const costMultiplier = 1.0 - (this.skills.navigation * 0.15); 
+                    const finalMultiplier = Math.max(0.25, costMultiplier);
+                    
+                    this.energy -= (0.05) * finalMultiplier;
+                }
+            }
+
+            moveExploring() {
+                this.moveRandomly(1.0, 0.8);
+            }
+
+            getClosestCombinedTarget(resourceType, visibleResources) {
+                const possibleTargets = new Set();
+                
+                visibleResources.forEach(posKey => possibleTargets.add(posKey));
+                this.memory[resourceType].forEach(posKey => possibleTargets.add(posKey));
+                
+                if (possibleTargets.size === 0) return null;
+                    
+                let nearestItem = null;
+                let minDist = Infinity;
+                
+                for (const posKey of possibleTargets) {
+                    const [ix, iy] = keyToArray(posKey);
+                    const dist = getDistance(this.x, this.y, ix, iy);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        nearestItem = [ix, iy]; // Return as array for moveTowards
+                    }
+                }
+                return nearestItem;
+            }
+
+            consumeFood() {
+                if (this.food_carried > 0) {
+                    this.food_carried--;
+                    this.skills.foraging = clamp(this.skills.foraging + 0.1, 0, 10.0); 
+                    const energyGain = 120 + (this.skills.foraging * 20); 
+                    this.energy += energyGain;
+                    this.love = clamp(this.love + LOVE_GAIN_EAT, 0, STARTING_LOVE);
+                    this.state = "WANDERING";
+                }
+            }
+
+            pickupFood() {
+                const posKey = arrayToKey([this.x, this.y]);
+                if (this.world.food[posKey] && this.food_carried < 2) {
+                    delete this.world.food[posKey];
+                    delete this.world.foodFreshness[posKey];
+                    this.food_carried++;
+                    this.memory.food.delete(posKey);
+                    this.state = "WANDERING";
+                }
+            }
+
+            takeWood() {
+                const posKey = arrayToKey([this.x, this.y]);
+                if (this.world.wood[posKey] && this.wood_carried < 3) {
+                    delete this.world.wood[posKey];
+                    this.wood_carried++;
+                    
+                    if (Math.random() < WOOD_SEED_CHANCE) {
+                        this.wood_seeds_carried++;
+                    }
+
+                    this.memory.wood.delete(posKey);
+                    this.state = "WANDERING";
+                }
+            }
+
+            buildHome() {
+                const posKey = arrayToKey([this.x, this.y]);
+                let woodCost = Math.max(1, CAMPFIRE_WOOD_COST - Math.floor(this.skills.building * 0.5));
+                
+                if (this.wood_carried >= woodCost) {
+                    this.wood_carried -= woodCost;
+                    this.world.homes[posKey] = { owner_id: this.id, durability: HOME_DURABILITY_START };
+                    this.home_location = posKey; 
+                    this.state = "WANDERING";
+                    this.skills.building = clamp(this.skills.building + 0.5, 0, 4.0); 
+                }
+            }
+            
+            buildCampfire() {
+                const posKey = arrayToKey([this.x, this.y]);
+                let woodCost = Math.max(1, CAMPFIRE_WOOD_COST - Math.floor(this.skills.building * 0.5));
+                
+                if (this.wood_carried >= woodCost) {
+                    this.wood_carried -= woodCost;
+                    this.world.campfires[posKey] = CAMPFIRE_BURN_TIME;
+                    this.campfire_location = posKey; // NEW: Track owned campfire
+                    this.skills.building = clamp(this.skills.building + 0.2, 0, 4.0);
+                    this.state = "WANDERING";
+                }
+            }
+            
+            attack(target) {
+                let energyCost = Math.max(2, 10 - (this.skills.combat * 1.0));
+                let damage = 15 + (this.skills.combat * 8); 
+                
+                this.state = "ATTACKING";
+                this.energy -= energyCost;
+                this.energy += 10; 
+                
+                target.energy -= damage;
+                this.skills.combat = clamp(this.skills.combat + 0.2, 0, 10.0); 
+                
+                target.was_attacked_by = this.id;
+            }
+            
+            mate(partner) {
+                this.state = "MATING";
+                partner.state = "MATING";
+                
+                this.energy -= 10;
+                partner.energy -= 10;
+                
+                this.mate_cooldown = 70;
+                partner.mate_cooldown = 70;
+                
+                const numChildren = Math.floor(Math.random() * 3) + 1; 
+                
+                for (let i = 0; i < numChildren; i++) {
+                    const newGenes = {};
+                    for (const gene in this.genes) {
+                        const [minVal, maxVal, mutRate] = GENE_RANGES[gene];
+                        const avgGene = (this.genes[gene] + partner.genes[gene]) / 2;
+                        const mutation = (Math.random() * 2 - 1) * mutRate * (maxVal - minVal);
+                        newGenes[gene] = clamp(avgGene + mutation, minVal, maxVal);
+                    }
+                    
+                    const newAgent = this.world.addAgent(this.x, this.y, newGenes);
+                    if (newAgent) {
+                        newAgent.skills = { 'foraging': 0.0, 'social': 0.0, 'building': 0.0, 'navigation': 0.0, 'combat': 0.0, 'farming': 0.0 };
+                        newAgent.home_location = null;
+                        this.children_ids.add(newAgent.id);
+                        partner.children_ids.add(newAgent.id);
+                    }
+                }
+                
+                this.social = 100.0;
+                this.contentment_buff_timer = 25; 
+                partner.social = 100.0;
+                partner.contentment_buff_timer = 25;
+            }
+
+            shareSkills(partner) {
+                const skillsToShare = ['foraging', 'building', 'navigation', 'farming', 'combat'];
+                const learningRate = 0.1;
+                
+                for (const skill of skillsToShare) {
+                    const selfSkill = this.skills[skill];
+                    const partnerSkill = partner.skills[skill];
+                    
+                    if (selfSkill > partnerSkill) {
+                        partner.skills[skill] = clamp(partnerSkill + learningRate, 0, 10.0);
+                        if (selfSkill > 2.0) { 
+                            this.world.globalSkillKnowledge[skill] = clamp((this.world.globalSkillKnowledge[skill] || 0.0) + 0.05, 0, 10.0);
+                        }
+                    } else if (partnerSkill > selfSkill) {
+                        this.skills[skill] = clamp(selfSkill + learningRate, 0, 10.0);
+                        if (partnerSkill > 2.0) {
+                            this.world.globalSkillKnowledge[skill] = clamp((this.world.globalSkillKnowledge[skill] || 0.0) + 0.05, 0, 10.0);
+                        }
+                    }
+                }
+            }
+
+            communicate(partner) {
+                this.state = "COMMUNICATING";
+                partner.state = "COMMUNICATING";
+                
+                this.skills.social = clamp(this.skills.social + 0.2, 0, 10.0); 
+                partner.skills.social = clamp(partner.skills.social + 0.2, 0, 10.0); 
+                
+                const socialGain = 50 + (this.skills.social * 10);
+                const partnerSocialGain = 20 + (partner.skills.social * 5);
+                
+                this.social = clamp(this.social + socialGain, 0, 100);
+                partner.social = clamp(partner.social + partnerSocialGain, 0, 100);
+                
+                this.social_buff_timer = 20; 
+                partner.social_buff_timer = 20; 
+                
+                this.love = clamp(this.love + LOVE_GAIN_SOCIAL, 0, STARTING_LOVE);
+                partner.love = clamp(partner.love + LOVE_GAIN_SOCIAL, 0, STARTING_LOVE);
+                
+                this.shareSkills(partner);
+                
+                // Communal Planting Decision
+                if (Object.keys(this.world.food).length < STARTING_FOOD && this.seeds_carried >= 1 && partner.seeds_carried >= 1) {
+                    const totalSeeds = this.seeds_carried + partner.seeds_carried;
+                    if (totalSeeds >= 3) {
+                        this.seeds_carried = 0;
+                        partner.seeds_carried = 0;
+                        
+                        const libraryPosKey = arrayToKey(this.world.libraryLocation);
+                        let plantLocKey = libraryPosKey;
+                        
+                        if (!this.isClearTile(this.world.libraryLocation[0], this.world.libraryLocation[1])) {
+                            plantLocKey = arrayToKey([this.x, this.y]);
+                        }
+                        
+                        this.world.food[plantLocKey] = true;
+                        this.world.foodFreshness[plantLocKey] = FOOD_FRESHNESS;
+                        
+                        this.state = "FORAGING";
+                        partner.state = "FORAGING";
+                        return;
+                    }
+                }
+                
+                // Mating
+                if (this.age >= ADULT_AGE && this.energy > this.genes['mating_drive'] && this.mate_cooldown === 0 && 
+                   partner.age >= ADULT_AGE && partner.energy > partner.genes['mating_drive'] && partner.mate_cooldown === 0) {
+                    this.mate(partner);
+                }
+            }
+
+            plantSeed() {
+                if (this.seeds_carried > 0) {
+                    this.seeds_carried--;
+                    this.energy -= 10;
+                    
+                    const posKey = arrayToKey([this.x, this.y]);
+                    this.world.growingPlants[posKey] = GROW_TIME;
+                    
+                    this.skills.farming = clamp(this.skills.farming + 0.2, 0, 10.0);
+                    this.state = "WANDERING";
+                }
+            }
+
+            plantTree() {
+                if (this.wood_seeds_carried > 0) {
+                    this.wood_seeds_carried--;
+                    this.energy -= 10;
+                    
+                    const posKey = arrayToKey([this.x, this.y]);
+                    this.world.growingTrees[posKey] = TREE_GROW_TIME;
+                    
+                    this.skills.farming = clamp(this.skills.farming + 0.2, 0, 10.0);
+                    this.state = "WANDERING";
+                }
+            }
+
+            die(reason = 'UNKNOWN') {
+                this.world.deathCauses[reason] = (this.world.deathCauses[reason] || 0) + 1;
+                
+                const deathLocationKey = arrayToKey([this.x, this.y]);
+                
+                for (let i = 0; i < this.wood_carried; i++) {
+                    this.world.wood[deathLocationKey] = true;
+                }
+                
+                for (let i = 0; i < this.food_carried; i++) {
+                    this.world.food[deathLocationKey] = true;
+                    this.world.foodFreshness[deathLocationKey] = FOOD_FRESHNESS;
+                }
+                
+                const dyingAgentId = this.id;
+                this.world.agents.forEach(agent => {
+                    if (agent.children_ids.has(dyingAgentId)) {
+                        agent.children_ids.delete(dyingAgentId);
+                    }
+                });
+                
+                this.world.agents = this.world.agents.filter(a => a.id !== this.id);
+                
+                if (this.home_location && this.world.homes[this.home_location]) {
+                    this.world.homes[this.home_location].owner_id = null;
+                }
+                // Clear owned campfire reference if it exists
+                this.campfire_location = null;
+            }
+        }
+
+        // --- WORLD CLASS ---
+
+        class World {
+            constructor(width, height) {
+                this.width = width;
+                this.height = height;
+                this.turn = 0;
+                this.nextAgentId = 0;
+                
+                this.agents = [];
+                // Use objects/maps for resources indexed by "x,y" string key
+                this.food = {}; // { "x,y": true }
+                this.wood = {}; // { "x,y": true }
+                
+                this.generationCount = 0;
+                this.deathCauses = { 'MAX_AGE': 0, 'STARVATION_ADULT': 0, 'STARVATION_CHILD': 0, 'COMBAT': 0, 'NATURAL_DEATH_OLD': 0, 'UNKNOWN': 0 };
+                this.homes = {}; // { "x,y": { owner_id: int, durability: int } }
+                this.growingPlants = {}; // { "x,y": turns_left } (Food)
+                this.growingTrees = {}; // { "x,y": turns_left } (Wood)
+                this.foodFreshness = {}; // { "x,y": turns_left }
+                this.campfires = {}; // { "x,y": turns_left }
+
+                this.globalSkillKnowledge = {
+                    'foraging': 0.0, 'social': 0.0, 'building': 5.0,
+                    'navigation': 0.0, 'combat': 0.0, 'farming': 0.0
+                };
+                this.libraryLocation = [Math.floor(this.width / 2), Math.floor(this.height / 2)];
+
+                this.stats = {};
+            }
+
+            getNextAgentId() {
+                return ++this.nextAgentId;
+            }
+
+            getAgentById(agentId) {
+                return this.agents.find(a => a.id === agentId);
+            }
+
+            getEmptyHome() {
+                for (const pos in this.homes) {
+                    if (this.homes[pos].owner_id === null) {
+                        return pos;
+                    }
+                }
+                return null;
+            }
+
+            addAgent(x = null, y = null, genes = null) {
+                x = x === null ? Math.floor(Math.random() * this.width) : x;
+                y = y === null ? Math.floor(Math.random() * this.height) : y;
+                
+                const agent = new Agent(x, y, this, genes);
+                this.agents.push(agent);
+                return agent;
+            }
+
+            spawnResources() {
+                if (this.turn % FOOD_SPAWN_RATE === 0) {
+                    for (let i = 0; i < 5; i++) { 
+                        if (Object.keys(this.food).length < (this.width * this.height * 0.1)) {
+                            const tile = this.getRandomEmptyTile();
+                            if (tile) {
+                                const posKey = arrayToKey(tile);
+                                this.food[posKey] = true;
+                                this.foodFreshness[posKey] = FOOD_FRESHNESS;
+                            }
+                        }
+                    }
+                }
+
+                if (this.turn % WOOD_SPAWN_RATE === 0) {
+                    for (let i = 0; i < 3; i++) { 
+                        if (Object.keys(this.wood).length < (this.width * this.height * 0.05)) {
+                            const tile = this.getRandomEmptyTile();
+                            if (tile) {
+                                this.wood[arrayToKey(tile)] = true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            updateWorldObjects() {
+                // 1. Update Growing Plants (Food)
+                for (const pos in this.growingPlants) {
+                    this.growingPlants[pos]--;
+                    if (this.growingPlants[pos] <= 0) {
+                        delete this.growingPlants[pos];
+                        if (!this.food[pos] && !this.homes[pos] && !this.wood[pos]) {
+                            this.food[pos] = true;
+                            this.foodFreshness[pos] = FOOD_FRESHNESS;
+                        }
+                    }
+                }
+                
+                // 1.5. Update Growing Trees (Wood)
+                for (const pos in this.growingTrees) {
+                    this.growingTrees[pos]--;
+                    if (this.growingTrees[pos] <= 0) {
+                        delete this.growingTrees[pos];
+                        if (!this.food[pos] && !this.homes[pos] && !this.wood[pos]) {
+                            this.wood[pos] = true;
+                        }
+                    }
+                }
+                
+                // 2. Update Food Spoilage
+                for (const pos in this.foodFreshness) {
+                    this.foodFreshness[pos]--;
+                    if (this.foodFreshness[pos] <= 0) {
+                        delete this.foodFreshness[pos];
+                        delete this.food[pos];
+                    }
+                }
+                
+                // 3. Update Campfires
+                for (const pos in this.campfires) {
+                    this.campfires[pos]--;
+                    if (this.campfires[pos] <= 0) {
+                        delete this.campfires[pos];
+                    }
+                }
+                
+                // 4. Update Home Decay
+                if (this.turn % HOME_DECAY_RATE === 0) {
+                    for (const pos in this.homes) {
+                        this.homes[pos].durability--;
+                        if (this.homes[pos].durability <= 0) {
+                            
+                            // Drop wood from destroyed home (3 units)
+                            for (let i = 0; i < 3; i++) {
+                                this.wood[pos] = true;
+                            }
+                                
+                            // Tell the owner their home is gone
+                            const ownerId = this.homes[pos].owner_id;
+                            if (ownerId !== null) {
+                                const agent = this.getAgentById(ownerId);
+                                if (agent) {
+                                    agent.home_location = null;
+                                }
+                            }
+                            delete this.homes[pos];
+                        }
+                    }
+                }
+            }
+
+
+            getRandomEmptyTile() {
+                const attempts = 10;
+                for (let i = 0; i < attempts; i++) {
+                    const x = Math.floor(Math.random() * this.width);
+                    const y = Math.floor(Math.random() * this.height);
+                    const posKey = arrayToKey([x, y]);
+                    
+                    const occupied = this.agents.some(agent => agent.x === x && agent.y === y);
+                        
+                    if (!occupied && !this.food[posKey] && !this.wood[posKey] && !this.homes[posKey] && 
+                        !this.growingPlants[posKey] && !this.growingTrees[posKey] && !this.campfires[posKey]) {
+                        return [x, y];
+                    }
+                }
+                return null; 
+            }
+
+            update() {
+                this.turn++;
+                
+                if (this.turn % MAX_AGE === 0) {
+                    this.generationCount++;
+                }
+                
+                // Iterate backwards to safely handle removals (agents dying)
+                for (let i = this.agents.length - 1; i >= 0; i--) {
+                    const agent = this.agents[i];
+                    agent.update();
+                }
+                
+                this.spawnResources();
+                this.updateWorldObjects();
+                this.calculateStats();
+            }
+
+            calculateStats() {
+                const adultAgents = this.agents.filter(agent => agent.age >= ADULT_AGE);
+                let agentsForStats = adultAgents.length > 0 ? adultAgents : this.agents;
+                
+                if (agentsForStats.length === 0) {
+                    this.stats = { population: 0, homes_built: 0, active_campfires: 0 };
+                    return;
+                }
+                    
+                const numAgents = agentsForStats.length;
+                    
+                this.stats.population = this.agents.length;
+                this.stats.homes_built = Object.keys(this.homes).length;
+                this.stats.active_campfires = Object.keys(this.campfires).length;
+                
+                // Calculate average genes
+                for (const gene in GENE_RANGES) {
+                    const avgKey = `avg_${gene}`;
+                    const total = agentsForStats.reduce((sum, agent) => sum + agent.genes[gene], 0);
+                    this.stats[avgKey] = total / numAgents;
+                }
+                    
+                // Calculate average skills
+                const skillList = ['foraging', 'social', 'building', 'navigation', 'combat', 'farming'];
+                for (const skill of skillList) {
+                    const avgKey = `avg_${skill}_skill`;
+                    const total = agentsForStats.reduce((sum, agent) => sum + agent.skills[skill], 0);
+                    this.stats[avgKey] = total / numAgents;
+                }
+                    
+                // Calculate total deaths for percentage breakdown
+                this.deathCauses.TOTAL_DEATHS = Object.values(this.deathCauses).reduce((a, b) => a + b, 0);
+            }
+
+            getNearest(x, y, radius, itemMap) {
+                let nearestItemKey = null;
+                let minDist = Infinity;
+                
+                for (const posKey in itemMap) {
+                    const [ix, iy] = keyToArray(posKey);
+                    const dist = getDistance(x, y, ix, iy);
+                    if (dist <= radius && dist < minDist) {
+                        minDist = dist;
+                        nearestItemKey = posKey;
+                    }
+                }
+                return nearestItemKey;
+            }
+
+            getNearestInSet(x, y, radius, itemMap) {
+                const foundItemKeys = [];
+                
+                for (const posKey in itemMap) {
+                    const [ix, iy] = keyToArray(posKey);
+                    const dist = getDistance(x, y, ix, iy);
+                    if (dist <= radius) {
+                        foundItemKeys.push(posKey);
+                    }
+                }
+                return foundItemKeys;
+            }
+
+            getNearestAgents(x, y, radius, excludeSelf = null) {
+                const nearbyAgents = [];
+                for (const agent of this.agents) {
+                    if (agent === excludeSelf) continue;
+                    const dist = getDistance(x, y, agent.x, agent.y);
+                    if (dist <= radius) {
+                        nearbyAgents.push(agent);
+                    }
+                }
+                return nearbyAgents;
+            }
+        }
+
+
+        // --- RENDERING AND MAIN LOOP ---
+
+        class Renderer {
+            constructor(world, canvasId) {
+                this.world = world;
+                this.canvas = document.getElementById(canvasId);
+                this.ctx = this.canvas.getContext('2d');
+
+                this.cellSize = 20; // Default cell size
+                
+                // Adjust size based on screen width for responsiveness
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
+
+                this.font = `${this.cellSize * 0.75}px Consolas, monospace`;
+            }
+
+            resizeCanvas() {
+                // Get the available width in the container
+                const containerWidth = this.canvas.parentElement.clientWidth;
+                
+                // Calculate the largest cell size that fits the world width (70) entirely within the container width.
+                let newCellSize = Math.floor(containerWidth / this.world.width);
+
+                // Set a sensible, low minimum cell size (e.g., 8px) to prevent characters from collapsing completely,
+                // but this threshold should be low enough to not cause scrollbars on typical mobiles.
+                this.cellSize = Math.max(newCellSize, 8); 
+
+                // Set the canvas dimensions based on the calculated cell size. This guarantees it fits the width.
+                this.canvas.width = this.world.width * this.cellSize;
+                this.canvas.height = this.world.height * this.cellSize;
+                
+                this.font = `${this.cellSize * 0.75}px Consolas, monospace`;
+                this.render(); // Re-render after resize
+            }
+
+            drawCell(x, y, char, color, isDim) {
+                const ctx = this.ctx;
+                const size = this.cellSize;
+                const px = x * size + size / 2;
+                const py = y * size + size / 2;
+
+                ctx.fillStyle = color;
+                if (isDim) {
+                    ctx.globalAlpha = 0.5;
+                } else {
+                    ctx.globalAlpha = 1.0;
+                }
+
+                ctx.fillText(char, px, py);
+            }
+
+            render() {
+                const ctx = this.ctx;
+                const size = this.cellSize;
+
+                ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                ctx.fillStyle = '#0d1117';
+                ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.font = this.font;
+
+                // 1. Map Agent Positions (Only non-home-based agents)
+                const agentPositions = {};
+                this.world.agents.forEach(agent => {
+                    const posKey = arrayToKey([agent.x, agent.y]);
+                    // Only track agents NOT resting at their claimed home, as they need to overwrite resources
+                    if (agent.home_location !== posKey) { 
+                        agentPositions[posKey] = agent;
+                    }
+                });
+
+
+                // 2. Draw Grid Default (Dim dot)
+                for(let y = 0; y < this.world.height; y++) {
+                    for(let x = 0; x < this.world.width; x++) {
+                        const posKey = arrayToKey([x, y]);
+                        if (!agentPositions[posKey]) { // Only draw dot if no agent is there
+                            this.drawCell(x, y, '.', COLORS.WHITE_NORMAL, true);
+                        }
+                    }
+                }
+
+                // 3. Draw World Objects (Background) - CHECK FOR AGENT OVERLAP
+                const resources = [
+                    { map: this.world.growingPlants, char: 'P', color: COLORS.GREEN_NORMAL, dim: false },
+                    { map: this.world.growingTrees, char: 'T', color: COLORS.GREEN_DIM, dim: false },
+                    { map: this.world.food, char: 'F', color: COLORS.GREEN_BRIGHT, dim: false },
+                    { map: this.world.wood, char: 'W', color: COLORS.YELLOW_BRIGHT, dim: false },
+                    { map: this.world.campfires, char: 'C', color: COLORS.RED_BRIGHT, dim: false },
+                ];
+
+                resources.forEach(res => {
+                    for (const posKey in res.map) {
+                        if (!agentPositions[posKey]) { // Only draw resource if no agent is actively standing on it
+                            const [x, y] = keyToArray(posKey);
+                            this.drawCell(x, y, res.char, res.color, res.dim);
+                        }
+                    }
+                });
+
+                // 4. Draw HOMES and Agents At Home
+                for (const posKey in this.world.homes) {
+                    const [x, y] = keyToArray(posKey);
+                    const durability = this.world.homes[posKey].durability;
+                    const char = durability < HOME_DURABILITY_START ? 'h' : 'H';
+                    const color = durability < HOME_DURABILITY_START ? COLORS.BLUE_NORMAL : COLORS.BLUE_BRIGHT;
+                    this.drawCell(x, y, char, color, false);
+                }
+                
+                // Draw the LIBRARY
+                const [lx, ly] = this.world.libraryLocation;
+                this.drawCell(lx, ly, 'L', COLORS.LIBRARY, false);
+
+
+                // 5. Draw Agents (Foreground)
+                const agentsAtHome = [];
+                
+                this.world.agents.forEach(agent => {
+                    const isAtHome = agent.home_location !== null && agent.home_location === arrayToKey([agent.x, agent.y]);
+                    if (isAtHome) {
+                        agentsAtHome.push(agent);
+                        return; 
+                    }
+                    
+                    const charMapEntry = CHAR_MAP[agent.state] || CHAR_MAP['WANDERING'];
+                    let char = charMapEntry.char;
+                    let color = charMapEntry.color;
+                    let isDim = charMapEntry.dim;
+
+                    if (agent.social_buff_timer > 0) {
+                        color = COLORS.WHITE_BRIGHT; 
+                        isDim = false;
+                    }
+                    
+                    this.drawCell(agent.x, agent.y, char, color, isDim);
+                });
+
+                // 6. Draw Agents at Home *on top* of the home icon (smaller char)
+                agentsAtHome.forEach(agent => {
+                    // Slight offset for visual distinction
+                    const size = this.cellSize;
+                    const px = agent.x * size + size / 2 + size * 0.15;
+                    const py = agent.y * size + size / 2 + size * 0.15;
+                    
+                    const charMapEntry = CHAR_MAP[agent.state] || CHAR_MAP['WANDERING'];
+                    let char = charMapEntry.char;
+                    let color = charMapEntry.color;
+                    let isDim = charMapEntry.dim;
+
+                    ctx.font = `${this.cellSize * 0.4}px Consolas, monospace`; // Smaller font for "at home" agent
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillStyle = color;
+                    if (isDim) {
+                        ctx.globalAlpha = 0.5;
+                    } else {
+                        ctx.globalAlpha = 1.0;
+                    }
+
+                    ctx.fillText(char, px, py);
+                    ctx.font = this.font; // Restore main font
+                });
+
+                ctx.globalAlpha = 1.0; // Restore alpha
+            }
+        }
+
+        // --- STATS RENDERING ---
+        function updateStatsDisplay(world) {
+            document.getElementById('turnCounter').textContent = world.turn;
+            document.getElementById('generationCounter').textContent = world.generationCount;
+            document.getElementById('statPopulation').textContent = world.stats.population || 0;
+            document.getElementById('statHomes').textContent = world.stats.homes_built || 0;
+            document.getElementById('statFires').textContent = world.stats.active_campfires || 0;
+
+            // Gene Stats
+            const geneStatsDiv = document.getElementById('geneStats');
+            geneStatsDiv.innerHTML = '';
+            for (const gene in GENE_RANGES) {
+                const avg = world.stats[`avg_${gene}`] || 0;
+                const color = (gene === 'aggression' || gene === 'metabolism') ? 'text-red-400' : (gene === 'builder' ? 'text-blue-400' : 'text-cyan-400');
+                geneStatsDiv.innerHTML += `<p><span class="${color}">${gene.padEnd(12, ' ')}</span>: ${avg.toFixed(2)}</p>`;
+            }
+
+            // Skill Stats
+            const skillStatsDiv = document.getElementById('skillStats');
+            skillStatsDiv.innerHTML = '';
+            const skillList = ['foraging', 'social', 'building', 'navigation', 'combat', 'farming'];
+            for (const skill of skillList) {
+                const avg = world.stats[`avg_${skill}_skill`] || 0;
+                const color = (skill === 'combat' ? 'text-red-400' : (skill === 'building' ? 'text-blue-400' : 'text-green-400'));
+                skillStatsDiv.innerHTML += `<p><span class="${color}">${skill.padEnd(12, ' ')}</span>: ${avg.toFixed(2)}</p>`;
+            }
+
+            // Global Knowledge
+            const knowledgeStatsDiv = document.getElementById('knowledgeStats');
+            knowledgeStatsDiv.innerHTML = '';
+            for (const skill in world.globalSkillKnowledge) {
+                const val = world.globalSkillKnowledge[skill];
+                knowledgeStatsDiv.innerHTML += `<p><span class="text-yellow-400">${skill.padEnd(12, ' ')}</span>: ${val.toFixed(2)}</p>`;
+            }
+
+            // Death Analysis
+            const deathStatsDiv = document.getElementById('deathStats');
+            deathStatsDiv.innerHTML = '';
+            const totalDeaths = world.deathCauses.TOTAL_DEATHS || 0;
+            if (totalDeaths > 0) {
+                // Filter out UNKNOWN and TOTAL_DEATHS before listing
+                const filteredDeaths = Object.entries(world.deathCauses).filter(([reason, count]) => 
+                    reason !== 'UNKNOWN' && reason !== 'TOTAL_DEATHS' && count > 0
+                );
+
+                for (const [reason, count] of filteredDeaths) {
+                    const percent = (count / totalDeaths) * 100;
+                    deathStatsDiv.innerHTML += `<p><span class="text-red-500">${reason.padEnd(20, ' ')}</span>: ${count} (${percent.toFixed(1)}%)</p>`;
+                }
+            } else {
+                deathStatsDiv.innerHTML = '<p>No deaths recorded yet.</p>';
+            }
+        }
+
+        function populateLegend() {
+            const legendDiv = document.getElementById('legend');
+            
+            // Define legend groups and items for clean layout
+            const groups = [
+                {
+                    title: 'Status & Interaction',
+                    items: [
+                        { char: 'A', color: COLORS.CYAN_BRIGHT, desc: 'Wander (Default)' },
+                        { char: 'f', color: COLORS.CYAN_NORMAL, desc: 'Forage/Eat' },
+                        { char: 's', color: COLORS.MAGENTA_DIM, desc: 'Sad/Crisis' },
+                        { char: 't', color: COLORS.WHITE_NORMAL, desc: 'Seek Social' },
+                        { char: 'T', color: COLORS.WHITE_BRIGHT, desc: 'Communicate/Share Knowledge' },
+                        { char: 'm', color: COLORS.MAGENTA_BRIGHT, desc: 'Mate' },
+                        { char: 'X/r', color: COLORS.RED_BRIGHT, desc: 'Attack/Retaliate' },
+                        { char: 'g', color: COLORS.WHITE_BRIGHT, desc: 'Share Resources' },
+                    ]
+                },
+                {
+                    title: 'Building & Wood',
+                    items: [
+                        { char: 'w', color: COLORS.YELLOW_NORMAL, desc: 'Get Wood' },
+                        { char: 'b', color: COLORS.YELLOW_BRIGHT, desc: 'Build Home' },
+                        { char: 'k', color: COLORS.BLUE_BRIGHT, desc: 'Claim Home' },
+                        { char: 'E', color: COLORS.YELLOW_NORMAL, desc: 'Repair Home' },
+                        { char: 'c', color: COLORS.RED_NORMAL, desc: 'Build Fire' },
+                        { char: 'R', color: COLORS.RED_BRIGHT, desc: 'Refuel Fire' },
+                    ]
+                },
+                {
+                    title: 'Farming & Resources',
+                    items: [
+                        { char: 'p', color: COLORS.GREEN_NORMAL, desc: 'Plant Food/Tree' },
+                        { char: 'G', color: COLORS.GREEN_BRIGHT, desc: 'Go Home to Plant' },
+                        { char: 'F', color: COLORS.GREEN_BRIGHT, desc: 'Food (Ready to Eat)' },
+                        { char: 'P', color: COLORS.GREEN_NORMAL, desc: 'Plant (Growing Food)' },
+                        { char: 'W', color: COLORS.YELLOW_BRIGHT, desc: 'Wood (Lumber)' },
+                        { char: 'T', color: COLORS.GREEN_DIM, desc: 'Tree (Growing Wood)' },
+                    ]
+                },
+                {
+                    title: 'Permanent Structures',
+                    items: [
+                        { char: 'H/h', color: COLORS.BLUE_BRIGHT, desc: 'Home (Healthy/Damaged)' },
+                        { char: 'C', color: COLORS.RED_BRIGHT, desc: 'Active Campfire' },
+                        { char: 'L', color: COLORS.LIBRARY, desc: 'Library (Global Knowledge)' },
+                        { char: 'Any', color: COLORS.WHITE_BRIGHT, desc: 'Agent with Wellbeing Buff' },
+                    ]
+                }
+            ];
+            
+            let html = '';
+
+            // Render groups with titles and clear item formatting
+            groups.forEach(group => {
+                html += `<div class="w-full mt-2 mb-1 border-t border-gray-700 pt-2"><h3 class="font-semibold text-sm text-cyan-300">${group.title}</h3></div>`;
+                group.items.forEach(item => {
+                    // Min width for wrapping columns cleanly
+                    html += `<p class="flex items-center min-w-[200px] lg:min-w-[250px]"><span style="color: ${item.color}; font-weight: bold; width: 30px;">${item.char}</span> ${item.desc}</p>`;
+                });
+            });
+
+            legendDiv.innerHTML = html;
+        }
+
+
+        // --- MAIN INITIALIZATION ---
+        let world, renderer, interval;
+
+        function initializeSimulation() {
+            world = new World(WORLD_WIDTH, WORLD_HEIGHT);
+            
+            // 2. Add starting agents and resources
+            for (let i = 0; i < STARTING_AGENTS; i++) {
+                world.addAgent(); 
+            }
+            for (let i = 0; i < STARTING_FOOD; i++) {
+                const tile = world.getRandomEmptyTile();
+                if (tile) {
+                    const posKey = arrayToKey(tile);
+                    world.food[posKey] = true;
+                    world.foodFreshness[posKey] = FOOD_FRESHNESS;
+                }
+            }
+            for (let i = 0; i < STARTING_WOOD; i++) {
+                const tile = world.getRandomEmptyTile();
+                if (tile) {
+                    world.wood[arrayToKey(tile)] = true;
+                }
+            }
+            
+            renderer = new Renderer(world, 'worldCanvas');
+            populateLegend();
+
+            // Start the simulation loop
+            if (interval) clearInterval(interval);
+            interval = setInterval(gameLoop, SIM_SPEED);
+            
+            console.log("Simulation initialized.");
+        }
+
+        function gameLoop() {
+            world.update();
+            renderer.render();
+            updateStatsDisplay(world);
+
+            if (world.stats.population === 0 && world.turn > 100) {
+                console.log("--- SIMULATION END: All agents have died. ---");
+                clearInterval(interval);
+            }
+            // Check for overpopulation (50% coverage)
+            if (world.agents.length > (WORLD_WIDTH * WORLD_HEIGHT * 0.5)) {
+                console.log("--- SIMULATION END: Overpopulation! ---");
+                clearInterval(interval);
+            }
+        }
+
+        window.onload = initializeSimulation;
+
+    </script>
+</body>
+</html>
