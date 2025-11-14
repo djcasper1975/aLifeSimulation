@@ -206,8 +206,9 @@
             'RETALIATING': { char: 'r', color: COLORS.RED_BRIGHT, dim: false },
             'SEEKING_SOCIAL': { char: 't', color: COLORS.WHITE_NORMAL, dim: false },
             'COMMUNICATING': { char: 'T', color: COLORS.WHITE_BRIGHT, dim: false },
-            'SEEKING_LIBRARY': { char: 'L', color: COLORS.LIBRARY, dim: false }, // L when moving to Library
-            'SOCIAL_HAPPY': { char: 'L', color: COLORS.LIBRARY, dim: false }, // L when pausing at Library/Contentment spot
+            // MODIFIED: Changed 'L' to 'o' for agent state
+            'SEEKING_LIBRARY': { char: 'o', color: COLORS.MAGENTA_BRIGHT, dim: false }, 
+            'SOCIAL_HAPPY': { char: 'o', color: COLORS.MAGENTA_BRIGHT, dim: false }, // 'o' when pausing at Library/Contentment spot
             'SOCIAL_SAD': { char: 's', color: COLORS.MAGENTA_DIM, dim: true },
         };
 
@@ -1791,7 +1792,8 @@
                     items: [
                         { char: 'A', color: COLORS.CYAN_BRIGHT, desc: 'Wander (Default)' },
                         { char: 'f', color: COLORS.CYAN_NORMAL, desc: 'Forage/Eat' },
-                        { char: 'L', color: COLORS.LIBRARY, desc: 'Library/Happy' }, // <--- ADDED
+                        // MODIFIED: Changed 'L' to 'o' for agent state
+                        { char: 'o', color: COLORS.MAGENTA_BRIGHT, desc: 'Happy/Library Seek' }, 
                         { char: 's', color: COLORS.MAGENTA_DIM, desc: 'Sad/Crisis' },
                         { char: 't', color: COLORS.WHITE_NORMAL, desc: 'Seek Social' },
                         { char: 'T', color: COLORS.WHITE_BRIGHT, desc: 'Communicate/Share Knowledge' },
@@ -1807,8 +1809,8 @@
                         { char: 'b', color: COLORS.YELLOW_BRIGHT, desc: 'Build Home' },
                         { char: 'k', color: COLORS.BLUE_BRIGHT, desc: 'Claim Home' },
                         { char: 'E', color: COLORS.YELLOW_NORMAL, desc: 'Repair Home' },
-                        { char: 'B', color: COLORS.BLUE_NORMAL, desc: 'Wander to Build (General)' }, // <--- ADDED
-                        { char: 'S', color: COLORS.BLUE_DIM, desc: 'Seek Remote Spot' }, // <--- ADDED
+                        { char: 'B', color: COLORS.BLUE_NORMAL, desc: 'Wander to Build (General)' },
+                        { char: 'S', color: COLORS.BLUE_DIM, desc: 'Seek Remote Spot' },
                         { char: 'C', color: COLORS.BLUE_BRIGHT, desc: 'Seek Community Spot' },
                         { char: 'c', color: COLORS.RED_NORMAL, desc: 'Build Fire' },
                         { char: 'R', color: COLORS.RED_BRIGHT, desc: 'Refuel Fire' },

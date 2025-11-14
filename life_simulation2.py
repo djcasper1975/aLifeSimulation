@@ -1411,9 +1411,12 @@ class World:
                 char = 'T'
                 color = Style.BRIGHT + Fore.WHITE 
             
+            # --- MODIFIED: Changed 'L' to 'o' for Happy/Library Seeking Agent State ---
             elif agent.state == "SOCIAL_HAPPY" or agent.state == "SEEKING_LIBRARY":
-                char = 'L' # Use 'L' to show an agent is moving toward/at the library
+                char = 'o' # Use 'o' for 'Observing/Optimistic' agent state
                 color = Style.BRIGHT + Fore.MAGENTA 
+            # --- END MODIFIED ---
+                
             elif agent.state == "SOCIAL_SAD":
                 char = 's'
                 color = Style.DIM + Fore.MAGENTA 
@@ -1458,8 +1461,10 @@ class World:
         output_buffer.append(
             (Style.BRIGHT + Fore.CYAN + " A" + Style.RESET_ALL + ": Wander") + " | " +
             (Style.NORMAL + Fore.CYAN + " f" + Style.RESET_ALL + ": Forage") + " | " +
-            (Style.BRIGHT + Fore.MAGENTA + " L" + Style.RESET_ALL + ": Library/Happy") + " | " +
+            # --- MODIFIED: Changed 'L' to 'o' in the Legend ---
+            (Style.BRIGHT + Fore.MAGENTA + " o" + Style.RESET_ALL + ": Happy/Library Seek") + " | " +
             (Style.DIM + Fore.MAGENTA + " s" + Style.RESET_ALL + ": Sad/Crisis")
+            # --- END MODIFIED ---
         )
         output_buffer.append(
             (Style.NORMAL + Fore.WHITE + " t" + Style.RESET_ALL + ": Seek Social") + " | " +
