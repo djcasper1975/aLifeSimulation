@@ -1335,13 +1335,14 @@
                 }
                 
                 // 2. Update Food Spoilage
-                for (const pos in this.foodFreshness) {
-                    this.foodFreshness[pos]--;
-                    if (this.foodFreshness[pos] <= 0) {
-                        delete this.foodFreshness[pos];
-                        delete this.food[pos];
-                    }
-                }
+for (const posKey of Object.keys(this.foodFreshness)) {
+    this.foodFreshness[posKey]--;
+    if (this.foodFreshness[posKey] <= 0) {
+        // Food spoiled!
+        delete this.foodFreshness[posKey]; // Remove from freshness tracker
+        delete this.food[posKey];         // Remove from food on map
+    }
+}
                 
                 // 3. Update Campfires
                 for (const pos in this.campfires) {
