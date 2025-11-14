@@ -263,7 +263,7 @@ class Agent:
         # Social buff (Campfire is communal)
         if self.social_buff_timer > 0:
             metabolism_cost *= 0.8 # 20% energy save!
-            self.social_buff_timer -= 1 # Decrement the lingering timer
+            self.social_buff_timer -= 1
             
         # Check if the agent's OWNED campfire is still active
         if self.campfire_location and self.campfire_location not in self.world.campfires:
@@ -381,8 +381,7 @@ class Agent:
                     return
 
         # Priority 3: Social Need
-        # NEW: If agent is already communicating (lingering), don't change state
-        if self.state != "COMMUNICATING" and self.social < 30 and self.genes['sociability'] > 0.2:
+        if self.social < 30 and self.genes['sociability'] > 0.2:
             self.state = "SEEKING_SOCIAL" # 't'
             return
             
@@ -725,62 +724,26 @@ class Agent:
             nearby_campfire = self.world.get_nearest(self.x, self.y, vision_radius, self.world.campfires.keys())
             
             if nearby_campfire:
-                # Agents at the fire are the *potential* targets for communication
                 agents_at_fire = [a for a in agents if get_distance(a.x, a.y, nearby_campfire[0], nearby_campfire[1]) < 3.0]
-                
-                # Priority 1: Move towards the Fire itself
-                if get_distance(self.x, self.y, nearby_campfire[0], nearby_campfire[1]) > 2.0:
-                    self.move_towards(nearby_campfire[0], nearby_campfire[1])
-                # Priority 2: Arrived at fire, now communicate with someone nearby
-                elif agents_at_fire:
+                if agents_at_fire:
                     target_agent = random.choice(agents_at_fire)
+                    # --- NEW: Love Gain when socializing ---
+                    self.love = clamp(self.love + LOVE_GAIN_SOCIAL, 0, STARTING_LOVE)
                     
                     if get_distance(self.x, self.y, target_agent.x, target_agent.y) < 2.0:
-                        # NEW: Transition to a LINGERING/COMMUNICATING state
-                        self.state = "COMMUNICATING" # 'T'
                         self.communicate(target_agent)
                     else:
                         self.move_towards(target_agent.x, target_agent.y)
-                # If at the fire but alone, just stay put (Linger)
                 else:
-                    pass # Linger/wait for someone else to arrive
-            
+                    self.move_towards(nearby_campfire[0], nearby_campfire[1])
             elif agents:
                 target_agent = agents[0] 
                 if get_distance(self.x, self.y, target_agent.x, target_agent.y) < 2.0:
-                    # NEW: Transition to a LINGERING/COMMUNICATING state
-                    self.state = "COMMUNICATING"
                     self.communicate(target_agent)
                 else:
                     self.move_towards(target_agent.x, target_agent.y)
             else:
                 self.move_exploring() 
-                
-        elif self.state == "COMMUNICATING": # 'T'
-            # Find a nearby agent to continue communicating with
-            nearby_agents = self.world.get_nearest_agents(self.x, self.y, 2, self)
-            
-            # Use the existing 'social_buff_timer' as a LINGERING TIMER
-            # Timer is decremented in self.update()
-            if self.social_buff_timer > 0 and nearby_agents:
-                # Keep communicating on the same tile (multi-turn action)
-                target = random.choice(nearby_agents)
-                
-                # Recalculate communication effects each turn
-                self.skills['social'] = clamp(self.skills['social'] + 0.05, 0, 10.0) # Small skill gain
-                social_gain = 5 + (self.skills['social'] * 2) # Small social gain
-                self.social = clamp(self.social + social_gain, 0, 100)
-                
-                # NEW: Small Love Gain per turn of communication
-                self.love = clamp(self.love + LOVE_GAIN_SOCIAL * 0.1, 0, STARTING_LOVE)
-                
-                # Only share skills *periodically* during the lingering
-                if self.social_buff_timer % 5 == 0:
-                    self.share_skills(target)
-                
-            else:
-                # Timer ran out or no nearby agents left
-                self.state = "WANDERING"
                 
         elif self.state == "SOCIAL_HAPPY": # 'S'
             # --- NEW: If highly satisfied, pause movement ---
@@ -824,8 +787,8 @@ class Agent:
                         self.memory['wood'].add(pos)
                 self.move_exploring()
             
-        #elif self.state == "COMMUNICATING":
-        #    pass # Handled above as a multi-turn state
+        elif self.state == "COMMUNICATING":
+            pass 
 
     def is_clear_tile(self, x, y):
         """Helper to check if a tile is empty for building/planting."""
@@ -1070,20 +1033,9 @@ class Agent:
                     self.world.global_skill_knowledge[skill] = clamp(self.world.global_skill_knowledge.get(skill, 0.0) + 0.05, 0, 10.0)
 
     def communicate(self, partner):
-        """
-        Initiates a social interaction. This now sets the buff timer 
-        and performs the high-value, one-time social/skill/love gains.
-        The state change to WANDERING happens only when the timer runs out 
-        in the execute_action "COMMUNICATING" block.
-        """
-        # The calling function (execute_action) already sets self.state = "COMMUNICATING"
+        self.state = "COMMUNICATING" # 'T'
         partner.state = "COMMUNICATING" 
         
-        # --- NEW: Set LINGERING TIMER (social_buff_timer is used for this) ---
-        self.social_buff_timer = 20 
-        partner.social_buff_timer = 20 
-        
-        # 1. Initial Gains (one-time high-value action)
         self.skills['social'] = clamp(self.skills['social'] + 0.2, 0, 10.0) 
         partner.skills['social'] = clamp(partner.skills['social'] + 0.2, 0, 10.0) 
         
@@ -1093,14 +1045,16 @@ class Agent:
         self.social = clamp(self.social + social_gain, 0, 100)
         partner.social = clamp(partner.social + partner_social_gain, 0, 100)
         
-        # --- NEW: Love Gain (one-time high gain) ---
+        self.social_buff_timer = 20 
+        partner.social_buff_timer = 20 
+        
+        # --- NEW: Love Gain ---
         self.love = clamp(self.love + LOVE_GAIN_SOCIAL, 0, STARTING_LOVE)
         partner.love = clamp(partner.love + LOVE_GAIN_SOCIAL, 0, STARTING_LOVE)
         
-        # 2. Share Skills (one-time high-value action)
         self.share_skills(partner)
         
-        # 3. Communal Planting Decision (Survival Communication)
+        # --- NEW: Communal Planting Decision (Survival Communication) ---
         if len(self.world.food) < STARTING_FOOD and \
            self.seeds_carried >= 1 and partner.seeds_carried >= 1:
             
@@ -1124,16 +1078,13 @@ class Agent:
                 self.state = "FORAGING"
                 partner.state = "FORAGING"
                 return # Action executed, exit communication
+        # --- END Communal Planting ---
         
-        # 4. Mating Check
+        # --- NEW: Age check added to mating condition ---
         if self.age >= ADULT_AGE and self.energy > self.genes['mating_drive'] and self.mate_cooldown == 0 and \
            partner.age >= ADULT_AGE and partner.energy > partner.genes['mating_drive'] and partner.mate_cooldown == 0:
             
             self.mate(partner)
-            # Mating also sets state to "MATING" and the buff timer, so we return.
-            return
-
-        # Do NOT set state to "WANDERING" here. The COMMUNICATING state is now multi-turn.
 
     def plant_seed(self):
         """Plants a food seed at the current location."""
@@ -1608,7 +1559,7 @@ class World:
         )
         output_buffer.append(
             (Style.NORMAL + Fore.WHITE + " t" + Style.RESET_ALL + ": Seek Social") + " | " +
-            (Style.BRIGHT + Fore.WHITE + " T" + Style.RESET_ALL + ": Communicate/Linger") + " | " + # UPDATED LEGEND
+            (Style.BRIGHT + Fore.WHITE + " T" + Style.RESET_ALL + ": Communicate") + " | " +
             (Style.BRIGHT + Fore.WHITE + " g" + Style.RESET_ALL + ": Share Wood/Food")
         )
         output_buffer.append(
