@@ -80,10 +80,38 @@
                 </div>
             </div>
         </section>
+        
+        <!-- CONFLICT RESOLUTION (NEW SECTION) -->
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-4 section-header">2. Conflict Resolution (Combat & Retaliation)</h2>
+            <p class="mb-4">Conflict is rare, as it is heavily restricted by the **Love** mechanic. It is usually triggered by desperation.</p>
 
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Attack Trigger -->
+                <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-red-500">
+                    <h3 class="font-semibold text-lg mb-1">Attack Trigger ('X')</h3>
+                    <ul class="list-disc ml-5 text-sm space-y-1">
+                        <li>**Conditions:** An agent can only attack if their **Love score is 0** AND they are on the same tile as another agent.</li>
+                        <li>**Aggression:** The base chance of attack is set by the <code class="code-block inline-block p-1">aggression</code> gene, but this chance is greatly increased when the agent is struggling (low energy/social).</li>
+                        <li>**Outcome:** The aggressor gains a small amount of energy back to stabilize, but the target immediately enters **Retaliation**.</li>
+                    </ul>
+                </div>
+
+                <!-- Retaliation -->
+                <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-red-800">
+                    <h3 class="font-semibold text-lg mb-1">Retaliation Priority ('r')</h3>
+                    <ul class="list-disc ml-5 text-sm space-y-1">
+                        <li>**Priority:** Retaliation is the **highest priority state** (Section 5, Priority 1). The agent will immediately ignore all other needs (even starvation) to seek the attacker.</li>
+                        <li>**Skill Gain:** Both the attacker and the defender gain points in their **Combat Skill** regardless of the outcome.</li>
+                        <li>**Consequence:** Once the retaliating agent reaches the attacker and completes the attack, they reset their state and lose the retaliation trigger.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+        
         <!-- GENES (EVOLUTION) -->
         <section class="mb-10">
-            <h2 class="text-2xl font-semibold mb-4 section-header">2. Genes (Evolutionary Traits)</h2>
+            <h2 class="text-2xl font-semibold mb-4 section-header">3. Genes (Evolutionary Traits)</h2>
             <p class="mb-4">Genes are fixed at birth, inherited from parents, and modified slightly by mutation. They determine the agent's potential and default behavior.</p>
 
             <ul class="list-disc ml-5 text-md space-y-2">
@@ -100,8 +128,8 @@
 
         <!-- SKILLS (LEARNING) -->
         <section class="mb-10">
-            <h2 class="text-2xl font-semibold mb-4 section-header">3. Skills (Learning & Culture)</h2>
-            <p class="mb-4">Skills are learned through practice and social interaction. They improve the efficiency of actions.</p>
+            <h2 class="text-2xl font-semibold mb-4 section-header">4. Skills (Individual Learning)</h2>
+            <p class="mb-4">Skills are learned through practice (e.g., building) and social interaction. They improve the efficiency of actions.</p>
 
             <ul class="list-disc ml-5 text-md space-y-2">
                 <li>**Building Skill:** Reduces the wood cost required to build a Home or Campfire.</li>
@@ -110,13 +138,47 @@
                 <li>**Combat Skill:** Increases the damage dealt during an attack.</li>
                 <li>**Social Skill:** Increases the social need recovery gained from communicating with others.</li>
                 <li>**Farming Skill:** Learned through planting seeds.</li>
-                <li>**Global Knowledge Library:** Highly skilled agents contribute to a communal pool of knowledge ('L' tile), which passively boosts the skill acquisition of all other agents.</li>
             </ul>
+        </section>
+        
+        <!-- NEW SECTION: SOCIAL AND CULTURAL EXCHANGE -->
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-4 section-header">5. Social & Cultural Exchange (Communal Life)</h2>
+            <p class="mb-4">When agents engage in the **Communicate ('T')** state, they perform several critical cultural activities:</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Skill Sharing -->
+                <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-yellow-500">
+                    <h3 class="font-semibold text-lg mb-1">Peer-to-Peer Skill Sharing</h3>
+                    <ul class="list-disc ml-5 text-sm space-y-1">
+                        <li>**Mechanism:** The agent with the *higher* skill in a given area (e.g., Building) transfers a small fraction of that skill to the agent with the *lower* skill.</li>
+                        <li>**Benefit:** This creates a cultural uplift, making less experienced agents more efficient quickly.</li>
+                    </ul>
+                </div>
+
+                <!-- Global Library -->
+                <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-purple-500">
+                    <h3 class="font-semibold text-lg mb-1">Global Knowledge Library ('L')</h3>
+                    <ul class="list-disc ml-5 text-sm space-y-1">
+                        <li>**Contribution:** When an agent's individual skill is high (above a threshold of 2.0), they automatically contribute to the world's **Global Knowledge Library** during communication.</li>
+                        <li>**Learning:** All agents passively draw a tiny fraction of skill from the Global Library every turn, even if they aren't communicating. This represents ancestral/communal knowledge.</li>
+                    </ul>
+                </div>
+                
+                <!-- Communal Planting -->
+                <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-green-700 md:col-span-2">
+                    <h3 class="font-semibold text-lg mb-1">Communal Planting (Crisis Response)</h3>
+                    <ul class="list-disc ml-5 text-sm space-y-1">
+                        <li>**Trigger:** This happens during communication if both agents have seeds AND the global food supply is scarce (less than <code class="code-block inline-block p-1">STARTING_FOOD</code>).</li>
+                        <li>**Action:** The two agents **pool their seeds** and instantly create a mature food source at the **Library Location ('L')**. This is a powerful, collective survival response that focuses resources on a known community spot.</li>
+                    </ul>
+                </div>
+            </div>
         </section>
 
         <!-- DECISION PRIORITY (The Agent's "Brain") -->
         <section class="mb-10">
-            <h2 class="text-2xl font-semibold mb-4 section-header">4. Decision Priority List</h2>
+            <h2 class="text-2xl font-semibold mb-4 section-header">6. Decision Priority List</h2>
             <p class="mb-4">Agents decide what to do in a strict hierarchical order. The first satisfied condition determines their state for the turn:</p>
 
             <ol class="list-decimal ml-5 text-md space-y-2 font-mono bg-gray-100 p-4 rounded-lg">
@@ -154,7 +216,7 @@
 
         <!-- WORLD OBJECTS -->
         <section class="mb-10">
-            <h2 class="text-2xl font-semibold mb-4 section-header">5. World Objects & Interaction</h2>
+            <h2 class="text-2xl font-semibold mb-4 section-header">7. World Objects & Interaction</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-yellow-700">
                     <h3 class="font-semibold text-lg mb-1">Homes (H / h)</h3>
