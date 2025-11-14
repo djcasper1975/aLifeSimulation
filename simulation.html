@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>A-Life Simulation</title>
-    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -62,35 +61,26 @@
         }
     </style>
 </head>
-<!-- Body uses minimal padding to create the tiny border around the content -->
 <body class="p-4 sm:p-8 bg-gray-800 text-white min-h-screen">
 
-    <!-- Wrapper uses full width, removed max-width limit -->
     <div class="w-full">
         <h1 class="text-4xl font-bold mb-4 text-cyan-400">A-Life: Web Simulation</h1>
         <p class="text-gray-400 mb-6">A JavaScript implementation of the Python Life Simulation. See evolution in action!</p>
 
-        <!-- Use flex to lay out content -->
         <div class="flex flex-col lg:flex-row gap-6">
 
-            <!-- World Canvas (Left/Top) - Takes up remaining space (lg:flex-1) -->
             <div class="lg:flex-1 min-w-0"> 
-                <!-- Added id="canvasWrapper" and removed overflow-x-auto, added p-2 back for visual space around canvas -->
                 <div id="canvasWrapper" class="bg-gray-900 p-2 rounded-lg shadow-2xl">
                     <canvas id="worldCanvas"></canvas>
                 </div>
                 
-                <!-- Legend Cleanup -->
                 <div class="mt-4 p-4 bg-gray-900 rounded-lg text-sm font-mono">
                     <h2 class="text-lg font-semibold mb-2 text-yellow-300">Legend</h2>
-                    <!-- Changed from grid-cols to flex-wrap for better organization and grouping -->
                     <div id="legend" class="flex flex-wrap gap-x-6 gap-y-1">
-                        <!-- Legend items will be populated by JS -->
-                    </div>
+                        </div>
                 </div>
             </div>
 
-            <!-- Stats Panel (Right/Bottom) - Fixed width on desktop (lg:w-80) -->
             <div id="statsPanel" class="lg:w-80 bg-gray-900 p-6 rounded-lg shadow-2xl font-mono text-xs">
                 <div class="mb-4">
                     <p class="text-yellow-400 text-sm">Turn: <span id="turnCounter" class="font-bold text-base">0</span></p>
@@ -123,13 +113,18 @@
         const ADULT_AGE = 100;
         const OLD_AGE = 1500;
         const MAX_AGE = 2000;
-        const STARTING_LOVE = 25;
+        
+        // Love Parameters (SYNCHRONIZED)
+        const STARTING_LOVE = 10; // FIX: Lowered significantly
         const LOVE_GAIN_EAT = 2.5;
-        const LOVE_GAIN_SOCIAL = 5;
+        const LOVE_GAIN_SOCIAL = 5; 
         const LOVE_GAIN_REST = 0.5;
-        const LOVE_LOSS_STRUGGLE = 1.0;
+        const LOVE_LOSS_STRUGGLE = 2.5; // FIX: Increased significantly
+        
+        // PAUSE THRESHOLDS (SYNCHRONIZED)
         const PAUSE_ENERGY_THRESHOLD = 100;
-        const PAUSE_SOCIAL_THRESHOLD = 50;
+        const PAUSE_SOCIAL_THRESHOLD = 80; // FIX: Raised from 50
+        
         const WORLD_WIDTH = 70;
         const WORLD_HEIGHT = 30;
         const STARTING_AGENTS = 15;
@@ -137,15 +132,22 @@
         const STARTING_WOOD = 80;
         const FOOD_SPAWN_RATE = 25;
         const WOOD_SPAWN_RATE = 80;
+        
+        // Farming Parameters (SYNCHRONIZED)
         const FOOD_FRESHNESS = 180;
         const GROW_TIME = 10;
         const TREE_GROW_TIME = 10;
         const WOOD_SEED_CHANCE = 0.5;
+        const FOOD_SEED_BASE_CHANCE = 0.1; // SYNCHRONIZED: Base chance to drop a food seed when consuming food
+
+        // Campfire Parameters
         const CAMPFIRE_BURN_TIME = 300;
         const CAMPFIRE_WOOD_COST = 3;
         const CAMPFIRE_REFUEL_THRESHOLD = 50;
+        
+        // Home Durability (SYNCHRONIZED)
         const HOME_DURABILITY_START = 3;
-        const HOME_DECAY_RATE = 1500;
+        const HOME_DECAY_RATE = 400; // SYNCHRONIZED with Python's HOME_DECAY_RATE
         const SIM_SPEED = 150; // Milliseconds for simulation tick
 
         const GENE_RANGES = {
@@ -159,7 +161,7 @@
             'farming': [0.0, 1.0, 0.1]
         };
 
-        // --- VISUAL STYLING MAPPING ---
+        // --- VISUAL STYLING MAPPING (No change needed) ---
         const COLORS = {
             CYAN_BRIGHT: '#22d3ee', // A
             CYAN_NORMAL: '#06b6d4', // f
@@ -180,7 +182,7 @@
             LIBRARY: '#a855f7', // L
         };
         
-        // --- CHARACTER MAPPING FOR RENDERING ---
+        // --- CHARACTER MAPPING FOR RENDERING (UPDATED) ---
         const CHAR_MAP = {
             // Agent States (Used for foreground/char color)
             'WANDERING': { char: 'A', color: COLORS.CYAN_BRIGHT, dim: false },
@@ -204,7 +206,7 @@
             'RETALIATING': { char: 'r', color: COLORS.RED_BRIGHT, dim: false },
             'SEEKING_SOCIAL': { char: 't', color: COLORS.WHITE_NORMAL, dim: false },
             'COMMUNICATING': { char: 'T', color: COLORS.WHITE_BRIGHT, dim: false },
-            'SOCIAL_HAPPY': { char: 'S', color: COLORS.MAGENTA_BRIGHT, dim: false },
+            'SEEKING_LIBRARY': { char: 'L', color: COLORS.MAGENTA_BRIGHT, dim: false }, // Only L when moving to Library
             'SOCIAL_SAD': { char: 's', color: COLORS.MAGENTA_DIM, dim: true },
         };
 
@@ -245,7 +247,7 @@
                 this.wood_seeds_carried = Math.floor(Math.random() * 2);
                 this.social = Math.random() * (80.0 - 30.0) + 30.0;
                 this.home_location = null;
-                this.campfire_location = null; // NEW: Agent's owned campfire (key string)
+                this.campfire_location = null;
                 this.social_buff_timer = 0;
                 this.contentment_buff_timer = 0;
                 this.state = "WANDERING";
@@ -369,6 +371,7 @@
                 }
 
                 this.energy -= metabolismCost;
+                // Mating cooldown synchronized
                 if (this.mate_cooldown > 0) {
                     this.mate_cooldown--;
                 }
@@ -386,14 +389,17 @@
                     this.social = clamp(this.social, 0, 100);
                 }
 
+                // Struggle/Love logic synchronized
                 if (this.energy < 30 || this.social < 20) {
                     this.struggle_timer++;
-                    this.love = clamp(this.love - LOVE_LOSS_STRUGGLE, 0, STARTING_LOVE);
+                    this.love = clamp(this.love - LOVE_LOSS_STRUGGLE, 0, STARTING_LOVE); // Increased loss
                 } else {
                     this.struggle_timer = 0;
-                    this.love = clamp(this.love + 0.1, 0, STARTING_LOVE);
+                    // FIX: Removed passive love gain, matches Python's PASSIVE_LOVE_GAIN = 0.0
+                    // this.love = clamp(this.love + 0.0, 0, STARTING_LOVE); 
                 }
 
+                // Global Knowledge Retrieval synchronized
                 for (const skillKey in this.skills) {
                     const globalValue = this.world.globalSkillKnowledge[skillKey] || 0.0;
                     const currentSkill = this.skills[skillKey];
@@ -453,11 +459,12 @@
                     }
                 }
 
-                // Priority 2: Home Repair
+                // Priority 2: Home Repair (SYNCHRONIZED)
                 if (this.home_location) {
                     const homeData = this.world.homes[this.home_location];
                     const isOwner = homeData && homeData.owner_id === this.id;
-                    if (homeData && homeData.durability < HOME_DURABILITY_START && isOwner) {
+                    // FIX: Check if durability is less than max (HOME_DURABILITY_START is 3)
+                    if (homeData && homeData.durability < HOME_DURABILITY_START && isOwner) { 
                         if (this.wood_carried < 1) {
                             this.state = "GETTING_WOOD";
                             return;
@@ -468,8 +475,9 @@
                     }
                 }
 
-                // Priority 3: Social Need
-                if (this.social < 30 && this.genes['sociability'] > 0.2) {
+                // Priority 3: Social Need (SYNCHRONIZED)
+                // FIX: Raised social threshold from 30 to 60
+                if (this.social < 60 && this.genes['sociability'] > 0.2) {
                     this.state = "SEEKING_SOCIAL";
                     return;
                 }
@@ -554,8 +562,12 @@
                     return;
                 }
                     
-                // Priority 6: Build Campfire
-                if (this.energy > 120 && this.social > 50 && this.genes['builder'] > 0.5 && this.campfire_location === null) {
+                // Priority 6: Build Campfire (SYNCHRONIZED - Build only if no nearby active fire)
+                const nearbyActiveFire = this.world.getNearest(this.x, this.y, 5, this.world.campfires);
+
+                if (this.energy > 120 && this.social > 50 && 
+                    this.genes['builder'] > 0.5 && 
+                    nearbyActiveFire === null) { // FIX: Only build if no nearby fire
                     if (conserveEnergy) {
                         this.state = "FORAGING";
                         return;
@@ -583,6 +595,18 @@
                 }
                 
                 // Default State: Wandering/Happy
+                
+                // FIX: Priority 8: Library seeking added to Wandering when content
+                if (this.energy > PAUSE_ENERGY_THRESHOLD && this.social > PAUSE_SOCIAL_THRESHOLD) {
+                    if (Math.random() < 0.2) { // 20% chance to move towards Library/Knowledge center
+                        const [lx, ly] = this.world.libraryLocation;
+                        if (getDistance(this.x, this.y, lx, ly) > 5.0) {
+                            this.state = "SEEKING_LIBRARY"; 
+                            return;
+                        }
+                    }
+                }
+
                 this.state = "WANDERING";
             }
 
@@ -595,7 +619,7 @@
                 const bestFoodTarget = this.getClosestCombinedTarget('food', foodInSight);
                 const bestWoodTarget = this.getClosestCombinedTarget('wood', woodInSight);
 
-                // Handle "Anger" (Aggression)
+                // Handle "Anger" (Aggression) (SYNCHRONIZED)
                 const agentsOnTile = this.world.agents.filter(a => a.x === this.x && a.y === this.y && a !== this);
                 if (agentsOnTile.length > 0) {
                     const target = agentsOnTile[Math.floor(Math.random() * agentsOnTile.length)];
@@ -604,6 +628,7 @@
                     const struggleBonus = Math.min(this.struggle_timer * 0.0005, 0.5); 
                     const dynamicAggression = baseAggression + struggleBonus;
                     
+                    // Combat is possible now that Love can drop to 0
                     if (this.love <= 0 && this.energy > 80 && Math.random() < dynamicAggression) {
                         this.attack(target);
                         return; 
@@ -718,6 +743,7 @@
                         if (allHomes.length > 0) {
                             const [hx, hy] = keyToArray(allHomes[0]);
                             this.moveTowards(hx, hy);
+                            this.state = "SEEKING_COMMUNITY";
                         } else {
                             this.moveExploring();
                         }
@@ -824,30 +850,29 @@
                     case "SEEKING_SOCIAL":
                         const nearestCampfireKey = this.world.getNearest(this.x, this.y, visionRadius, this.world.campfires);
                         
-                        if (nearestCampfireKey) {
-                            const [cx, cy] = keyToArray(nearestCampfireKey);
-                            const agentsAtFire = agents.filter(a => getDistance(a.x, a.y, cx, cy) < 3.0);
-                            if (agentsAtFire.length > 0) {
-                                const targetAgent = agentsAtFire[0];
-                                this.love = clamp(this.love + LOVE_GAIN_SOCIAL, 0, STARTING_LOVE);
-                                
-                                if (getDistance(this.x, this.y, targetAgent.x, targetAgent.y) < 2.0) {
-                                    this.communicate(targetAgent);
-                                } else {
-                                    this.moveTowards(targetAgent.x, targetAgent.y);
-                                }
-                            } else {
-                                this.moveTowards(cx, cy);
-                            }
-                        } else if (agents.length > 0) {
+                        if (agents.length > 0) {
                             const targetAgent = agents[0];
                             if (getDistance(this.x, this.y, targetAgent.x, targetAgent.y) < 2.0) {
                                 this.communicate(targetAgent);
                             } else {
                                 this.moveTowards(targetAgent.x, targetAgent.y);
                             }
+                        } else if (nearestCampfireKey) {
+                            const [cx, cy] = keyToArray(nearestCampfireKey);
+                            this.moveTowards(cx, cy);
                         } else {
                             this.moveExploring(); 
+                        }
+                        break;
+                    
+                    case "SEEKING_LIBRARY":
+                        const [lx, ly] = this.world.libraryLocation;
+                        if (getDistance(this.x, this.y, lx, ly) < 2.0) {
+                            // Arrived at library, gaining knowledge buff
+                            this.skills.social = clamp(this.skills.social + 0.1, 0, 10.0);
+                            this.state = "WANDERING";
+                        } else {
+                            this.moveTowards(lx, ly);
                         }
                         break;
 
@@ -872,7 +897,13 @@
 
                     case "WANDERING":
                         if (this.energy > PAUSE_ENERGY_THRESHOLD && this.social > PAUSE_SOCIAL_THRESHOLD) {
-                            // Linger/observe - Pause movement
+                            // Agent is content, check if they *should* seek library (20% chance if far away).
+                            const [lx, ly] = this.world.libraryLocation;
+                            if (Math.random() < 0.2 && getDistance(this.x, this.y, lx, ly) > 5.0) { 
+                                this.state = "SEEKING_LIBRARY"; 
+                                return;
+                            }
+                            // Otherwise, just linger (pause movement)
                         } else {
                             // Log resources in sight to memory
                             foodInSight.forEach(posKey => this.memory.food.add(posKey));
@@ -883,8 +914,7 @@
                     
                     case "MATING":
                     case "COMMUNICATING":
-                    case "SOCIAL_HAPPY":
-                        // Agent is occupied or happy, do nothing (pass)
+                        // Agent is occupied, do nothing (pass)
                         break;
                 }
             }
@@ -991,6 +1021,15 @@
                     const energyGain = 120 + (this.skills.foraging * 20); 
                     this.energy += energyGain;
                     this.love = clamp(this.love + LOVE_GAIN_EAT, 0, STARTING_LOVE);
+                    
+                    // --- NEW: Food Seed Acquisition on consumption (SYNCHRONIZED) ---
+                    // foraging_chance is the base chance + bonus from skill (0.05 per skill point)
+                    const foragingChance = FOOD_SEED_BASE_CHANCE + (this.skills.foraging * 0.05);
+                    if (Math.random() < foragingChance) {
+                        this.seeds_carried++;
+                    }
+                    // --- END NEW ---
+
                     this.state = "WANDERING";
                 }
             }
@@ -1058,6 +1097,9 @@
                 target.energy -= damage;
                 this.skills.combat = clamp(this.skills.combat + 0.2, 0, 10.0); 
                 
+                // FIX: Aggression is emotionally costly
+                this.love = clamp(this.love - 5.0, 0, STARTING_LOVE); 
+
                 target.was_attacked_by = this.id;
             }
             
@@ -1068,10 +1110,16 @@
                 this.energy -= 10;
                 partner.energy -= 10;
                 
-                this.mate_cooldown = 70;
-                partner.mate_cooldown = 70;
+                // FIX: Reduced mate cooldown from 70 to 65 for slightly faster frequency
+                this.mate_cooldown = 65;
+                partner.mate_cooldown = 65;
                 
-                const numChildren = Math.floor(Math.random() * 3) + 1; 
+                // FIX: Determine number of children (Avg 2.2, a 10% increase from Avg 2.0)
+                let numChildren = Math.floor(Math.random() * 3) + 1; 
+                if (Math.random() < 0.2) { // 20% chance to have one extra child
+                     numChildren = clamp(numChildren + 1, 1, 4); // Clamp max at 4
+                }
+                // --- END FIX ---
                 
                 for (let i = 0; i < numChildren; i++) {
                     const newGenes = {};
@@ -1123,6 +1171,10 @@
                 this.state = "COMMUNICATING";
                 partner.state = "COMMUNICATING";
                 
+                // FIX: Communication has a minor energy cost
+                this.energy -= 1.0; 
+                partner.energy -= 1.0;
+
                 this.skills.social = clamp(this.skills.social + 0.2, 0, 10.0); 
                 partner.skills.social = clamp(partner.skills.social + 0.2, 0, 10.0); 
                 
@@ -1150,6 +1202,7 @@
                         const libraryPosKey = arrayToKey(this.world.libraryLocation);
                         let plantLocKey = libraryPosKey;
                         
+                        // Use current location if library is blocked
                         if (!this.isClearTile(this.world.libraryLocation[0], this.world.libraryLocation[1])) {
                             plantLocKey = arrayToKey([this.x, this.y]);
                         }
@@ -1335,14 +1388,14 @@
                 }
                 
                 // 2. Update Food Spoilage
-for (const posKey of Object.keys(this.foodFreshness)) {
-    this.foodFreshness[posKey]--;
-    if (this.foodFreshness[posKey] <= 0) {
-        // Food spoiled!
-        delete this.foodFreshness[posKey]; // Remove from freshness tracker
-        delete this.food[posKey];         // Remove from food on map
-    }
-}
+                for (const posKey of Object.keys(this.foodFreshness)) {
+                    this.foodFreshness[posKey]--;
+                    if (this.foodFreshness[posKey] <= 0) {
+                        // Food spoiled!
+                        delete this.foodFreshness[posKey]; // Remove from freshness tracker
+                        delete this.food[posKey];         // Remove from food on map
+                    }
+                }
                 
                 // 3. Update Campfires
                 for (const pos in this.campfires) {
@@ -1352,7 +1405,7 @@ for (const posKey of Object.keys(this.foodFreshness)) {
                     }
                 }
                 
-                // 4. Update Home Decay
+                // 4. Update Home Decay (SYNCHRONIZED)
                 if (this.turn % HOME_DECAY_RATE === 0) {
                     for (const pos in this.homes) {
                         this.homes[pos].durability--;
