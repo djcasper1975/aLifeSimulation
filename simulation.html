@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>A-Life Simulation</title>
-    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -62,35 +61,26 @@
         }
     </style>
 </head>
-<!-- Body uses minimal padding to create the tiny border around the content -->
 <body class="p-4 sm:p-8 bg-gray-800 text-white min-h-screen">
 
-    <!-- Wrapper uses full width, removed max-width limit -->
     <div class="w-full">
         <h1 class="text-4xl font-bold mb-4 text-cyan-400">A-Life: Web Simulation</h1>
         <p class="text-gray-400 mb-6">A JavaScript implementation of the Python Life Simulation. See evolution in action!</p>
 
-        <!-- Use flex to lay out content -->
         <div class="flex flex-col lg:flex-row gap-6">
 
-            <!-- World Canvas (Left/Top) - Takes up remaining space (lg:flex-1) -->
             <div class="lg:flex-1 min-w-0"> 
-                <!-- Added id="canvasWrapper" and removed overflow-x-auto, added p-2 back for visual space around canvas -->
                 <div id="canvasWrapper" class="bg-gray-900 p-2 rounded-lg shadow-2xl">
                     <canvas id="worldCanvas"></canvas>
                 </div>
                 
-                <!-- Legend Cleanup -->
                 <div class="mt-4 p-4 bg-gray-900 rounded-lg text-sm font-mono">
                     <h2 class="text-lg font-semibold mb-2 text-yellow-300">Legend</h2>
-                    <!-- Changed from grid-cols to flex-wrap for better organization and grouping -->
                     <div id="legend" class="flex flex-wrap gap-x-6 gap-y-1">
-                        <!-- Legend items will be populated by JS -->
-                    </div>
+                        </div>
                 </div>
             </div>
 
-            <!-- Stats Panel (Right/Bottom) - Fixed width on desktop (lg:w-80) -->
             <div id="statsPanel" class="lg:w-80 bg-gray-900 p-6 rounded-lg shadow-2xl font-mono text-xs">
                 <div class="mb-4">
                     <p class="text-yellow-400 text-sm">Turn: <span id="turnCounter" class="font-bold text-base">0</span></p>
@@ -101,6 +91,11 @@
                     <h2 class="text-base font-semibold text-cyan-400">Overview</h2>
                     <p>Population: <span id="statPopulation" class="text-white">0</span> | Homes: <span id="statHomes" class="text-white">0</span> | Fires: <span id="statFires" class="text-white">0</span></p>
 
+                    <h2 class="text-base font-semibold text-cyan-400">Visitor Stats (via Firebase)</h2>
+                    <div id="visitorStats">
+                        <p>Live Visitors: <span id="statLiveVisitors" class="text-white">0</span></p>
+                        <p>Total Visits: <span id="statTotalVisits" class="text-white">0</span></p>
+                    </div>
                     <h2 class="text-base font-semibold text-cyan-400">Average Genes (Evolution)</h2>
                     <div id="geneStats"></div>
 
@@ -118,6 +113,9 @@
         </div>
     </div>
 
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    
     <script>
         // --- CONSTANTS MAPPING FROM PYTHON ---
         const ADULT_AGE = 100;
@@ -208,6 +206,82 @@
             'SOCIAL_SAD': { char: 's', color: COLORS.MAGENTA_DIM, dim: true },
         };
 
+        // --- NEW: FIREBASE CONFIGURATION ---
+        // *** IMPORTANT: REPLACE THESE WITH YOUR ACTUAL FIREBASE CONFIG ***
+        const firebaseConfig = {
+  apiKey: "AIzaSyBwTZ8em5cSphGRPDF4wZfiYCwAjCl_e3w",
+  authDomain: "alifesim-a5414.firebaseapp.com",
+  projectId: "alifesim-a5414",
+  storageBucket: "alifesim-a5414.firebasestorage.app",
+  messagingSenderId: "1009163650428",
+  appId: "1:1009163650428:web:262f97dc71218f91bb90f9",
+  measurementId: "G-VDCL7CCHS2"
+};
+
+        // Initialize Firebase
+        let db;
+        try {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
+            db = firebase.database();
+        } catch (e) {
+            console.error("Firebase initialization failed. Visitor stats will be disabled. Did you replace the placeholder keys?", e);
+            document.getElementById('visitorStats').innerHTML = '<p class="text-red-500">Firebase failed. Replace placeholder keys.</p>';
+        }
+
+        const VISITORS_REF = 'live_visitors'; 
+        const TOTAL_COUNT_REF = 'total_visits'; 
+        // Unique ID for this session (prevents duplicate counting on the same browser)
+        const SESSION_ID = Date.now().toString(36) + Math.random().toString(36).substring(2);
+        
+        function setupFirebaseTracker() {
+            if (!db) return; // Skip if Firebase failed to initialize
+
+            // 1. --- LIVE VISITOR COUNT (Presence) ---
+            const connectionRef = db.ref('.info/connected');
+            const userRef = db.ref(`${VISITORS_REF}/${SESSION_ID}`);
+            
+            // Set up presence tracking
+            connectionRef.on('value', (snapshot) => {
+                if (snapshot.val() === true) {
+                    // Remove user from the 'live_visitors' list if they disconnect
+                    userRef.onDisconnect().remove();
+
+                    // Add user to the 'live_visitors' list when they connect
+                    userRef.set({ 
+                        timestamp: firebase.database.ServerValue.TIMESTAMP,
+                        status: 'Online' 
+                    });
+                }
+            });
+
+            // Listen to changes in the live_visitors list
+            db.ref(VISITORS_REF).on('value', (snapshot) => {
+                const liveCount = snapshot.numChildren();
+                document.getElementById('statLiveVisitors').textContent = liveCount;
+            });
+
+            // 2. --- TOTAL VISITS COUNT (Transaction) ---
+            // Use sessionStorage to ensure the total count increments only once per session
+            if (!sessionStorage.getItem('visited')) {
+                db.ref(TOTAL_COUNT_REF).transaction((currentValue) => {
+                    return (currentValue || 0) + 1;
+                }, (error, committed, snapshot) => {
+                    if (committed) {
+                        sessionStorage.setItem('visited', 'true');
+                    }
+                });
+            }
+
+            // Listen to changes in the total count
+            db.ref(TOTAL_COUNT_REF).on('value', (snapshot) => {
+                document.getElementById('statTotalVisits').textContent = snapshot.val() || 0;
+            });
+        }
+        // --- END FIREBASE TRACKING LOGIC ---
+
+
         // --- HELPERS ---
 
         function clamp(value, minVal, maxVal) {
@@ -228,7 +302,7 @@
             return key.split(',').map(Number);
         }
 
-        // --- AGENT CLASS ---
+        // --- AGENT CLASS (UNCHANGED) ---
 
         class Agent {
             constructor(x, y, world, genes = null) {
@@ -245,7 +319,7 @@
                 this.wood_seeds_carried = Math.floor(Math.random() * 2);
                 this.social = Math.random() * (80.0 - 30.0) + 30.0;
                 this.home_location = null;
-                this.campfire_location = null; // NEW: Agent's owned campfire (key string)
+                this.campfire_location = null; 
                 this.social_buff_timer = 0;
                 this.contentment_buff_timer = 0;
                 this.state = "WANDERING";
@@ -1227,7 +1301,7 @@
             }
         }
 
-        // --- WORLD CLASS ---
+        // --- WORLD CLASS (UNCHANGED) ---
 
         class World {
             constructor(width, height) {
@@ -1488,7 +1562,7 @@
         }
 
 
-        // --- RENDERING AND MAIN LOOP ---
+        // --- RENDERING AND MAIN LOOP (UNCHANGED) ---
 
         class Renderer {
             constructor(world, canvasId) {
@@ -1658,7 +1732,7 @@
             }
         }
 
-        // --- STATS RENDERING ---
+        // --- STATS RENDERING (UNCHANGED) ---
         function updateStatsDisplay(world) {
             document.getElementById('turnCounter').textContent = world.turn;
             document.getElementById('generationCounter').textContent = world.generationCount;
@@ -1778,7 +1852,7 @@
         }
 
 
-        // --- MAIN INITIALIZATION ---
+        // --- MAIN INITIALIZATION (MODIFIED TO CALL FIREBASE TRACKER) ---
         let world, renderer, interval;
 
         function initializeSimulation() {
@@ -1805,6 +1879,9 @@
             
             renderer = new Renderer(world, 'worldCanvas');
             populateLegend();
+
+            // *** NEW: Initialize Firebase Tracker ***
+            setupFirebaseTracker();
 
             // Start the simulation loop
             if (interval) clearInterval(interval);
