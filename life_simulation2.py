@@ -61,7 +61,7 @@ GROW_TIME = 10
 # Tree Parameters
 TREE_GROW_TIME = 10 
 WOOD_SEED_CHANCE = 0.5
-FOOD_SEED_BASE_CHANCE = 0.1 # NEW: Base chance to drop a food seed when consuming food
+FOOD_SEED_BASE_CHANCE = 0.3 # NEW: Base chance to drop a food seed when consuming food
 
 # Campfire Parameters
 CAMPFIRE_BURN_TIME = 300 
