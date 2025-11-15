@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>A-Life Agent Mechanics Guide</title>
+    <title>A-Life: The Evolution of Behavior</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
@@ -29,193 +29,207 @@
 
     <div class="max-w-4xl mx-auto">
         <header class="mb-8">
-            <h1 class="text-4xl font-bold text-gray-900">A-Life: Agent Mechanics Guide</h1>
-            <p class="text-lg text-gray-500 mt-2">A look under the hood at the rules, goals, and evolution of the simulation agents.</p>
+            <h1 class="text-4xl font-bold text-gray-900">A-Life: The Evolution of Behavior</h1>
+            <p class="text-lg text-gray-500 mt-2">Discover the complex rules, emergent psychology, and evolving culture of your digital agents.</p>
         </header>
 
         <section class="mb-10">
-            <h2 class="text-2xl font-semibold mb-4 section-header">1. Core Mechanics & Needs</h2>
-            <p class="mb-4">Agents are driven by six primary needs and attributes. Their decision-making process is a strict priority list to manage these needs.</p>
+            <h2 class="text-2xl font-semibold mb-4 section-header">1. Nature vs. Nurture: Evolve or Learn?</h2>
+            <p class="mb-4">Agents are defined by two distinct systems that shape their identity: **Genes (Nature)**, which are inherited at birth, and **Skills (Nurture)**, which are learned through action and communication.</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-purple-500">
+                    <h3 class="font-semibold text-lg mb-1">Evolution (Genes)</h3>
+                    <p class="text-sm mb-2">Inherited traits that define an agent's potential. They only change through generations and mutation.</p>
+                    <ul class="list-disc ml-5 text-sm space-y-1">
+                        <li>**Vision/Speed:** How far they see and how fast they move.</li>
+                        <li>**Metabolism:** Energy efficiency (lower is better).</li>
+                        <li>**Aggression:** Base chance to attack (if Love is 0).</li>
+                        <li>**Builder:** Tendency to build homes and campfires.</li>
+                        <li>**Mating Drive:** Energy needed to seek a partner.</li>
+                        <li>**Sociability:** How much they *need* social contact.</li>
+                        <li>**Farming:** Tendency to plant seeds.</li>
+                        <li>**Personality:** (See Section 2) Their core social archetype.</li>
+                    </ul>
+                </div>
+
+                <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-green-500">
+                    <h3 class="font-semibold text-lg mb-1">Learning (Skills)</h3>
+                    <p class="text-sm mb-2">Acquired traits that improve efficiency. These are learned by individuals and *shared* with the community.</p>
+                    <ul class="list-disc ml-5 text-sm space-y-1">
+                        <li>**Building Skill:** Reduces wood cost for structures.</li>
+                        <li>**Navigation Skill:** Reduces energy cost of moving.</li>
+                        <li>**Foraging Skill:** Increases energy gain from food.</li>
+                        <li>**Combat Skill:** Increases damage in a fight.</li>
+                        <li>**Social Skill:** Increases social gain from chatting.</li>
+                        <li>**Farming Skill:** Learned by planting.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+        
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-4 section-header">2. The Agent's Mind: Psychology & Society</h2>
+            <p class="mb-4">Agents aren't just robots. They are driven by a complex psychological model that defines their well-being, their social group, and their capacity for conflict.</p>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-red-500">
-                    <h3 class="font-semibold text-lg mb-1">Energy (Survival)</h3>
-                    <ul class="list-disc ml-5 text-sm space-y-1">
-                        <li>**Drain:** Lost every turn based on the inherited <code class="code-block inline-block p-1">metabolism</code> gene. Movement costs extra energy.</li>
-                        <li>**Gain:** Gained by consuming food (carried or foraged).</li>
-                        <li>**Crisis:** If energy hits **0**, the agent dies of starvation.</li>
-                    </ul>
+                    <h3 class="font-semibold text-lg mb-1">Core Needs (Energy & Social)</h3>
+                    <p class="text-sm mb-2">Agents constantly balance **Energy** (from food) and **Social** (from friends/campfires). If either gets too low, they enter a 'Sad/Crisis' ('s') state to prioritize it.</p>
                 </div>
-
-                <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-blue-500">
-                    <h3 class="font-semibold text-lg mb-1">Social (Community)</h3>
-                    <ul class="list-disc ml-5 text-sm space-y-1">
-                        <li>**Drain:** Lost when the agent is alone, based on the <code class="code-block inline-block p-1">sociability</code> gene.</li>
-                        <li>**Gain:** Gained by communicating with other agents or resting near a Campfire or Home.</li>
-                        <li>**Crisis:** Low social (below **20**) causes the 'Sad/Crisis' state ('s').</li>
-                    </ul>
-                </div>
-
+                
                 <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-pink-500">
-                    <h3 class="font-semibold text-lg mb-1">Love (Well-being/Morality)</h3>
+                    <h3 class="font-semibold text-lg mb-1">Love & Apathy (The Morality Engine)</h3>
+                    <p class="text-sm mb-2">**Love** is the master stat for well-being. It's gained from positive interactions (eating, socializing) and lost during struggle.</p>
                     <ul class="list-disc ml-5 text-sm space-y-1">
-                        <li>**Gain:** Increases passively when well-fed and social; major gains from eating and socializing.</li>
-                        <li>**Loss:** Lost when struggling (low energy/social).</li>
-                        <li>**Impact:** **Combat is locked** unless the agent's Love drops to **0** and their Energy is high enough to fight. A high Love score prevents aggressive behavior.</li>
+                        <li>**The "Love Lock":** An agent **cannot be aggressive** if their Love score is above 0. It acts as their moral compass.</li>
+                        <li>**Apathy:** If Love hits 0, the agent's compass breaks. They become **Apathetic** ('s'), suffering metabolism penalties and losing social drive. This is the only state where they can choose to attack.</li>
                     </ul>
                 </div>
-
-                <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-gray-500">
-                    <h3 class="font-semibold text-lg mb-1">Age & Life Cycle</h3>
+                
+                <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-blue-500 md:col-span-2">
+                    <h3 class="font-semibold text-lg mb-1">Personalities (The Social Fabric)</h3>
+                    <p class="text-sm mb-2">Agents aren't all the same. Each is born with one of four personalities that dictates who they'll interact with—or who they'll fight.</p>
                     <ul class="list-disc ml-5 text-sm space-y-1">
-                        <li>**Childhood:** Below <code class="code-block inline-block p-1">ADULT_AGE</code> (100 turns). Metabolism cost is subsidized by parents.</li>
-                        <li>**Old Age:** Begins at <code class="code-block inline-block p-1">OLD_AGE</code> (1500 turns). Agents may die if energy drops too low.</li>
-                        <li>**Max Age:** Natural death occurs at <code class="code-block inline-block p-1">MAX_AGE</code> (2000 turns).</li>
-                    </ul>
-                </div>
-            </div>
-        </section>
-        
-        <section class="mb-10">
-            <h2 class="text-2xl font-semibold mb-4 section-header">2. Conflict Resolution (Combat & Retaliation)</h2>
-            <p class="mb-4">Conflict is rare, as it is heavily restricted by the **Love** mechanic. It is usually triggered by desperation.</p>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-red-500">
-                    <h3 class="font-semibold text-lg mb-1">Attack Trigger ('X')</h3>
-                    <ul class="list-disc ml-5 text-sm space-y-1">
-                        <li>**Conditions:** An agent can only attack if their **Love score is 0** AND they are on the same tile as another agent.</li>
-                        <li>**Aggression:** The base chance of attack is set by the <code class="code-block inline-block p-1">aggression</code> gene, but this chance is greatly increased when the agent is struggling (low energy/social).</li>
-                        <li>**Outcome:** The aggressor gains a small amount of energy back to stabilize, but the target immediately enters **Retaliation**.</li>
-                    </ul>
-                </div>
-
-                <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-red-800">
-                    <h3 class="font-semibold text-lg mb-1">Retaliation Priority ('r')</h3>
-                    <ul class="list-disc ml-5 text-sm space-y-1">
-                        <li>**Priority:** Retaliation is the **highest priority state** (Section 6, Priority 1). The agent will immediately ignore all other needs (even starvation) to seek the attacker.</li>
-                        <li>**Skill Gain:** Both the attacker and the defender gain points in their **Combat Skill** regardless of the outcome.</li>
-                        <li>**Consequence:** Once the retaliating agent reaches the attacker and completes the attack, they reset their state and lose the retaliation trigger.</li>
+                        <li>**Cooperative:** The standard, social agent.</li>
+                        <li>**Isolated:** A-social. Prefers to be alone.</li>
+                        <li>**Judgmental:** Clashes with specific personalities (like Isolated).</li>
+                        <li>**Aggressive Cooperator:** A social agent who is highly likely to join a Vengeance posse (see Section 4) but also clashes with Judgmental agents.</li>
+                        <li>**Clashes:** When conflicting personalities meet, they may refuse to socialize or even trigger a <code class="code-block inline-block p-1">COMBAT_CONFLICT</code>.</li>
                     </ul>
                 </div>
             </div>
         </section>
-        
-        <section class="mb-10">
-            <h2 class="text-2xl font-semibold mb-4 section-header">3. Genes (Evolutionary Traits)</h2>
-            <p class="mb-4">Genes are fixed at birth, inherited from parents, and modified slightly by mutation. They determine the agent's potential and default behavior.</p>
-
-            <ul class="list-disc ml-5 text-md space-y-2">
-                <li>**Vision:** Determines the radius (in tiles) an agent can see resources, homes, and other agents.</li>
-                <li>**Speed:** Determines the number of tiles an agent can move per turn.</li>
-                <li>**Metabolism:** The rate at which the agent consumes energy each turn (lower is better).</li>
-                <li>**Aggression:** The base chance of attacking another agent when on the same tile (only when Love is 0).</li>
-                <li>**Builder:** The tendency to prioritize collecting wood and building homes or campfires.</li>
-                <li>**Mating Drive:** The minimum Energy required for an adult agent to engage in mating.</li>
-                <li>**Sociability:** How quickly the agent's Social need drops when they are isolated.</li>
-                <li>**Farming:** The tendency to use carried seeds to plant food or trees.</li>
-            </ul>
-        </section>
 
         <section class="mb-10">
-            <h2 class="text-2xl font-semibold mb-4 section-header">4. Skills (Individual Learning)</h2>
-            <p class="mb-4">Skills are learned through practice (e.g., building) and social interaction. They improve the efficiency of actions.</p>
-
-            <ul class="list-disc ml-5 text-md space-y-2">
-                <li>**Building Skill:** Reduces the wood cost required to build a Home or Campfire.</li>
-                <li>**Navigation Skill:** Reduces the energy cost of movement.</li>
-                <li>**Foraging Skill:** Increases the energy gained from consuming food.</li>
-                <li>**Combat Skill:** Increases the damage dealt during an attack.</li>
-                <li>**Social Skill:** Increases the social need recovery gained from communicating with others.</li>
-                <li>**Farming Skill:** Learned through planting seeds.</li>
-            </ul>
-        </section>
-        
-        <section class="mb-10">
-            <h2 class="text-2xl font-semibold mb-4 section-header">5. Social & Cultural Exchange (Communal Life)</h2>
-            <p class="mb-4">When agents engage in the **Communicate ('T')** state, they perform several critical cultural activities:</p>
+            <h2 class="text-2xl font-semibold mb-4 section-header">3. From Survival to Culture: Building a Society</h2>
+            <p class="mb-4">Watch as agents progress from simple survival to a true community. They build permanent structures, share knowledge, and collaborate to overcome disaster.</p>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-yellow-700">
+                    <h3 class="font-semibold text-lg mb-1">Communal Hubs (Homes & Campfires)</h3>
+                    <p class="text-sm mb-2">Agents build structures that benefit everyone. **Homes (H)** give a powerful buff to the owner and their children, while **Campfires (C)** offer a communal buff to *all* nearby agents, acting as social hubs.</p>
+                </div>
+
                 <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-yellow-500">
                     <h3 class="font-semibold text-lg mb-1">Peer-to-Peer Skill Sharing</h3>
-                    <ul class="list-disc ml-5 text-sm space-y-1">
-                        <li>**Mechanism:** The agent with the *higher* skill in a given area (e.g., Building) transfers a small fraction of that skill to the agent with the *lower* skill.</li>
-                        <li>**Benefit:** This creates a cultural uplift, making less experienced agents more efficient quickly.</li>
-                    </ul>
-                </div>
-
-                <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-purple-500">
-                    <h3 class="font-semibold text-lg mb-1">Global Knowledge Library ('L')</h3>
-                    <ul class="list-disc ml-5 text-sm space-y-1">
-                        <li>**Contribution:** When an agent's individual skill is high (above a threshold of 2.0), they automatically contribute to the world's **Global Knowledge Library** during communication.</li>
-                        <li>**Learning:** All agents passively draw a tiny fraction of skill from the Global Library every turn, even if they aren't communicating. This represents ancestral/communal knowledge.</li>
-                    </ul>
+                    <p class="text-sm mb-2">When agents **Communicate ('T')**, they don't just chat. The agent with a *higher* skill (e.g., Building) transfers a fraction of that knowledge to the less-skilled agent, creating a cultural uplift.</p>
                 </div>
                 
-                <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-green-700 md:col-span-2">
-                    <h3 class="font-semibold text-lg mb-1">Communal Planting (Crisis Response)</h3>
+                <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-purple-500 md:col-span-2">
+                    <h3 class="font-semibold text-lg mb-1">The Global Knowledge Library ('L')</h3>
+                    <p class="text-sm mb-2">This is one of the most powerful emergent features. When a highly-skilled agent communicates, they don't just teach their partner—they contribute to the **Global Knowledge Library**, a 'tech tree' for the entire civilization.</p>
                     <ul class="list-disc ml-5 text-sm space-y-1">
-                        <li>**Trigger:** This happens during communication if both agents have seeds AND the global food supply is scarce (less than <code class="code-block inline-block p-1">STARTING_FOOD</code>).</li>
-                        <li>**Action:** The two agents **pool their seeds** and instantly create a mature food source at the **Library Location ('L')**. This is a powerful, collective survival response that focuses resources on a known community spot.</li>
+                        <li>**Contribution:** High-skill agents "upload" their knowledge when they talk.</li>
+                        <li>**Learning:** All agents passively "download" a tiny fraction from this global pool every turn. This represents ancestral knowledge, allowing new generations to become skilled faster.</li>
                     </ul>
                 </div>
             </div>
         </section>
 
         <section class="mb-10">
-            <h2 class="text-2xl font-semibold mb-4 section-header">6. Decision Priority List</h2>
-            <p class="mb-4">Agents decide what to do in a strict hierarchical order. The first satisfied condition determines their state for the turn:</p>
+            <h2 class="text-2xl font-semibold mb-4 section-header">4. The Dark Side: Conflict, Crime & Vengeance</h2>
+            <p class="mb-4">Society isn't always peaceful. Desperation, personality clashes, and tragedy can lead to violence. But this violence has complex, emergent consequences.</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-red-500">
+                    <h3 class="font-semibold text-lg mb-1">Aggression & Retaliation ('X', 'r')</h3>
+                    <ul class="list-disc ml-5 text-sm space-y-1">
+                        <li>**Trigger:** An agent can only initiate an attack ('X') if their **Love is 0** (Apathetic) and they are on the same tile as a victim.</li>
+                        <li>**Retaliation:** Being attacked is a high-priority event. The victim will **immediately** stop all other tasks to hunt down their attacker ('r'), ignoring their own needs.</li>
+                    </ul>
+                </div>
+                
+                <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-red-800">
+                    <h3 class="font-semibold text-lg mb-1">The Vengeance System ('V')</h3>
+                    <p class="text-sm mb-2">This is not simple retaliation. This is emergent *justice*.</p>
+                    <ul class="list-disc ml-5 text-sm space-y-1">
+                        <li>**Trigger:** If a **child dies**... nearby agents who witness the death will blame the child's closest living parent (for negligence) and enter the **Avenging ('V')** state.</li>
+                        <li>**The Posse:** An avenging agent becomes a vigilante. They will actively try to **recruit other nearby agents** into a "posse" to hunt down the "negligent" parent.</li>
+                        <li>**Consequence:** This is a high-priority state that can pull multiple agents into a cross-map hunt, leading to a <code class="code-block inline-block p-1">COMBAT_VENDETTA</code>.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-4 section-header">5. A Living, Breathing World</h2>
+            <p class="mb-4">The world is a character. Agents' actions have global consequences, and the world itself will fight back, forcing the agents to adapt or die.</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-green-700">
+                    <h3 class="font-semibold text-lg mb-1">Environmental Impact</h3>
+                    <p class="text-sm mb-2">Agents' actions have consequences. The world has an **Environmental Health** score.</p>
+                    <ul class="list-disc ml-5 text-sm space-y-1">
+                        <li>**Degradation:** Gathering food or wood *damages* the environment, reducing the world's health.</li>
+                        <li>**Healing:** Planting seeds ('p') *heals* the environment.</li>
+                        <li>**Consequence:** A low-health environment **spawns less food and wood**, creating a feedback loop of scarcity and desperation.</li>
+                    </ul>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-orange-500">
+                    <h3 class="font-semibold text-lg mb-1">Communal Crisis Response</h3>
+                    <p class="text-sm mb-2">Agents are hard-coded to survive as a species. If the simulation detects a crisis, agents will override their individual desires:</p>
+                    <ul class="list-disc ml-5 text-sm space-y-1">
+                        <li>**Famine/Low Pop:** If food is scarce or population is low, agents are **mandated** to use any seeds they carry to plant.</li>
+                        <li>**Communal Planting:** During communication, if food is scarce, agents will **pool their seeds** and instantly create a mature food source at the Library ('L') as a community offering.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-4 section-header">6. An Agent's "AI": The Priority List</h2>
+            <p class="mb-4">How does an agent "decide" what to do? They use a strict priority list. The first condition met becomes their action for the turn. This "code" is what brings their personality and needs to life.</p>
 
             <ol class="list-decimal ml-5 text-md space-y-2 font-mono bg-gray-100 p-4 rounded-lg">
+                <li class="font-bold text-red-800">Vengeance:</li>
+                <p class="font-normal text-gray-700 ml-4">If avenging a child, hunt the target. Recruit a posse.</p>
+
                 <li class="font-bold text-red-600">Retaliation:</li>
-                <p class="font-normal text-gray-700 ml-4">If the agent was attacked, they immediately seek and attack the aggressor.</p>
+                <p class="font-normal text-gray-700 ml-4">If attacked, hunt the attacker.</p>
 
-                <li class="font-bold text-red-600">Crisis State:</li>
-                <p class="font-normal text-gray-700 ml-4">If Energy is below 20 or Social is below 20, they enter the 'Sad/Crisis' state ('s') to prioritize immediate survival/social contact.</p>
+                <li class="font-bold text-purple-600">Crisis State (Apathy/Sad):</li>
+                <p class="font-normal text-gray-700 ml-4">If Energy/Social is critical, enter 'Sad' ('s') to find help.</p>
 
-                <li class="font-bold text-orange-600">Energy & Survival:</li>
-                <p class="font-normal text-gray-700 ml-4">If Energy is low (below 70, or 100 for children), or they are carrying food and need to eat it, they enter the 'Foraging' state ('f').</p>
+                <li class="font-bold text-orange-600">Global Crisis Response:</li>
+                <p class="font-normal text-gray-700 ml-4">If famine/low pop, **must** plant seeds. If near a starving agent, **must** share food.</p>
+
+                <li class="font-bold text-orange-500">Energy & Survival:</li>
+                <p class="font-normal text-gray-700 ml-4">If Energy is low, eat or find food ('f').</p>
 
                 <li class="font-bold text-yellow-600">Campfire Refueling:</li>
-                <p class="font-normal text-gray-700 ml-4">If a nearby Campfire is about to burn out (timer below **100**), they seek wood and enter 'Refueling Fire' ('R').</p>
-
+                <p class="font-normal text-gray-700 ml-4">If a nearby Campfire is dying, get wood to refuel it ('R').</Route>
+                
                 <li class="font-bold text-blue-600">Home Repair:</li>
-                <p class="font-normal text-gray-700 ml-4">If they own a Home and it is damaged, they seek wood and enter 'Repair Home' ('E').</p>
-
-                <li class="font-bold text-blue-600">Social Needs:</li>
-                <p class="font-normal text-gray-700 ml-4">If Social is low (below **60**), they enter 'Seek Social' ('t') to find agents or Campfires.</p>
-
-                <li class="font-bold text-blue-600">Home Building/Claiming:</li>
-                <p class="font-normal text-gray-700 ml-4">If they have no Home, they try to 'Claim Home' ('k') or gather wood/seek a spot to 'Build Home' ('b').</p>
-
-                <li class="font-bold text-green-600">Farming/Planting:</li>
-                <p class="font-normal text-gray-700 ml-4">If they have seeds and enough energy, they prioritize 'Planting Food' ('p') or 'Planting Wood' (Tree).</p>
+                <p class="font-normal text-gray-700 ml-4">If their Home is damaged, get wood to repair it ('E').</p>
                 
-                <li class="font-bold text-red-500">Campfire Building:</li>
-                <p class="font-normal text-gray-700 ml-4">If they have no Campfire and high energy/social, they gather wood to 'Build Fire' ('c').</p>
-                
-                <li class="font-bold text-purple-600">Seeking Library:</li>
-                <p class="font-normal text-gray-700 ml-4">If content, they have a 20% chance to move toward the Library ('L') to passively gain knowledge.</p>
+                <li class_ass="font-bold text-blue-500">Social Needs:</li>
+                <p class="font-normal text-gray-700 ml-4">If Social is low, seek agents or Campfires ('t'). If alone, go to the Library ('L').</p>
 
+                <li class="font-bold text-blue-700">Home Building/Claiming:</li>
+                <p class="font-normal text-gray-700 ml-4">If homeless, claim an empty Home ('k') or build a new one ('b').</lRoute>
+                
+                <li class="font-bold text-green-600">Farming (Normal):</li>
+                <p class="font-normal text-gray-700 ml-4">If all needs are met and they have seeds, plant them ('p').</p>
+                
                 <li class="font-bold text-gray-500">Wandering & Contentment:</li>
-                <p class="font-normal text-gray-700 ml-4">If all needs are sufficiently met, they enter 'Wandering' ('A'). They **pause movement** if Energy > 100 and Social > **80**.</p>
+                <p class="font-normal text-gray-700 ml-4">If all needs are met, wander ('A') and explore. They will **pause** if very content (high energy/social) or may visit the Library ('L').</p>
             </ol>
         </section>
 
         <section class="mb-10">
-            <h2 class="text-2xl font-semibold mb-4 section-header">7. World Objects & Interaction</h2>
+            <h2 class="text-2xl font-semibold mb-4 section-header">7. The Tools of Society (World Objects)</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-yellow-700">
                     <h3 class="font-semibold text-lg mb-1">Homes (H / h)</h3>
                     <ul class="list-disc ml-5 text-sm space-y-1">
-                        <li>**Ownership:** Homes can be built or claimed. They provide an energy buff (50% metabolism reduction) and social recovery for the owner and their children.</li>
-                        <li>**Decay:** Homes lose durability over time. If they hit 0, they are destroyed, dropping wood, and the former owner loses the location.</li>
+                        <li>**Ownership:** Provides an energy buff (50% metabolism reduction) and social recovery for the owner and their children.</li>
+                        <li>**Decay:** Homes lose durability over time and must be repaired ('E'). If destroyed, they drop wood and the owner becomes homeless.</li>
                     </ul>
                 </div>
                 <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-red-600">
                     <h3 class="font-semibold text-lg mb-1">Campfires (C)</h3>
                     <ul class="list-disc ml-5 text-sm space-y-1">
-                        <li>**Buffs:** Provide a communal social buff and a small energy buff (10% metabolism reduction) to all nearby agents.</li>
+                        <li>**Buffs:** Provide a communal social buff and a small energy buff (10% metabolism reduction) to *all* nearby agents.</li>
                         <li>**Maintenance:** Campfires burn down over time and must be refueled with wood by a passing agent.</li>
                     </ul>
                 </div>
