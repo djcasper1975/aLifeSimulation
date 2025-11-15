@@ -77,7 +77,7 @@ except ImportError:
 # --- SIMULATION PARAMETERS (User's "Hardcore" settings) ---
 WORLD_WIDTH = 70
 WORLD_HEIGHT = 30
-STARTING_AGENTS = 15
+STARTING_AGENTS = 16
 # --- FINAL BALANCE FIX: Increase starting food to reduce early competition ---
 STARTING_FOOD = 120  
 STARTING_WOOD = 80  
@@ -138,7 +138,7 @@ def get_distance(x1, y1, x2, y2):
     """
     Calculates Euclidean distance.
     """
-    return math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
+    return math.sqrt((x1 - 2)**2 + (y1 - y2)**2)
 
 # --- AGENT CLASS ---
 
@@ -182,9 +182,14 @@ class Agent:
         self.struggle_timer = 0 
         self.was_attacked_by = None 
         
+        # --- NEW: Vengeance System ---
+        self.avenging_target_id = None 
+        # --- END NEW ---
+        
         # Age Tracking and Parental Tracking
         self.age = 0 
         self.children_ids = set() 
+        self.parent_ids = set() # NEW: Track parents
         
         # Love System
         self.love = STARTING_LOVE
@@ -374,6 +379,19 @@ class Agent:
         global_food_crisis = len(self.world.food) < CRITICAL_FOOD_COUNT
         population_low = len(self.world.agents) < MIN_POPULATION_TARGET
         
+        # --- NEW: Vengeance System Priority ---
+        # Priority -2: Avenging (NEW)
+        if self.avenging_target_id is not None:
+            # Check if target still exists
+            target = self.world.get_agent_by_id(self.avenging_target_id)
+            if target:
+                self.state = "AVENGING"
+                return
+            else:
+                # Target is dead, vengeance is over
+                self.avenging_target_id = None
+        # --- END NEW ---
+
         # Priority -1: Retaliation
         if self.was_attacked_by is not None:
             self.state = "RETALIATING" 
@@ -761,11 +779,8 @@ class Agent:
             pass
         
         elif self.state == "RETALIATING":
-            attacker = None
-            for agent in self.world.agents: 
-                if agent.id == self.was_attacked_by:
-                    attacker = agent
-                    break
+            # FIX: Use the efficient get_agent_by_id
+            attacker = self.world.get_agent_by_id(self.was_attacked_by)
             
             if attacker:
                 dist = get_distance(self.x, self.y, attacker.x, attacker.y)
@@ -775,8 +790,26 @@ class Agent:
                 else:
                     self.move_towards(attacker.x, attacker.y) 
             else:
+                # Attacker is gone
                 self.was_attacked_by = None
                 self.state = "WANDERING"
+
+        # --- NEW: Vengeance State ---
+        elif self.state == "AVENGING":
+            target_parent = self.world.get_agent_by_id(self.avenging_target_id)
+            
+            if target_parent:
+                dist = get_distance(self.x, self.y, target_parent.x, target_parent.y)
+                if dist < 2.0:
+                    self.attack(target_parent)
+                    # Vengeance continues until the target is dead
+                else:
+                    self.move_towards(target_parent.x, target_parent.y) 
+            else:
+                # Target is dead. Vengeance is over.
+                self.avenging_target_id = None
+                self.state = "WANDERING"
+        # --- END: Vengeance State ---
         
         elif self.state == "SEEKING_SOCIAL": 
             # Check for agents *or* campfires
@@ -1105,6 +1138,11 @@ class Agent:
             if new_agent:
                 new_agent.skills = {k: 0.0 for k in self.skills}
                 new_agent.home_location = None
+                
+                # --- NEW: Assign parentage ---
+                new_agent.parent_ids = {self.id, partner.id}
+                # --- END NEW ---
+                
                 self.children_ids.add(new_agent.id)
                 partner.children_ids.add(new_agent.id)
             
@@ -1258,6 +1296,45 @@ class Agent:
     def die(self, reason='UNKNOWN'):
         """Removes the agent from the world and makes their home 'unclaimed'."""
         
+        # --- NEW: Vengeance System ---
+        # Check if a child died and if there were witnesses
+        # This check must happen *before* the agent is removed from the world
+        if self.age < ADULT_AGE and self.parent_ids:
+            witnesses = []
+            for agent in self.world.agents:
+                # Skip self and parents from being witnesses
+                if agent.id == self.id or agent.id in self.parent_ids:
+                    continue 
+                
+                # Check if the dying child is within the *agent's* vision
+                vision_radius = int(agent.genes['vision'])
+                dist = get_distance(agent.x, agent.y, self.x, self.y)
+                
+                if dist <= vision_radius:
+                    witnesses.append(agent)
+            
+            # Find the closest living parent to blame
+            if witnesses:
+                closest_parent_agent = None
+                min_dist_to_parent = float('inf')
+                
+                for p_id in self.parent_ids:
+                    parent = self.world.get_agent_by_id(p_id)
+                    if parent:
+                        # Find distance from *child* to parent
+                        dist = get_distance(self.x, self.y, parent.x, parent.y)
+                        if dist < min_dist_to_parent:
+                            min_dist_to_parent = dist
+                            closest_parent_agent = parent
+                
+                # If a living parent is found, assign vengeance task to all witnesses
+                if closest_parent_agent:
+                    for witness in witnesses:
+                        witness.state = "AVENGING"
+                        witness.avenging_target_id = closest_parent_agent.id
+        # --- END: Vengeance System ---
+        
+        
         self.world.death_causes[reason] = self.world.death_causes.get(reason, 0) + 1
         
         death_location = (self.x, self.y)
@@ -1271,10 +1348,12 @@ class Agent:
             self.world.food.add(death_location)
             self.world.food_freshness[death_location] = FOOD_FRESHNESS 
         
+        # Remove self from any parent's child list
         dying_agent_id = self.id
-        for agent in self.world.agents[:]:
-            if dying_agent_id in agent.children_ids:
-                agent.children_ids.discard(dying_agent_id)
+        for parent_id in self.parent_ids:
+            parent = self.world.get_agent_by_id(parent_id)
+            if parent and dying_agent_id in parent.children_ids:
+                parent.children_ids.discard(dying_agent_id)
         
         if self in self.world.agents:
             self.world.agents.remove(self)
@@ -1636,6 +1715,12 @@ class World:
                 char = 'r'
                 color = Style.BRIGHT + Fore.RED
             
+            # --- NEW: Vengeance State ---
+            elif agent.state == "AVENGING":
+                char = 'V'
+                color = Style.BRIGHT + Fore.RED
+            # --- END NEW ---
+            
             elif agent.state == "SEEKING_SOCIAL":
                 char = 't'
                 if agent.social_buff_timer == 0:
@@ -1712,6 +1797,7 @@ class World:
             (Style.BRIGHT + Fore.WHITE + " g" + Style.RESET_ALL + ": Share Wood/Food") + " | " +
             (Style.BRIGHT + Fore.RED + " X" + Style.RESET_ALL + ": Attack") + " | " +
             (Style.BRIGHT + Fore.RED + " r" + Style.RESET_ALL + ": Retaliate") + " | " + 
+            (Style.BRIGHT + Fore.RED + " V" + Style.RESET_ALL + ": Avenge") + " | " + # MODIFIED
             (Style.BRIGHT + Fore.MAGENTA + " m" + Style.RESET_ALL + ": Mate")
         )
         output_buffer.append(

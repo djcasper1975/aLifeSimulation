@@ -475,7 +475,7 @@
             WHITE_NORMAL: '#f3f4f6', // t
             YELLOW_BRIGHT: '#fcd34d', // b, W
             YELLOW_NORMAL: '#f59e0b', // w, E
-            RED_BRIGHT: '#f87171', // X, r, R, C
+            RED_BRIGHT: '#f87171', // X, r, V, R, C
             RED_NORMAL: '#ef4444', // c
             BLUE_BRIGHT: '#60a5fa', // H, C, k
             BLUE_NORMAL: '#3b82f6', // B, h
@@ -506,6 +506,7 @@
             'MATING': { char: 'm', color: COLORS.MAGENTA_BRIGHT, dim: false },
             'ATTACKING': { char: 'X', color: COLORS.RED_BRIGHT, dim: false },
             'RETALIATING': { char: 'r', color: COLORS.RED_BRIGHT, dim: false },
+            'AVENGING': { char: 'V', color: COLORS.RED_BRIGHT, dim: false }, // <-- NEW
             'SEEKING_SOCIAL': { char: 't', color: COLORS.WHITE_NORMAL, dim: false },
             'COMMUNICATING': { char: 'T', color: COLORS.WHITE_BRIGHT, dim: false },
             'SEEKING_LIBRARY': { char: 'L', color: COLORS.MAGENTA_BRIGHT, dim: false },
@@ -557,8 +558,18 @@
                 this.memory = { 'food': new Set(), 'wood': new Set() };
                 this.struggle_timer = 0;
                 this.was_attacked_by = null;
+                
+                // --- NEW: Vengeance System ---
+                this.avenging_target_id = null; 
+                // --- END NEW ---
+                
                 this.age = 0;
                 this.children_ids = new Set();
+                
+                // --- NEW: Track parents ---
+                this.parent_ids = new Set(); 
+                // --- END NEW ---
+                
                 this.love = simSettings.STARTING_LOVE; // MODIFIED
                 this.skills = {
                     'foraging': 0.0, 'social': 0.0, 'building': 0.0,
@@ -755,6 +766,19 @@
                 // MODIFIED
                 const globalFoodCrisis = Object.keys(this.world.food).length < simSettings.CRITICAL_FOOD_COUNT;
                 const populationLow = this.world.agents.length < simSettings.MIN_POPULATION_TARGET;
+                
+                // --- NEW: Vengeance System Priority ---
+                if (this.avenging_target_id !== null) {
+                    const target = this.world.getAgentById(this.avenging_target_id);
+                    if (target) {
+                        this.state = "AVENGING";
+                        return;
+                    } else {
+                        // Target is dead, vengeance is over
+                        this.avenging_target_id = null;
+                    }
+                }
+                // --- END NEW ---
                 
                 if (this.was_attacked_by !== null) {
                     this.state = "RETALIATING"; 
@@ -1207,6 +1231,25 @@
                         }
                         break;
                     
+                    // --- NEW: Vengeance State ---
+                    case "AVENGING":
+                        const targetParent = this.world.getAgentById(this.avenging_target_id);
+                        if (targetParent) {
+                            const dist = getDistance(this.x, this.y, targetParent.x, targetParent.y);
+                            if (dist < 2.0) {
+                                this.attack(targetParent);
+                                // Vengeance continues until target is dead
+                            } else {
+                                this.moveTowards(targetParent.x, targetParent.y);
+                            }
+                        } else {
+                            // Target is dead. Vengeance is over.
+                            this.avenging_target_id = null;
+                            this.state = "WANDERING";
+                        }
+                        break;
+                    // --- END: Vengeance State ---
+                    
                     case "SEEKING_SOCIAL":
                         const nearbyCampfire = this.world.getNearest(this.x, this.y, visionRadius, this.world.campfires);
                         
@@ -1537,6 +1580,11 @@
                     if (newAgent) {
                         newAgent.skills = { 'foraging': 0.0, 'social': 0.0, 'building': 0.0, 'navigation': 0.0, 'combat': 0.0, 'farming': 0.0 };
                         newAgent.home_location = null;
+                        
+                        // --- NEW: Assign parentage ---
+                        newAgent.parent_ids = new Set([this.id, partner.id]);
+                        // --- END NEW ---
+                        
                         this.children_ids.add(newAgent.id);
                         partner.children_ids.add(newAgent.id);
                     }
@@ -1699,6 +1747,55 @@
             }
 
             die(reason = 'UNKNOWN') {
+                
+                // --- NEW: Vengeance System ---
+                // This check must happen *before* the agent is removed from the world
+                if (this.age < simSettings.ADULT_AGE && this.parent_ids.size > 0) {
+                    const witnesses = [];
+                    for (const agent of this.world.agents) {
+                        // Skip self and parents from being witnesses
+                        if (agent.id === this.id || this.parent_ids.has(agent.id)) {
+                            continue;
+                        }
+                        
+                        // Check if the dying child is within the *agent's* vision
+                        const visionRadius = Math.floor(agent.genes['vision']);
+                        const dist = getDistance(agent.x, agent.y, this.x, this.y);
+                        
+                        if (dist <= visionRadius) {
+                            witnesses.push(agent);
+                        }
+                    }
+                    
+                    // Find the closest living parent to blame
+                    if (witnesses.length > 0) {
+                        let closestParentAgent = null;
+                        let minDistToParent = Infinity;
+                        
+                        for (const p_id of this.parent_ids) {
+                            const parent = this.world.getAgentById(p_id);
+                            if (parent) {
+                                // Find distance from *child* to parent
+                                const dist = getDistance(this.x, this.y, parent.x, parent.y);
+                                if (dist < minDistToParent) {
+                                    minDistToParent = dist;
+                                    closestParentAgent = parent;
+                                }
+                            }
+                        }
+                        
+                        // If a living parent is found, assign vengeance task to all witnesses
+                        if (closestParentAgent) {
+                            for (const witness of witnesses) {
+                                witness.state = "AVENGING";
+                                witness.avenging_target_id = closestParentAgent.id;
+                            }
+                        }
+                    }
+                }
+                // --- END: Vengeance System ---
+                
+                
                 this.world.deathCauses[reason] = (this.world.deathCauses[reason] || 0) + 1;
                 
                 const deathLocationKey = arrayToKey([this.x, this.y]);
@@ -1713,12 +1810,15 @@
                     this.world.foodFreshness[deathLocationKey] = simSettings.FOOD_FRESHNESS;
                 }
                 
+                // --- MODIFIED: Use new parent_ids set for efficiency ---
                 const dyingAgentId = this.id;
-                this.world.agents.forEach(agent => {
-                    if (agent.children_ids.has(dyingAgentId)) {
-                        agent.children_ids.delete(dyingAgentId);
+                for (const parent_id of this.parent_ids) {
+                    const parent = this.world.getAgentById(parent_id);
+                    if (parent && parent.children_ids.has(dyingAgentId)) {
+                        parent.children_ids.delete(dyingAgentId);
                     }
-                });
+                }
+                // --- END MODIFIED ---
                 
                 this.world.agents = this.world.agents.filter(a => a.id !== this.id);
                 
@@ -1919,7 +2019,10 @@
                 
                 for (let i = this.agents.length - 1; i >= 0; i--) {
                     const agent = this.agents[i];
-                    agent.update();
+                    // Check if agent still exists (it might have died this turn)
+                    if (this.agents.includes(agent)) {
+                        agent.update();
+                    }
                 }
                 
                 this.spawnResources();
@@ -1934,6 +2037,14 @@
                 
                 if (agentsForStats.length === 0) {
                     this.stats = { population: 0, homes_built: 0, active_campfires: 0 };
+                    // Clear all stats to 0
+                    for (const gene in GENE_RANGES) {
+                        this.stats[`avg_${gene}`] = 0;
+                    }
+                    const skillList = ['foraging', 'social', 'building', 'navigation', 'combat', 'farming'];
+                    for (const skill of skillList) {
+                        this.stats[`avg_${skill}_skill`] = 0;
+                    }
                     return;
                 }
                     
@@ -2236,7 +2347,7 @@
 
             const deathStatsDiv = document.getElementById('deathStats');
             deathStatsDiv.innerHTML = '';
-            const totalDeaths = world.deathCauses.TOTAL_DEATHS || 0; // Typo fix
+            const totalDeaths = world.deathCauses.TOTAL_DEATHS || 0;
             if (totalDeaths > 0) {
                 const filteredDeaths = Object.entries(world.deathCauses).filter(([reason, count]) => 
                     reason !== 'UNKNOWN' && reason !== 'TOTAL_DEATHS' && count > 0
@@ -2267,6 +2378,7 @@
                         { char: 'T', color: COLORS.WHITE_BRIGHT, desc: 'Communicate/Share Knowledge' },
                         { char: 'm', color: COLORS.MAGENTA_BRIGHT, desc: 'Mate' },
                         { char: 'X/r', color: COLORS.RED_BRIGHT, desc: 'Attack/Retaliate' },
+                        { char: 'V', color: COLORS.RED_BRIGHT, desc: 'Avenge Child Death' }, // <-- NEW
                         { char: 'g', color: COLORS.WHITE_BRIGHT, desc: 'Share Resources' },
                     ]
                 },
