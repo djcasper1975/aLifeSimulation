@@ -49,6 +49,10 @@ APATHY_METABOLISM_PENALTY = 0.5
 APATHY_SOCIAL_LOSS_MULTIPLIER = 2.0
 # --- END APATHY ---
 
+# --- VENGEANCE SYSTEM (NEW) ---
+VENGEANCE_DURATION = 50
+# --- END VENGEANCE ---
+
 # --- CRITICAL SURVIVAL THRESHOLDS (NEW) ---
 MIN_POPULATION_TARGET = 16 
 CRITICAL_FOOD_COUNT = 60 
@@ -184,6 +188,7 @@ class Agent:
         
         # --- NEW: Vengeance System ---
         self.avenging_target_id = None 
+        self.vengeance_timer = 0 
         # --- END NEW ---
         
         # Age Tracking and Parental Tracking
@@ -316,6 +321,13 @@ class Agent:
             self.apathy_timer -= 1
         # --- END APATHY SYSTEM UPDATE ---
             
+        # --- NEW: VENGEANCE TIMER UPDATE ---
+        if self.vengeance_timer > 0:
+            self.vengeance_timer -= 1
+            if self.vengeance_timer == 0:
+                self.avenging_target_id = None # Timer ran out, stop avenging
+        # --- END NEW ---
+            
         self.energy -= metabolism_cost
         if self.mate_cooldown > 0:
             self.mate_cooldown -= 1
@@ -359,6 +371,12 @@ class Agent:
 
         # 3. Check for death
         if self.energy <= 0:
+            # --- MODIFIED: Safeguard against double-death logging ---
+            # If agent is already removed (e.g. by combat), just return
+            if self not in self.world.agents:
+                return
+            # --- END MODIFIED ---
+            
             self.die('STARVATION_ADULT')
             return
 
@@ -381,7 +399,7 @@ class Agent:
         
         # --- NEW: Vengeance System Priority ---
         # Priority -2: Avenging (NEW)
-        if self.avenging_target_id is not None:
+        if self.avenging_target_id is not None: # Timer logic is handled in update()
             # Check if target still exists
             target = self.world.get_agent_by_id(self.avenging_target_id)
             if target:
@@ -390,6 +408,7 @@ class Agent:
             else:
                 # Target is dead, vengeance is over
                 self.avenging_target_id = None
+                self.vengeance_timer = 0 # Clear timer just in case
         # --- END NEW ---
 
         # Priority -1: Retaliation
@@ -602,7 +621,7 @@ class Agent:
             
             # --- COMBAT LOCK CHECK: Love is ZERO and Energy is high enough ---
             if self.love <= 0 and self.energy > 80 and random.random() < dynamic_aggression:
-                self.attack(target) 
+                self.attack(target, attack_type='COMBAT_AGGRESSION') # <-- MODIFIED
                 return 
         
         # --- Execute State ---
@@ -785,7 +804,7 @@ class Agent:
             if attacker:
                 dist = get_distance(self.x, self.y, attacker.x, attacker.y)
                 if dist < 2.0:
-                    self.attack(attacker)
+                    self.attack(attacker, attack_type='COMBAT_RETALIATION') # <-- MODIFIED
                     self.was_attacked_by = None 
                 else:
                     self.move_towards(attacker.x, attacker.y) 
@@ -799,15 +818,44 @@ class Agent:
             target_parent = self.world.get_agent_by_id(self.avenging_target_id)
             
             if target_parent:
+                
+                # --- NEW: Recruit nearby agents (The 'Posse' logic) ---
+                vision_radius = int(self.genes['vision'])
+                # Find agents who are NOT the target and NOT already avenging
+                potential_recruits = [
+                    a for a in self.world.get_nearest_agents(self.x, self.y, vision_radius, self)
+                    if a.id != target_parent.id and a.avenging_target_id is None
+                ]
+                
+                for recruit in potential_recruits:
+                    # Check stats to see if they join
+                    roll = random.random()
+                    chance = recruit.genes['aggression'] * 0.5 # Base chance from aggression
+                    
+                    p = recruit.get_personality()
+                    if p == PERSONALITY_AGGRESSIVE_COOPERATOR:
+                        chance += 0.4 # Strong cooperators
+                    elif p == PERSONALITY_COOPERATIVE:
+                        chance += 0.1 # Cooperators might join
+                    elif p == PERSONALITY_ISOLATED:
+                        chance -= 0.3 # Isolated agents are unlikely to join
+                    
+                    if roll < chance:
+                        recruit.state = "AVENGING"
+                        recruit.avenging_target_id = self.avenging_target_id # Hunt same target
+                        recruit.vengeance_timer = VENGEANCE_DURATION
+                # --- END: Recruit logic ---
+                
                 dist = get_distance(self.x, self.y, target_parent.x, target_parent.y)
                 if dist < 2.0:
-                    self.attack(target_parent)
-                    # Vengeance continues until the target is dead
+                    self.attack(target_parent, attack_type='COMBAT_VENDETTA') # <-- MODIFIED
+                    # Vengeance continues until the target is dead or timer runs out
                 else:
                     self.move_towards(target_parent.x, target_parent.y) 
             else:
                 # Target is dead. Vengeance is over.
                 self.avenging_target_id = None
+                self.vengeance_timer = 0
                 self.state = "WANDERING"
         # --- END: Vengeance State ---
         
@@ -842,8 +890,12 @@ class Agent:
             elif nearby_campfire:
                  self.move_towards(nearby_campfire[0], nearby_campfire[1])
             else:
-                self.move_exploring() 
-            # --- END MODIFIED LOGIC ---
+                # --- MODIFICATION: The "Lonely Agent" Fix ---
+                # If no one is around, go to the Library (L) as a meeting spot.
+                lx, ly = self.world.library_location
+                self.move_towards(lx, ly)
+                self.state = "SEEKING_LIBRARY" # Use the library-seeking state
+            # --- END MODIFICATION ---
                 
         elif self.state == "SOCIAL_HAPPY": 
             # If highly satisfied, pause movement
@@ -1090,7 +1142,7 @@ class Agent:
             self.skills['building'] = clamp(self.skills['building'] + 0.2, 0, 4.0)
             self.state = "WANDERING"
             
-    def attack(self, target):
+    def attack(self, target, attack_type='COMBAT_AGGRESSION'): # <-- MODIFIED
         energy_cost = 10 - (self.skills['combat'] * 1.0) 
         if energy_cost < 2: energy_cost = 2 
         
@@ -1107,6 +1159,11 @@ class Agent:
         self.love = clamp(self.love - 5.0, 0, STARTING_LOVE) 
         
         target.was_attacked_by = self.id
+        
+        # --- NEW: CHECK FOR COMBAT DEATH ---
+        if target.energy <= 0:
+            target.die(attack_type) # <-- MODIFIED
+        # --- END NEW ---
         
     def mate(self, partner):
         self.state = "MATING"
@@ -1196,7 +1253,7 @@ class Agent:
             
             if random.random() < conflict_chance:
                 # Trigger an immediate fight regardless of Love or Energy
-                self.attack(partner) 
+                self.attack(partner, attack_type='COMBAT_CONFLICT') # <-- MODIFIED
                 return
         # --- END NEW: Personality Conflict Check ---
         
@@ -1332,6 +1389,7 @@ class Agent:
                     for witness in witnesses:
                         witness.state = "AVENGING"
                         witness.avenging_target_id = closest_parent_agent.id
+                        witness.vengeance_timer = VENGEANCE_DURATION 
         # --- END: Vengeance System ---
         
         
@@ -1384,9 +1442,14 @@ class World:
             'MAX_AGE': 0, 
             'STARVATION_ADULT': 0, 
             'STARVATION_CHILD': 0, 
-            'COMBAT': 0, 
             'NATURAL_DEATH_OLD': 0, 
-            'UNKNOWN': 0
+            'UNKNOWN': 0,
+            # --- MODIFIED: Specific Combat Deaths ---
+            'COMBAT_VENDETTA': 0,
+            'COMBAT_CONFLICT': 0,
+            'COMBAT_RETALIATION': 0,
+            'COMBAT_AGGRESSION': 0
+            # --- END MODIFIED ---
         }
         
         self.homes = {} 
@@ -1604,8 +1667,15 @@ class World:
             self.stats['population'] = 0
             self.stats['homes_built'] = 0
             self.stats['active_campfires'] = 0
-            # Calculate total deaths for percentage breakdown
-            self.death_causes['TOTAL_DEATHS'] = sum(self.death_causes.values())
+            
+            # --- FIX: Prevent double-counting TOTAL_DEATHS ---
+            total_deaths = 0
+            for reason, count in self.death_causes.items():
+                if reason != 'TOTAL_DEATHS':
+                    total_deaths += count
+            self.death_causes['TOTAL_DEATHS'] = total_deaths
+            # --- END FIX ---
+            
             if 'UNKNOWN' in self.death_causes:
                 del self.death_causes['UNKNOWN']
             return
@@ -1635,7 +1705,14 @@ class World:
             self.stats[avg_key] = total / num_agents
             
         # Calculate total deaths for percentage breakdown
-        self.death_causes['TOTAL_DEATHS'] = sum(self.death_causes.values())
+        # --- FIX: Prevent double-counting TOTAL_DEATHS ---
+        total_deaths = 0
+        for reason, count in self.death_causes.items():
+            if reason != 'TOTAL_DEATHS':
+                total_deaths += count
+        self.death_causes['TOTAL_DEATHS'] = total_deaths
+        # --- END FIX ---
+        
         if 'UNKNOWN' in self.death_causes:
             del self.death_causes['UNKNOWN']
 

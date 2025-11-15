@@ -449,6 +449,7 @@
         let simSettings = {};
 
         // --- STATIC CONSTANTS (Not configurable by user) ---
+        const VENGEANCE_DURATION = 50; // <-- NEW from Python
         const PERSONALITY_COOPERATIVE = 1;
         const PERSONALITY_ISOLATED = 2;
         const PERSONALITY_JUDGMENTAL = 3; 
@@ -561,6 +562,7 @@
                 
                 // --- NEW: Vengeance System ---
                 this.avenging_target_id = null; 
+                this.vengeance_timer = 0; // <-- NEW from Python
                 // --- END NEW ---
                 
                 this.age = 0;
@@ -702,6 +704,15 @@
                     this.apathy_timer--;
                 }
 
+                // --- NEW: VENGEANCE TIMER UPDATE (from Python) ---
+                if (this.vengeance_timer > 0) {
+                    this.vengeance_timer--;
+                    if (this.vengeance_timer === 0) {
+                        this.avenging_target_id = null; // Timer ran out, stop avenging
+                    }
+                }
+                // --- END NEW ---
+
                 this.energy -= metabolismCost;
                 if (this.mate_cooldown > 0) {
                     this.mate_cooldown--;
@@ -749,6 +760,10 @@
                 }
 
                 if (this.energy <= 0) {
+                    // Check if already dead (e.g., from combat)
+                    if (!this.world.agents.includes(this)) {
+                        return;
+                    }
                     this.die('STARVATION_ADULT');
                     return;
                 }
@@ -769,7 +784,7 @@
                 const populationLow = this.world.agents.length < simSettings.MIN_POPULATION_TARGET;
                 
                 // --- NEW: Vengeance System Priority ---
-                if (this.avenging_target_id !== null) {
+                if (this.avenging_target_id !== null) { // Timer logic is handled in update()
                     const target = this.world.getAgentById(this.avenging_target_id);
                     if (target) {
                         this.state = "AVENGING";
@@ -777,6 +792,7 @@
                     } else {
                         // Target is dead, vengeance is over
                         this.avenging_target_id = null;
+                        this.vengeance_timer = 0; // Clear timer
                     }
                 }
                 // --- END NEW ---
@@ -1017,7 +1033,7 @@
                     const dynamicAggression = baseAggression + struggleBonus;
                     
                     if (this.love <= 0 && this.energy > 80 && Math.random() < dynamicAggression) {
-                        this.attack(target);
+                        this.attack(target, 'COMBAT_AGGRESSION'); // <-- MODIFIED
                         return; 
                     }
                 }
@@ -1236,7 +1252,7 @@
                         if (attacker) {
                             const dist = getDistance(this.x, this.y, attacker.x, attacker.y);
                             if (dist < 2.0) {
-                                this.attack(attacker);
+                                this.attack(attacker, 'COMBAT_RETALIATION'); // <-- MODIFIED
                                 this.was_attacked_by = null;
                             } else {
                                 this.moveTowards(attacker.x, attacker.y);
@@ -1251,16 +1267,44 @@
                     case "AVENGING":
                         const targetParent = this.world.getAgentById(this.avenging_target_id);
                         if (targetParent) {
+                            
+                            // --- NEW: Recruit nearby agents (The 'Posse' logic from Python) ---
+                            const visionRadius = Math.floor(this.genes['vision']); // Use local var
+                            const potentialRecruits = this.world.getNearestAgents(this.x, this.y, visionRadius, this)
+                                .filter(a => a.id !== targetParent.id && a.avenging_target_id === null);
+                            
+                            for (const recruit of potentialRecruits) {
+                                const roll = Math.random();
+                                let chance = recruit.genes['aggression'] * 0.5;
+                                const p = recruit.getPersonality();
+                                
+                                if (p === PERSONALITY_AGGRESSIVE_COOPERATOR) {
+                                    chance += 0.4;
+                                } else if (p === PERSONALITY_COOPERATIVE) {
+                                    chance += 0.1;
+                                } else if (p === PERSONALITY_ISOLATED) {
+                                    chance -= 0.3;
+                                }
+                                
+                                if (roll < chance) {
+                                    recruit.state = "AVENGING";
+                                    recruit.avenging_target_id = this.avenging_target_id; // Hunt same target
+                                    recruit.vengeance_timer = VENGEANCE_DURATION; // Use the new constant
+                                }
+                            }
+                            // --- END: Recruit logic ---
+
                             const dist = getDistance(this.x, this.y, targetParent.x, targetParent.y);
                             if (dist < 2.0) {
-                                this.attack(targetParent);
-                                // Vengeance continues until target is dead
+                                this.attack(targetParent, 'COMBAT_VENDETTA'); // <-- MODIFIED
+                                // Vengeance continues until target is dead or timer runs out
                             } else {
                                 this.moveTowards(targetParent.x, targetParent.y);
                             }
                         } else {
                             // Target is dead. Vengeance is over.
                             this.avenging_target_id = null;
+                            this.vengeance_timer = 0;
                             this.state = "WANDERING";
                         }
                         break;
@@ -1295,7 +1339,11 @@
                             const [cx, cy] = keyToArray(nearbyCampfire);
                             this.moveTowards(cx, cy);
                         } else {
-                            this.moveExploring(); 
+                            // --- MODIFICATION: The "Lonely Agent" Fix (from Python) ---
+                            const [lx, ly] = this.world.libraryLocation;
+                            this.moveTowards(lx, ly);
+                            this.state = "SEEKING_LIBRARY"; 
+                            // --- END MODIFICATION ---
                         }
                         break;
                     
@@ -1552,7 +1600,7 @@
                 }
             }
             
-            attack(target) {
+            attack(target, attack_type = 'COMBAT_AGGRESSION') { // <-- MODIFIED signature
                 let energyCost = Math.max(2, 10 - (this.skills.combat * 1.0));
                 let damage = 15 + (this.skills.combat * 8); 
                 
@@ -1566,6 +1614,12 @@
                 this.love = clamp(this.love - 5.0, 0, simSettings.STARTING_LOVE); 
 
                 target.was_attacked_by = this.id;
+                
+                // --- NEW: CHECK FOR COMBAT DEATH (from Python) ---
+                if (target.energy <= 0) {
+                    target.die(attack_type); 
+                }
+                // --- END NEW ---
             }
             
             mate(partner) {
@@ -1658,7 +1712,7 @@
                     }
                     
                     if (Math.random() < conflictChance) {
-                        this.attack(partner); 
+                        this.attack(partner, 'COMBAT_CONFLICT'); // <-- MODIFIED
                         return;
                     }
                 }
@@ -1805,6 +1859,7 @@
                             for (const witness of witnesses) {
                                 witness.state = "AVENGING";
                                 witness.avenging_target_id = closestParentAgent.id;
+                                witness.vengeance_timer = VENGEANCE_DURATION; // <-- NEW from Python
                             }
                         }
                     }
@@ -1863,7 +1918,18 @@
                 // MODIFIED
                 this.environmentalHealth = simSettings.ENV_HEALTH_MAX;
 
-                this.deathCauses = { 'MAX_AGE': 0, 'STARVATION_ADULT': 0, 'STARVATION_CHILD': 0, 'COMBAT': 0, 'NATURAL_DEATH_OLD': 0, 'UNKNOWN': 0 };
+                this.deathCauses = {
+                    'MAX_AGE': 0, 
+                    'STARVATION_ADULT': 0, 
+                    'STARVATION_CHILD': 0, 
+                    'NATURAL_DEATH_OLD': 0, 
+                    'UNKNOWN': 0,
+                    // --- MODIFIED: Specific Combat Deaths (from Python) ---
+                    'COMBAT_VENDETTA': 0,
+                    'COMBAT_CONFLICT': 0,
+                    'COMBAT_RETALIATION': 0,
+                    'COMBAT_AGGRESSION': 0
+                };
                 this.homes = {};
                 this.growingPlants = {};
                 this.growingTrees = {};
@@ -2064,6 +2130,12 @@
                     // Handle death causes when no agents are left
                     const totalDeaths = Object.values(this.deathCauses).reduce((a, b) => a + b, 0);
                     this.deathCauses.TOTAL_DEATHS = totalDeaths;
+                    
+                    // --- NEW: Clean up (from Python) ---
+                    if (this.deathCauses.hasOwnProperty('UNKNOWN')) {
+                        delete this.deathCauses['UNKNOWN'];
+                    }
+                    // --- END NEW ---
                     return;
                 }
                     
@@ -2088,6 +2160,12 @@
                     
                 const totalDeaths = Object.values(this.deathCauses).reduce((a, b) => a + b, 0);
                 this.deathCauses.TOTAL_DEATHS = totalDeaths;
+                
+                // --- NEW: Clean up (from Python) ---
+                if (this.deathCauses.hasOwnProperty('UNKNOWN')) {
+                    delete this.deathCauses['UNKNOWN'];
+                }
+                // --- END NEW ---
             }
 
             getNearest(x, y, radius, itemMap) {
