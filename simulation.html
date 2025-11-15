@@ -757,6 +757,7 @@
                 this.executeAction();
             }
 
+            // --- THIS FUNCTION HAS BEEN REPLACED ---
             decideState() {
                 const visionRadius = Math.floor(this.genes['vision']);
                 const foodInSight = this.world.getNearestInSet(this.x, this.y, visionRadius, this.world.food);
@@ -790,45 +791,9 @@
                     return;
                 }
                 
-                let forageThreshold = 70;
-                // MODIFIED
-                if (this.age < simSettings.ADULT_AGE) forageThreshold = 100;
-
-                if (this.energy < forageThreshold || (this.food_carried > 0 && this.energy < 150)) {
-                    this.state = "FORAGING";
-                    return;
-                }
+                // --- NEW: CRITICAL SURVIVAL OVERRIDES (MOVED TO HIGH PRIORITY) ---
                 
-                const nearbyCampfirePosKey = this.world.getNearest(this.x, this.y, visionRadius, this.world.campfires);
-                if (nearbyCampfirePosKey) {
-                    const campfireTimer = this.world.campfires[nearbyCampfirePosKey];
-                    // MODIFIED
-                    if (campfireTimer < simSettings.CAMPFIRE_REFUEL_THRESHOLD) {
-                        if (this.wood_carried < 1) {
-                            this.state = "GETTING_WOOD";
-                            return;
-                        } else {
-                            this.state = "REFUELING_CAMPFIRE";
-                            return;
-                        }
-                    }
-                }
-
-                if (this.home_location) {
-                    const homeData = this.world.homes[this.home_location];
-                    const isOwner = homeData && homeData.owner_id === this.id;
-                    // MODIFIED
-                    if (homeData && homeData.durability < simSettings.HOME_DURABILITY_START && isOwner) { 
-                        if (this.wood_carried < 1) {
-                            this.state = "GETTING_WOOD";
-                            return;
-                        } else {
-                            this.state = "REPAIRING_HOME";
-                            return;
-                        }
-                    }
-                }
-                
+                // Mandate 1: Plant if Food Crisis or Low Population, AND I have seeds
                 if ((globalFoodCrisis || populationLow) && this.seeds_carried > 0) {
                     if (this.home_location) {
                         const [hx, hy] = keyToArray(this.home_location);
@@ -844,6 +809,7 @@
                     return;
                 }
 
+                // Mandate 2: Share if others are desperately needy
                 if (this.energy > 100 && this.social > 50 && (this.wood_carried > 3 || this.food_carried >= 1)) {
                     const nearbyAgents = this.world.getNearestAgents(this.x, this.y, visionRadius, this);
                     const needyAgents = nearbyAgents.filter(a => a.energy < 40 && a.food_carried < 1); 
@@ -852,12 +818,57 @@
                         return;
                     }
                 }
+                // --- END NEW: CRITICAL SURVIVAL OVERRIDES ---
 
+                // Priority 1: Survival (Energy)
+                let forageThreshold = 70;
+                // MODIFIED
+                if (this.age < simSettings.ADULT_AGE) forageThreshold = 100;
+
+                if (this.energy < forageThreshold || (this.food_carried > 0 && this.energy < 150)) {
+                    this.state = "FORAGING";
+                    return;
+                }
+                
+                // Priority 1.5: Campfire Refuel
+                const nearbyCampfirePosKey = this.world.getNearest(this.x, this.y, visionRadius, this.world.campfires);
+                if (nearbyCampfirePosKey) {
+                    const campfireTimer = this.world.campfires[nearbyCampfirePosKey];
+                    // MODIFIED
+                    if (campfireTimer < simSettings.CAMPFIRE_REFUEL_THRESHOLD) {
+                        if (this.wood_carried < 1) {
+                            this.state = "GETTING_WOOD";
+                            return;
+                        } else {
+                            this.state = "REFUELING_CAMPFIRE";
+                            return;
+                        }
+                    }
+                }
+
+                // Priority 2: Home Repair
+                if (this.home_location) {
+                    const homeData = this.world.homes[this.home_location];
+                    const isOwner = homeData && homeData.owner_id === this.id;
+                    // MODIFIED
+                    if (homeData && homeData.durability < simSettings.HOME_DURABILITY_START && isOwner) { 
+                        if (this.wood_carried < 1) {
+                            this.state = "GETTING_WOOD";
+                            return;
+                        } else {
+                            this.state = "REPAIRING_HOME";
+                            return;
+                        }
+                    }
+                }
+                
+                // Priority 3: Social Need
                 if (this.social < 60 && this.genes['sociability'] > 0.2) {
                     this.state = "SEEKING_SOCIAL"; 
                     return;
                 }
                 
+                // Priority 4: Claim or Build Home
                 if (this.home_location === null) {
                     const emptyHomePos = this.world.getEmptyHome();
                     if (emptyHomePos) {
@@ -916,6 +927,7 @@
                     }
                 }
                 
+                // Priority 5: Farming (Food Seeds) - Normal Planting
                 if (this.seeds_carried > 0 && this.energy > 80 && this.genes['farming'] > Math.random()) {
                     if (this.home_location) {
                         const [hx, hy] = keyToArray(this.home_location);
@@ -931,6 +943,7 @@
                     return;
                 }
 
+                // Priority 5.5: Planting Trees
                 if (this.wood_seeds_carried > 0 && this.energy > 80 &&
                     // MODIFIED
                     (Object.keys(this.world.wood).length < simSettings.STARTING_WOOD) && (this.genes['builder'] > Math.random())) { 
@@ -949,6 +962,7 @@
                     return;
                 }
                     
+                // Priority 6: Build Campfire
                 const nearbyActiveFire = this.world.getNearest(this.x, this.y, 5, this.world.campfires);
 
                 if (this.energy > 120 && this.social > 50 && 
@@ -971,6 +985,7 @@
                     }
                 }
                 
+                // Priority 7: Share Resources (Standard)
                 if (this.energy > 100 && this.social > 50 && (this.wood_carried > 3 || this.food_carried >= 1)) {
                     const nearbyAgents = this.world.getNearestAgents(this.x, this.y, visionRadius, this);
                     const needyAgents = nearbyAgents.filter(a => a.energy < 70 && a.food_carried < 1); 
@@ -980,6 +995,7 @@
                     }
                 }
                 
+                // Priority 8: Default
                 this.state = "WANDERING";
             }
 
@@ -2045,6 +2061,9 @@
                     for (const skill of skillList) {
                         this.stats[`avg_${skill}_skill`] = 0;
                     }
+                    // Handle death causes when no agents are left
+                    const totalDeaths = Object.values(this.deathCauses).reduce((a, b) => a + b, 0);
+                    this.deathCauses.TOTAL_DEATHS = totalDeaths;
                     return;
                 }
                     

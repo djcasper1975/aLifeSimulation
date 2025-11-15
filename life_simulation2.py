@@ -77,7 +77,7 @@ except ImportError:
 # --- SIMULATION PARAMETERS (User's "Hardcore" settings) ---
 WORLD_WIDTH = 70
 WORLD_HEIGHT = 30
-STARTING_AGENTS = 16
+STARTING_AGENTS = 15
 # --- FINAL BALANCE FIX: Increase starting food to reduce early competition ---
 STARTING_FOOD = 120  
 STARTING_WOOD = 80  
@@ -138,7 +138,7 @@ def get_distance(x1, y1, x2, y2):
     """
     Calculates Euclidean distance.
     """
-    return math.sqrt((x1 - 2)**2 + (y1 - y2)**2)
+    return math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
 
 # --- AGENT CLASS ---
 
@@ -402,6 +402,30 @@ class Agent:
             self.state = "SOCIAL_SAD" 
             return
             
+        # --- NEW: CRITICAL SURVIVAL OVERRIDES (MOVED TO HIGH PRIORITY) ---
+        
+        # Mandate 1: Plant if Food Crisis or Low Population, AND I have seeds
+        if (global_food_crisis or population_low) and self.seeds_carried > 0:
+            if self.home_location:
+                dist = get_distance(self.x, self.y, self.home_location[0], self.home_location[1])
+                if dist > 5: 
+                    self.state = "GOING_HOME_TO_FARM" 
+                else:
+                    self.state = "PLANTING" 
+            else:
+                self.state = "PLANTING" 
+            return
+
+        # Mandate 2: Share if others are desperately needy
+        if self.energy > 100 and self.social > 50 and (self.wood_carried > 3 or self.food_carried >= 1):
+            vision_radius = int(self.genes['vision'])
+            # Check for agents with CRITICALLY low energy (forcing immediate share)
+            needy_agents = [a for a in self.world.get_nearest_agents(self.x, self.y, vision_radius, self) if a.energy < 40 and a.food_carried < 1] 
+            if needy_agents:
+                self.state = "SHARING" 
+                return
+        # --- END NEW: CRITICAL SURVIVAL OVERRIDES ---
+
         # Priority 1: Survival (Energy)
         forage_threshold = 70 
         if self.age < ADULT_AGE: 
@@ -437,30 +461,6 @@ class Agent:
                 else:
                     self.state = "REPAIRING_HOME" 
                     return
-
-        # --- NEW: CRITICAL SURVIVAL OVERRIDES (High Priority: Planting/Sharing) ---
-        
-        # Mandate 1: Plant if Food Crisis or Low Population, AND I have seeds
-        if (global_food_crisis or population_low) and self.seeds_carried > 0:
-            if self.home_location:
-                dist = get_distance(self.x, self.y, self.home_location[0], self.home_location[1])
-                if dist > 5: 
-                    self.state = "GOING_HOME_TO_FARM" 
-                else:
-                    self.state = "PLANTING" 
-            else:
-                self.state = "PLANTING" 
-            return
-
-        # Mandate 2: Share if others are desperately needy (Priority 7 is raised)
-        if self.energy > 100 and self.social > 50 and (self.wood_carried > 3 or self.food_carried >= 1):
-            vision_radius = int(self.genes['vision'])
-            # Check for agents with CRITICALLY low energy (forcing immediate share)
-            needy_agents = [a for a in self.world.get_nearest_agents(self.x, self.y, vision_radius, self) if a.energy < 40 and a.food_carried < 1] 
-            if needy_agents:
-                self.state = "SHARING" 
-                return
-        # --- END NEW: CRITICAL SURVIVAL OVERRIDES ---
 
         # Priority 3: Social Need (MODIFIED: Check social more often)
         # FIX: Raised social threshold from 30 to 60
@@ -575,7 +575,7 @@ class Agent:
             
         # Default State: Wandering
         # Priority 8: Happy/Content
-        self.state = "WANDERING" 
+        self.state = "WANDERING"
 
     def execute_action(self):
         """Performs the action associated with the current state."""
@@ -1598,7 +1598,16 @@ class World:
             agents_for_stats = adult_agents
             
         if not agents_for_stats:
+            # Clear all stats to 0 if no agents
             for k in self.stats: self.stats[k] = 0
+            self.stats['avg_mating_drive'] = 0 # Ensure int-like stats are 0
+            self.stats['population'] = 0
+            self.stats['homes_built'] = 0
+            self.stats['active_campfires'] = 0
+            # Calculate total deaths for percentage breakdown
+            self.death_causes['TOTAL_DEATHS'] = sum(self.death_causes.values())
+            if 'UNKNOWN' in self.death_causes:
+                del self.death_causes['UNKNOWN']
             return
             
         num_agents = len(agents_for_stats)
