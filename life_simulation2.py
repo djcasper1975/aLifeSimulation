@@ -11,16 +11,48 @@ MAX_AGE = 2000
 # ---------------------------------------
 
 # Love Parameters (MODIFIED)
-STARTING_LOVE = 10 # FIX: Lowered significantly to make Love=0 achievable
+STARTING_LOVE = 10 
 LOVE_GAIN_EAT = 2.5
 LOVE_GAIN_SOCIAL = 5 
 LOVE_GAIN_REST = 0.5 
-LOVE_LOSS_STRUGGLE = 2.5 # FIX: Increased significantly (from 1.0) to allow Love to drop to zero faster
-PASSIVE_LOVE_GAIN = 0.0 # FIX: Removed passive gain to make Love=0 possible
+LOVE_LOSS_STRUGGLE = 2.5 
+PASSIVE_LOVE_GAIN = 0.0 
 
 # PAUSE THRESHOLDS (MODIFIED)
 PAUSE_ENERGY_THRESHOLD = 100
-PAUSE_SOCIAL_THRESHOLD = 80 # FIX: Raised from 50 to encourage agents to linger and communicate
+PAUSE_SOCIAL_THRESHOLD = 80 
+
+# --- PERSONALITY CONSTANTS (New Feature) ---
+PERSONALITY_COOPERATIVE = 1
+PERSONALITY_ISOLATED = 2
+PERSONALITY_JUDGMENTAL = 3 
+PERSONALITY_AGGRESSIVE_COOPERATOR = 4
+
+PERSONALITY_CONFLICTS = {
+    PERSONALITY_JUDGMENTAL: [PERSONALITY_ISOLATED],
+    PERSONALITY_AGGRESSIVE_COOPERATOR: [PERSONALITY_JUDGMENTAL]
+}
+# --- END PERSONALITY ---
+
+# --- ENVIRONMENTAL DEGRADATION CONSTANTS (NEW) ---
+ENV_HEALTH_MAX = 100.0
+ENV_PASSIVE_RECOVERY_RATE = 0.05
+# SOFTENED DEGRADATION: Reduced decay rates by 80% to aid early survival
+ENV_DECAY_FOOD_GATHER = 0.1   
+ENV_DECAY_WOOD_GATHER = 0.2   
+ENV_HEAL_PLANT_BASE = 1.0    
+# --- END ENVIRONMENTAL ---
+
+# --- APATHY SYSTEM CONSTANTS (NEW) ---
+APATHY_DURATION = 50 
+APATHY_METABOLISM_PENALTY = 0.5
+APATHY_SOCIAL_LOSS_MULTIPLIER = 2.0
+# --- END APATHY ---
+
+# --- CRITICAL SURVIVAL THRESHOLDS (NEW) ---
+MIN_POPULATION_TARGET = 16 
+CRITICAL_FOOD_COUNT = 60 
+# --- END CRITICAL ---
 
 # --- STEP 1: Handle Colorama Import ---
 try:
@@ -61,7 +93,7 @@ GROW_TIME = 10
 # Tree Parameters
 TREE_GROW_TIME = 10 
 WOOD_SEED_CHANCE = 0.5
-FOOD_SEED_BASE_CHANCE = 0.3 # NEW: Base chance to drop a food seed when consuming food
+FOOD_SEED_BASE_CHANCE = 0.1 
 
 # Campfire Parameters
 CAMPFIRE_BURN_TIME = 300 
@@ -86,7 +118,8 @@ GENE_RANGES = {
     'builder': (0.0, 1.0, 0.1),
     'mating_drive': (60, 130, 5.0), 
     'sociability': (0.0, 1.0, 0.1),
-    'farming': (0.0, 1.0, 0.1) 
+    'farming': (0.0, 1.0, 0.1),
+    'personality': (1.0, 4.0, 0.5) 
 }
 
 # --- HELPER FUNCTIONS ---
@@ -133,6 +166,7 @@ class Agent:
         # Buffs
         self.social_buff_timer = 0 
         self.contentment_buff_timer = 0 
+        self.apathy_timer = 0 
         
         self.state = "WANDERING" 
         
@@ -177,11 +211,23 @@ class Agent:
                     genes[gene] = random.uniform(0.5, 0.8) 
                 elif gene == 'speed':
                     genes[gene] = random.uniform(1.0, 3.0) 
+                elif gene == 'personality':
+                    # Ensure personality starts mostly as Cooperative (1) or Isolated (2)
+                    if random.random() < 0.8:
+                        genes[gene] = random.randint(PERSONALITY_COOPERATIVE, PERSONALITY_ISOLATED)
+                    else:
+                        genes[gene] = random.randint(PERSONALITY_JUDGMENTAL, PERSONALITY_AGGRESSIVE_COOPERATOR)
                 else:
                     genes[gene] = random.uniform(min_val, max_val)
             else:
                 genes[gene] = random.uniform(min_val, max_val)
         return genes
+
+    def get_personality(self):
+        """Returns the current clamped integer personality type."""
+        # The gene value is clamped to an integer between 1 and 4
+        return int(clamp(self.genes.get('personality', 1), 1, 4))
+
 
     def update(self):
         """The main "think" loop for the agent."""
@@ -240,7 +286,7 @@ class Agent:
             if is_owner or is_family:
                 metabolism_cost *= 0.5 
                 if self.energy < 150:
-                    self.energy = clamp(self.energy + 2.0, 0, 150) # Use clamp here
+                    self.energy = clamp(self.energy + 2.0, 0, 150) 
                 self.social = clamp(self.social + 0.5, 0, 100) 
         # --- END Home buff ---
             
@@ -257,20 +303,30 @@ class Agent:
         nearby_campfire = self.world.get_nearest(self.x, self.y, 2, self.world.campfires.keys())
         if nearby_campfire:
             metabolism_cost *= 0.9 
-            self.social = clamp(self.social + 0.5, 0, 100) # Passively get social
+            self.social = clamp(self.social + 0.5, 0, 100) 
+            
+        # --- NEW: APATHY SYSTEM UPDATE ---
+        if self.apathy_timer > 0:
+            metabolism_cost += APATHY_METABOLISM_PENALTY 
+            self.apathy_timer -= 1
+        # --- END APATHY SYSTEM UPDATE ---
             
         self.energy -= metabolism_cost
         if self.mate_cooldown > 0:
             self.mate_cooldown -= 1
             
         # Update Social Need
+        social_loss_multiplier = 1.0
+        if self.apathy_timer > 0:
+            social_loss_multiplier = APATHY_SOCIAL_LOSS_MULTIPLIER 
+
         if self.contentment_buff_timer > 0:
             self.contentment_buff_timer -= 1
         else:
             vision_radius = int(self.genes['vision'])
             nearby_agents = self.world.get_nearest_agents(self.x, self.y, vision_radius, self)
             if not nearby_agents and not nearby_campfire: 
-                self.social -= self.genes['sociability'] * 0.5 
+                self.social -= self.genes['sociability'] * 0.5 * social_loss_multiplier
             else:
                 self.social += 0.1
             self.social = clamp(self.social, 0, 100)
@@ -282,9 +338,11 @@ class Agent:
             self.love = clamp(self.love - LOVE_LOSS_STRUGGLE, 0, STARTING_LOVE)
         else:
             self.struggle_timer = 0
-            # FIX: Removed Passive Love Gain here
-            # self.love = clamp(self.love + PASSIVE_LOVE_GAIN, 0, STARTING_LOVE) 
-        # --- END NEW ---
+            
+        # --- NEW: Check for Apathy Trigger ---
+        if self.love <= 0 and self.apathy_timer == 0:
+            self.apathy_timer = APATHY_DURATION
+        # --- END APATHY TRIGGER ---
             
         # --- NEW: Global Knowledge Retrieval (The Library Effect) ---
         for skill_key in self.skills:
@@ -312,14 +370,18 @@ class Agent:
         
         conserve_energy = self.genes['metabolism'] < 0.8 and self.energy < 100
         
+        # --- NEW: Check Global Food Crisis for Mandated Action ---
+        global_food_crisis = len(self.world.food) < CRITICAL_FOOD_COUNT
+        population_low = len(self.world.agents) < MIN_POPULATION_TARGET
+        
         # Priority -1: Retaliation
         if self.was_attacked_by is not None:
-            self.state = "RETALIATING" # 'r'
+            self.state = "RETALIATING" 
             return
         
         # Priority 0: Hopeless/Sad
         if (self.energy < 20 or self.social < 10) and not food_in_sight and not self.memory['food']:
-            self.state = "SOCIAL_SAD" # 's'
+            self.state = "SOCIAL_SAD" 
             return
             
         # Priority 1: Survival (Energy)
@@ -328,7 +390,7 @@ class Agent:
             forage_threshold = 100 
             
         if self.energy < forage_threshold or (self.food_carried > 0 and self.energy < 150):
-            self.state = "FORAGING" # 'f'
+            self.state = "FORAGING" 
             return
             
         # Priority 1.5: Campfire Refuel
@@ -337,10 +399,10 @@ class Agent:
             campfire_timer = self.world.campfires.get(nearby_campfire)
             if campfire_timer and campfire_timer < CAMPFIRE_REFUEL_THRESHOLD:
                 if self.wood_carried < 1:
-                    self.state = "GETTING_WOOD" # 'w'
+                    self.state = "GETTING_WOOD" 
                     return
                 else:
-                    self.state = "REFUELING_CAMPFIRE" # 'R' 
+                    self.state = "REFUELING_CAMPFIRE" 
                     return
 
         # Priority 2: Home Repair (MODIFIED: Repair if durability is not max)
@@ -352,16 +414,40 @@ class Agent:
             # FIX: Check if durability is less than max (HOME_DURABILITY_START is 3)
             if home_data and home_data['durability'] < HOME_DURABILITY_START and is_owner: 
                 if self.wood_carried < 1:
-                    self.state = "GETTING_WOOD" # 'w' 
+                    self.state = "GETTING_WOOD" 
                     return
                 else:
-                    self.state = "REPAIRING_HOME" # 'E'
+                    self.state = "REPAIRING_HOME" 
                     return
+
+        # --- NEW: CRITICAL SURVIVAL OVERRIDES (High Priority: Planting/Sharing) ---
+        
+        # Mandate 1: Plant if Food Crisis or Low Population, AND I have seeds
+        if (global_food_crisis or population_low) and self.seeds_carried > 0:
+            if self.home_location:
+                dist = get_distance(self.x, self.y, self.home_location[0], self.home_location[1])
+                if dist > 5: 
+                    self.state = "GOING_HOME_TO_FARM" 
+                else:
+                    self.state = "PLANTING" 
+            else:
+                self.state = "PLANTING" 
+            return
+
+        # Mandate 2: Share if others are desperately needy (Priority 7 is raised)
+        if self.energy > 100 and self.social > 50 and (self.wood_carried > 3 or self.food_carried >= 1):
+            vision_radius = int(self.genes['vision'])
+            # Check for agents with CRITICALLY low energy (forcing immediate share)
+            needy_agents = [a for a in self.world.get_nearest_agents(self.x, self.y, vision_radius, self) if a.energy < 40 and a.food_carried < 1] 
+            if needy_agents:
+                self.state = "SHARING" 
+                return
+        # --- END NEW: CRITICAL SURVIVAL OVERRIDES ---
 
         # Priority 3: Social Need (MODIFIED: Check social more often)
         # FIX: Raised social threshold from 30 to 60
         if self.social < 60 and self.genes['sociability'] > 0.2:
-            self.state = "SEEKING_SOCIAL" # 't'
+            self.state = "SEEKING_SOCIAL" 
             return
             
         # Priority 4: Claim or Build Home (MODIFIED: Only if agent has NO home)
@@ -369,7 +455,7 @@ class Agent:
             # Step 1: Try to claim an empty one
             empty_home = self.world.get_empty_home()
             if empty_home:
-                self.state = "CLAIMING_HOME" # 'k'
+                self.state = "CLAIMING_HOME" 
                 return
             
             # Step 2: If no empty homes AND pop > homes, build one
@@ -393,18 +479,18 @@ class Agent:
                 if self.is_clear_tile(self.x, self.y):
                     if is_social:
                         if nearby_homes or not self.world.homes:
-                            self.state = "BUILDING" # 'b'
+                            self.state = "BUILDING" 
                         else:
-                            self.state = "SEEKING_COMMUNITY" # 'C'
+                            self.state = "SEEKING_COMMUNITY" 
                     else:
                         if not nearby_homes:
                             self.state = "BUILDING" 
                         else:
-                            self.state = "SEEKING_REMOTE_SPOT" # 'S'
+                            self.state = "SEEKING_REMOTE_SPOT" 
                 else:
                     if is_social:
                         if nearby_homes or not self.world.homes:
-                            self.state = "WANDERING_TO_BUILD" # 'B'
+                            self.state = "WANDERING_TO_BUILD" 
                         else:
                             self.state = "SEEKING_COMMUNITY" 
                     else:
@@ -414,16 +500,16 @@ class Agent:
                             self.state = "SEEKING_REMOTE_SPOT" 
                 return
         
-        # Priority 5: Farming (Food Seeds)
+        # Priority 5: Farming (Food Seeds) - Normal Planting (if no crisis)
         if self.seeds_carried > 0 and self.energy > 80 and self.genes['farming'] > random.random():
             if self.home_location:
                 dist = get_distance(self.x, self.y, self.home_location[0], self.home_location[1])
                 if dist > 5: 
-                    self.state = "GOING_HOME_TO_FARM" # 'G'
+                    self.state = "GOING_HOME_TO_FARM" 
                 else:
-                    self.state = "PLANTING" # 'p'
+                    self.state = "PLANTING" 
             else:
-                self.state = "PLANTING" # 'p'
+                self.state = "PLANTING" 
             return
 
         # Priority 5.5: Planting Trees (if wood is scarce)
@@ -445,7 +531,7 @@ class Agent:
 
         if self.energy > 120 and self.social > 50 and \
            self.genes['builder'] > 0.5 and \
-           nearby_active_fire is None: # FIX: Only build if no nearby fire
+           nearby_active_fire is None: 
            
             if conserve_energy:
                 self.state = "FORAGING" 
@@ -455,23 +541,23 @@ class Agent:
             if wood_cost_needed < 1: wood_cost_needed = 1
             
             if self.wood_carried >= wood_cost_needed:
-                 self.state = "BUILDING_CAMPFIRE" # 'c'
+                 self.state = "BUILDING_CAMPFIRE" 
                  return
             elif self.wood_carried < wood_cost_needed:
                  self.state = "GETTING_WOOD"
                  return
             
-        # Priority 7: Share Resources
+        # Priority 7: Share Resources (Standard Share, if energy > 70)
         if self.energy > 100 and self.social > 50 and (self.wood_carried > 3 or self.food_carried >= 1):
-            nearby_agents = self.world.get_nearest_agents(self.x, self.y, vision_radius, self)
-            needy_agents = [a for a in nearby_agents if a.energy < 70 and a.food_carried < 1] 
+            vision_radius = int(self.genes['vision'])
+            needy_agents = [a for a in self.world.get_nearest_agents(self.x, self.y, vision_radius, self) if a.energy < 70 and a.food_carried < 1] 
             if needy_agents:
-                self.state = "SHARING" # 'g'
+                self.state = "SHARING" 
                 return
             
         # Default State: Wandering
         # Priority 8: Happy/Content
-        self.state = "WANDERING" # 'A'
+        self.state = "WANDERING" 
 
     def execute_action(self):
         """Performs the action associated with the current state."""
@@ -504,8 +590,19 @@ class Agent:
         # --- Execute State ---
         
         if self.state == "FORAGING":
+            # --- MODIFIED: Check for needy neighbors before eating carried food ---
             if self.food_carried > 0 and self.energy < 150: 
-                self.consume_food() 
+                
+                needy_neighbors = [a for a in agents if a.energy < 40 and a.food_carried < 1]
+                
+                # Only consume if no neighbor is critically starving
+                if not needy_neighbors:
+                    self.consume_food() 
+                else:
+                    # If neighbors are starving, switch to sharing mode
+                    self.state = "SHARING"
+                    return
+                
             elif (self.x, self.y) in self.world.food and self.food_carried < 2: 
                 self.pickup_food()
             elif best_food_target: 
@@ -515,6 +612,7 @@ class Agent:
                         self.memory['food'].discard(best_food_target)
             else:
                 self.move_exploring() 
+        # --- END MODIFIED FORAGING ---
 
         elif self.state == "GETTING_WOOD":
             if self.wood_carried >= 3: 
@@ -538,7 +636,7 @@ class Agent:
         elif self.state == "REPAIRING_HOME":
             if self.home_location:
                 dist = get_distance(self.x, self.y, self.home_location[0], self.home_location[1])
-                if dist < 2.0: # At home
+                if dist < 2.0: 
                     if self.wood_carried > 0:
                         # FIX: Repair to max durability
                         self.world.homes[self.home_location]['durability'] = HOME_DURABILITY_START
@@ -556,7 +654,7 @@ class Agent:
             nearby_campfire = self.world.get_nearest(self.x, self.y, vision_radius, self.world.campfires.keys())
             if nearby_campfire:
                 dist = get_distance(self.x, self.y, nearby_campfire[0], nearby_campfire[1])
-                if dist < 2.0: # At campfire
+                if dist < 2.0: 
                     if self.wood_carried > 0:
                         self.world.campfires[nearby_campfire] = CAMPFIRE_BURN_TIME
                         self.wood_carried -= 1
@@ -572,7 +670,7 @@ class Agent:
             empty_home = self.world.get_empty_home()
             if empty_home:
                 dist = get_distance(self.x, self.y, empty_home[0], empty_home[1])
-                if dist < 2.0: # Arrived at empty home
+                if dist < 2.0: 
                     self.world.homes[empty_home]['owner_id'] = self.id
                     self.home_location = empty_home
                     self.state = "WANDERING"
@@ -634,8 +732,13 @@ class Agent:
 
         elif self.state == "SHARING":
             nearby_agents = self.world.get_nearest_agents(self.x, self.y, vision_radius, self)
-            needy_agents = [a for a in agents if a.energy < 70 and a.food_carried < 1] 
+            # Prioritize critically low agents (energy < 40)
+            needy_agents = [a for a in agents if a.energy < 40 and a.food_carried < 1] 
             
+            # If no critically needy agents, target standard needy agents (energy < 70)
+            if not needy_agents:
+                 needy_agents = [a for a in agents if a.energy < 70 and a.food_carried < 1] 
+
             if needy_agents:
                 target = needy_agents[0]
                 if get_distance(self.x, self.y, target.x, target.y) < 2.0:
@@ -675,12 +778,30 @@ class Agent:
                 self.was_attacked_by = None
                 self.state = "WANDERING"
         
-        elif self.state == "SEEKING_SOCIAL": # 't'
+        elif self.state == "SEEKING_SOCIAL": 
             # Check for agents *or* campfires
             nearby_campfire = self.world.get_nearest(self.x, self.y, vision_radius, self.world.campfires.keys())
             
-            if agents:
-                target_agent = agents[0] 
+            # --- MODIFIED LOGIC: Prioritize nearby happy, pausing agents for relaxed chat ---
+            target_agent = None
+            
+            # Look for a contented agent within 3 squares
+            happy_agents = self.world.get_nearest_agents(self.x, self.y, 3, exclude_self=self)
+            happy_and_pausing = [
+                a for a in happy_agents 
+                if a.energy > PAUSE_ENERGY_THRESHOLD and a.social > PAUSE_SOCIAL_THRESHOLD
+            ]
+            
+            if happy_and_pausing:
+                # Pick the happiest one (by social score)
+                happy_and_pausing.sort(key=lambda a: a.social, reverse=True)
+                target_agent = happy_and_pausing[0]
+            
+            # If no happy pausers, default to the nearest agent in vision
+            elif agents:
+                target_agent = agents[0]
+                
+            if target_agent:
                 if get_distance(self.x, self.y, target_agent.x, target_agent.y) < 2.0:
                     self.communicate(target_agent)
                 else:
@@ -689,15 +810,25 @@ class Agent:
                  self.move_towards(nearby_campfire[0], nearby_campfire[1])
             else:
                 self.move_exploring() 
+            # --- END MODIFIED LOGIC ---
                 
-        elif self.state == "SOCIAL_HAPPY": # 'o'
+        elif self.state == "SOCIAL_HAPPY": 
             # If highly satisfied, pause movement
             if self.energy > PAUSE_ENERGY_THRESHOLD and self.social > PAUSE_SOCIAL_THRESHOLD:
-                pass 
+                
+                # FIX: New logic - Small chance to move to the Library (L) when content
+                if random.random() < 0.2: 
+                    lx, ly = self.world.library_location
+                    if get_distance(self.x, self.y, lx, ly) > 5.0:
+                        self.move_towards(lx, ly)
+                        self.state = "SEEKING_LIBRARY" 
+                        return
+                
+                pass # Linger/observe
             else:
                 self.move_randomly(speed_factor=0.5, persistent_chance=0.0) 
 
-        elif self.state == "SOCIAL_SAD": # 's'
+        elif self.state == "SOCIAL_SAD": 
             self.love = clamp(self.love + LOVE_GAIN_REST, 0, STARTING_LOVE)
             
             if self.energy < 20 and best_food_target:
@@ -719,11 +850,11 @@ class Agent:
             if self.energy > PAUSE_ENERGY_THRESHOLD and self.social > PAUSE_SOCIAL_THRESHOLD:
                 
                 # FIX: New logic - Small chance to move to the Library (L) when content
-                if random.random() < 0.2: # 20% chance to move towards Library/Knowledge center
+                if random.random() < 0.2: 
                     lx, ly = self.world.library_location
                     if get_distance(self.x, self.y, lx, ly) > 5.0:
                         self.move_towards(lx, ly)
-                        self.state = "SEEKING_LIBRARY" # New transient state for rendering
+                        self.state = "SEEKING_LIBRARY" 
                         return
                 
                 pass # Linger/observe
@@ -737,8 +868,12 @@ class Agent:
                         self.memory['wood'].add(pos)
                 self.move_exploring()
         
-        elif self.state == "SEEKING_LIBRARY":
+        elif self.state == "SEEKING_LIBRARY": 
             lx, ly = self.world.library_location
+            
+            # Add navigation skill gain for trying to find the library
+            self.skills['navigation'] = clamp(self.skills['navigation'] + 0.01, 0, 5.0) 
+            
             if get_distance(self.x, self.y, lx, ly) < 2.0:
                 # Arrived at library, gaining knowledge buff
                 self.skills['social'] = clamp(self.skills['social'] + 0.1, 0, 10.0)
@@ -853,6 +988,11 @@ class Agent:
             self.energy += energy_gain
             self.love = clamp(self.love + LOVE_GAIN_EAT, 0, STARTING_LOVE)
 
+            # --- NEW: Environmental Degradation from Foraging ---
+            decay_amount = ENV_DECAY_FOOD_GATHER * (1.0 - (self.skills['foraging'] / 10.0))
+            self.world.environmental_health = clamp(self.world.environmental_health - decay_amount, 0, ENV_HEALTH_MAX)
+            # --- END NEW ---
+
             # --- NEW: Chance to drop a food seed based on foraging skill ---
             # foraging_chance is the base chance + bonus from skill
             foraging_chance = FOOD_SEED_BASE_CHANCE + (self.skills['foraging'] * 0.05)
@@ -877,6 +1017,11 @@ class Agent:
         if (self.x, self.y) in self.world.wood and self.wood_carried < 3: 
             self.world.wood.remove((self.x, self.y))
             self.wood_carried += 1
+            
+            # --- NEW: Environmental Degradation from Wood Gathering ---
+            decay_amount = ENV_DECAY_WOOD_GATHER * (1.0 - (self.skills['foraging'] / 10.0))
+            self.world.environmental_health = clamp(self.world.environmental_health - decay_amount, 0, ENV_HEALTH_MAX)
+            # --- END NEW ---
             
             if random.random() < WOOD_SEED_CHANCE:
                 self.wood_seeds_carried += 1
@@ -939,8 +1084,8 @@ class Agent:
         
         # --- FIX: Determine number of children (Avg 2.2, a 10% increase from Avg 2.0) ---
         num_children = random.randint(1, 3) 
-        if random.random() < 0.2: # 20% chance to have one extra child
-             num_children = clamp(num_children + 1, 1, 4) # Clamp max at 4
+        if random.random() < 0.2: 
+             num_children = clamp(num_children + 1, 1, 4) 
         # --- END FIX ---
         
         for _ in range(num_children):
@@ -967,7 +1112,8 @@ class Agent:
     def share_skills(self, partner):
         """Agents share knowledge when communicating."""
         skills_to_share = ['foraging', 'building', 'navigation', 'farming', 'combat']
-        learning_rate = 0.1 
+        # FIX: Reduced learning rate significantly for slow-burn knowledge progression
+        learning_rate = 0.01 
         
         for skill in skills_to_share:
             self_skill = self.skills[skill]
@@ -985,8 +1131,32 @@ class Agent:
                     self.world.global_skill_knowledge[skill] = clamp(self.world.global_skill_knowledge.get(skill, 0.0) + 0.05, 0, 10.0)
 
     def communicate(self, partner):
-        self.state = "COMMUNICATING" # 'T'
+        self.state = "COMMUNICATING" 
         partner.state = "COMMUNICATING" 
+        
+        # --- NEW: Personality Conflict Check (Overrides all social gains) ---
+        self_personality = self.get_personality()
+        partner_personality = partner.get_personality()
+        
+        # Check if self dislikes partner OR partner dislikes self
+        conflict_detected = False
+        if partner_personality in PERSONALITY_CONFLICTS.get(self_personality, []):
+            conflict_detected = True
+        elif self_personality in PERSONALITY_CONFLICTS.get(partner_personality, []):
+            conflict_detected = True
+            
+        # If conflict detected, check aggression
+        if conflict_detected:
+            # High aggression agents are more likely to fight
+            conflict_chance = self.genes['aggression'] * 0.8
+            if self_personality == PERSONALITY_AGGRESSIVE_COOPERATOR:
+                 conflict_chance = self.genes['aggression'] * 1.5
+            
+            if random.random() < conflict_chance:
+                # Trigger an immediate fight regardless of Love or Energy
+                self.attack(partner) 
+                return
+        # --- END NEW: Personality Conflict Check ---
         
         # FIX: Communication has a minor energy cost
         self.energy -= 1.0 
@@ -1004,8 +1174,19 @@ class Agent:
         self.social_buff_timer = 20 
         partner.social_buff_timer = 20 
         
-        self.love = clamp(self.love + LOVE_GAIN_SOCIAL, 0, STARTING_LOVE)
-        partner.love = clamp(partner.love + LOVE_GAIN_SOCIAL, 0, STARTING_LOVE)
+        # --- APATHY SYSTEM: Halve social recovery if agent is apathetic ---
+        love_gain = LOVE_GAIN_SOCIAL
+        if self.apathy_timer > 0:
+            love_gain /= 2
+            
+        self.love = clamp(self.love + love_gain, 0, STARTING_LOVE)
+        
+        love_gain_partner = LOVE_GAIN_SOCIAL
+        if partner.apathy_timer > 0:
+            love_gain_partner /= 2
+            
+        partner.love = clamp(partner.love + love_gain_partner, 0, STARTING_LOVE)
+        # --- END APATHY SYSTEM ---
         
         self.share_skills(partner)
         
@@ -1045,6 +1226,12 @@ class Agent:
             self.world.growing_plants[(self.x, self.y)] = GROW_TIME
             
             self.skills['farming'] = clamp(self.skills['farming'] + 0.2, 0, 10.0)
+            
+            # --- NEW: Environmental Healing from Planting ---
+            heal_amount = ENV_HEAL_PLANT_BASE * (self.skills['farming'] / 10.0)
+            self.world.environmental_health = clamp(self.world.environmental_health + heal_amount, 0, ENV_HEALTH_MAX)
+            # --- END NEW ---
+            
             self.state = "WANDERING"
 
     def plant_tree(self):
@@ -1056,6 +1243,12 @@ class Agent:
             self.world.growing_trees[(self.x, self.y)] = TREE_GROW_TIME
             
             self.skills['farming'] = clamp(self.skills['farming'] + 0.2, 0, 10.0)
+            
+            # --- NEW: Environmental Healing from Planting ---
+            heal_amount = ENV_HEAL_PLANT_BASE * (self.skills['farming'] / 10.0)
+            self.world.environmental_health = clamp(self.world.environmental_health + heal_amount, 0, ENV_HEALTH_MAX)
+            # --- END NEW ---
+            
             self.state = "WANDERING"
 
     def die(self, reason='UNKNOWN'):
@@ -1099,6 +1292,10 @@ class World:
         self.wood = set()
         
         self.generation_count = 0
+        
+        # --- NEW: Environmental Health Tracker ---
+        self.environmental_health = ENV_HEALTH_MAX
+        # --- END NEW ---
         
         self.death_causes = {
             'MAX_AGE': 0, 
@@ -1177,8 +1374,17 @@ class World:
 
     def spawn_resources(self):
         """Spawns new food and wood on the map."""
+        
+        # --- NEW: Apply Environmental Health as Food Yield Multiplier ---
+        food_yield_multiplier = self.environmental_health / ENV_HEALTH_MAX
+        
+        # Cap the number of new resources based on health
+        food_spawn_count = int(5 * food_yield_multiplier)
+        wood_spawn_count = int(3 * food_yield_multiplier)
+        # --- END NEW ---
+        
         if self.turn % FOOD_SPAWN_RATE == 0:
-            for _ in range(5): 
+            for _ in range(food_spawn_count): 
                 if len(self.food) < (self.width * self.height * 0.1):
                     tile = self.get_random_empty_tile()
                     if tile is not None:
@@ -1187,7 +1393,7 @@ class World:
                         self.food_freshness[(x,y)] = FOOD_FRESHNESS 
 
         if self.turn % WOOD_SPAWN_RATE == 0:
-            for _ in range(3): 
+            for _ in range(wood_spawn_count): 
                 if len(self.wood) < (self.width * self.height * 0.05):
                     tile = self.get_random_empty_tile()
                     if tile is not None:
@@ -1196,6 +1402,10 @@ class World:
 
     def update_world_objects(self):
         """Update all plants, food freshness, and home durability."""
+        
+        # --- NEW: Passive Environmental Health Recovery ---
+        self.environmental_health = clamp(self.environmental_health + ENV_PASSIVE_RECOVERY_RATE, 0, ENV_HEALTH_MAX)
+        # --- END NEW ---
         
         # 1. Update Growing Plants (Food)
         for pos, timer in list(self.growing_plants.items()):
@@ -1309,7 +1519,12 @@ class World:
         for gene in GENE_RANGES:
             avg_key = 'avg_{}'.format(gene) 
             total = sum(agent.genes[gene] for agent in agents_for_stats)
-            self.stats[avg_key] = total / num_agents
+            
+            # Special handling for integer personality gene
+            if gene == 'personality':
+                self.stats[avg_key] = total / num_agents
+            else:
+                self.stats[avg_key] = total / num_agents
             
         # Calculate average skills
         skill_list = ['foraging', 'social', 'building', 'navigation', 'combat', 'farming']
@@ -1337,7 +1552,12 @@ class World:
             color = Style.NORMAL + Fore.CYAN 
             char = '?' 
 
-            if agent.social_buff_timer > 0:
+            # APATHY STATE OVERRIDE: Agent is dark gray and struggles
+            if agent.apathy_timer > 0:
+                color = Style.DIM + Fore.WHITE
+                char = 's' # Use the sad char when apathetic/struggling
+                
+            if agent.social_buff_timer > 0 and agent.apathy_timer == 0:
                 color = Style.BRIGHT + Fore.WHITE 
 
             if agent.state == "WANDERING":
@@ -1411,20 +1631,22 @@ class World:
                 char = 'T'
                 color = Style.BRIGHT + Fore.WHITE 
             
-            # --- START MODIFIED: Split Happy/Library Seek States ---
-            elif agent.state == "SEEKING_LIBRARY":
-                char = 'L' # Use 'L' for Library Seek
+            elif agent.state == "SEEKING_LIBRARY": 
+                char = 'L' 
                 color = Style.BRIGHT + Fore.MAGENTA 
-
+            
             elif agent.state == "SOCIAL_HAPPY": 
-                char = 'o' # Use 'o' for 'Observing/Optimistic' agent state
-                color = Style.BRIGHT + Fore.MAGENTA 
-            # --- END MODIFIED ---
-                
+                char = 'o' 
+                color = Style.BRIGHT + Fore.MAGENTA
+            
             elif agent.state == "SOCIAL_SAD":
                 char = 's'
                 color = Style.DIM + Fore.MAGENTA 
-            
+                
+            # Re-apply Apathy style if state didn't already use 's'
+            if agent.apathy_timer > 0 and char != 's':
+                 color = Style.DIM + Fore.WHITE 
+                 
             grid[agent.y][agent.x] = color + char + Style.RESET_ALL
 
         # 2. Draw Resources
@@ -1442,9 +1664,9 @@ class World:
         # 3. Draw HOMES last
         for (x, y), data in self.homes.items():
             if data['durability'] < 2:
-                grid[y][x] = Style.NORMAL + Fore.BLUE + 'h' # Damaged home
+                grid[y][x] = Style.NORMAL + Fore.BLUE + 'h' 
             else:
-                grid[y][x] = Style.BRIGHT + Fore.BLUE + 'H' # Healthy home
+                grid[y][x] = Style.BRIGHT + Fore.BLUE + 'H' 
             
         # 4. Draw the LIBRARY 
         lx, ly = self.library_location
@@ -1461,20 +1683,20 @@ class World:
         output_buffer.append(Style.BRIGHT + "\n--- LEGEND ---" + Style.RESET_ALL)
         output_buffer.append(Style.BRIGHT + Fore.WHITE + " Any" + Style.RESET_ALL + ": 'Wellbeing' Buff")
         
-        # Agent States
+        # Agent States (Social/Wellbeing)
         output_buffer.append(
             (Style.BRIGHT + Fore.CYAN + " A" + Style.RESET_ALL + ": Wander") + " | " +
             (Style.NORMAL + Fore.CYAN + " f" + Style.RESET_ALL + ": Forage") + " | " +
-            (Style.BRIGHT + Fore.MAGENTA + " o" + Style.RESET_ALL + ": Happy/Observing") + " | " +
-            (Style.BRIGHT + Fore.MAGENTA + " L" + Style.RESET_ALL + ": Seeking Library") 
+            (Style.BRIGHT + Fore.MAGENTA + " L" + Style.RESET_ALL + ": Seek Library") + " | " +
+            (Style.BRIGHT + Fore.MAGENTA + " o" + Style.RESET_ALL + ": Happy/Linger") 
         )
         output_buffer.append(
-            (Style.DIM + Fore.MAGENTA + " s" + Style.RESET_ALL + ": Sad/Crisis") + " | " +
+            (Style.DIM + Fore.MAGENTA + " s" + Style.RESET_ALL + ": Sad/Crisis/Apathy") + " | " +
             (Style.NORMAL + Fore.WHITE + " t" + Style.RESET_ALL + ": Seek Social") + " | " +
-            (Style.BRIGHT + Fore.WHITE + " T" + Style.RESET_ALL + ": Communicate") + " | " +
-            (Style.BRIGHT + Fore.WHITE + " g" + Style.RESET_ALL + ": Share Wood/Food")
+            (Style.BRIGHT + Fore.WHITE + " T" + Style.RESET_ALL + ": Communicate")
         )
         output_buffer.append(
+            (Style.BRIGHT + Fore.WHITE + " g" + Style.RESET_ALL + ": Share Wood/Food") + " | " +
             (Style.BRIGHT + Fore.RED + " X" + Style.RESET_ALL + ": Attack") + " | " +
             (Style.BRIGHT + Fore.RED + " r" + Style.RESET_ALL + ": Retaliate") + " | " + 
             (Style.BRIGHT + Fore.MAGENTA + " m" + Style.RESET_ALL + ": Mate")
@@ -1511,7 +1733,7 @@ class World:
             (Style.BRIGHT + Fore.BLUE + " H" + Style.RESET_ALL + ": Home") + " | " +
             (Style.NORMAL + Fore.BLUE + " h" + Style.RESET_ALL + ": Damaged Home") + " | " +
             (Style.BRIGHT + Fore.RED + " C" + Style.RESET_ALL + ": Campfire") + " | " +
-            (Style.BRIGHT + Fore.MAGENTA + " L" + Style.RESET_ALL + ": Library (World Object)")
+            (Style.BRIGHT + Fore.MAGENTA + " L" + Style.RESET_ALL + ": Library Location")
         )
         
         output_buffer.append(Style.BRIGHT + "\n--- SIMULATION STATS ---" + Style.RESET_ALL)
@@ -1520,6 +1742,11 @@ class World:
         home_str = "Homes Built: {:<3}".format(self.stats.get('homes_built', 0))
         fire_str = "Active Campfires: {:<3}".format(self.stats.get('active_campfires', 0))
         output_buffer.append("{}   |   {}   |   {}".format(pop_str, home_str, fire_str))
+        
+        # --- NEW: Environmental Health Stat ---
+        env_health_color = Fore.GREEN if self.environmental_health > 70 else (Fore.YELLOW if self.environmental_health > 30 else Fore.RED)
+        output_buffer.append(Style.BRIGHT + "Environmental Health: " + env_health_color + "{:>5.1f}%".format(self.environmental_health) + Style.RESET_ALL)
+        # --- END NEW ---
         
         output_buffer.append(Style.BRIGHT + "--- AVERAGE GENES (This is the 'Evolution'!) ---" + Style.RESET_ALL)
         output_buffer.append(Fore.CYAN + "  Vision:     " + Style.RESET_ALL + "{:>5.2f} (How far they see)".format(self.stats.get('avg_vision', 0)))
@@ -1530,7 +1757,8 @@ class World:
         output_buffer.append(Fore.MAGENTA + "  MatingDrive:" + Style.RESET_ALL + "{:>5.0f} (Energy needed to mate)".format(self.stats.get('avg_mating_drive', 0)))
         output_buffer.append(Fore.WHITE + "  Sociability:" + Style.RESET_ALL + "{:>5.2f} (Need to be social)".format(self.stats.get('avg_sociability', 0)))
         output_buffer.append(Fore.GREEN + "  Farming:    " + Style.RESET_ALL + "{:>5.2f} (Tendency to plant seeds)".format(self.stats.get('avg_farming', 0)))
-        
+        output_buffer.append(Fore.MAGENTA + "  Personality:" + Style.RESET_ALL + "{:>5.2f} (Average of the 4 types)".format(self.stats.get('avg_personality', 0))) 
+
         output_buffer.append(Style.BRIGHT + "--- AVERAGE SKILLS (This is 'Learning'!) ---" + Style.RESET_ALL)
         output_buffer.append(Fore.GREEN + "  Foraging Skill: " + Style.RESET_ALL + "{:>5.2f} (Get more energy/seeds from food)".format(self.stats.get('avg_foraging_skill', 0)))
         output_buffer.append(Fore.WHITE + "  Social Skill:   " + Style.RESET_ALL + "{:>5.2f} (Get more social from chat)".format(self.stats.get('avg_social_skill', 0)))
@@ -1636,12 +1864,14 @@ if __name__ == "__main__":
             world.render()
             time.sleep(SIM_SPEED)
             
+            # --- MODIFIED SIM END CONDITION: Stop if population is zero, unless it's the very start ---
             if world.stats['population'] == 0 and world.turn > 100:
                 print("\n--- SIMULATION END: All agents have died. ---\n")
                 break
             if world.stats['population'] > (WORLD_WIDTH * WORLD_HEIGHT * 0.5):
                 print("\n--- SIMULATION END: Overpopulation! ---\n")
                 break
+            # --- END MODIFIED SIM END CONDITION ---
                 
     except KeyboardInterrupt:
         print("\n--- Simulation stopped by user. ---\n")
