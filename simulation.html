@@ -1193,8 +1193,8 @@
                             this.takeWood();
                         } else if (bestWoodTarget) { 
                             this.moveTowards(bestWoodTarget[0], bestWoodTarget[1]);
-                             if (getDistance(this.x, this.y, bestFoodTarget[0], bestFoodTarget[1]) < 2.0) {
-                                if (!this.world.wood[arrayToKey(bestFoodTarget)]) {
+                             if (getDistance(this.x, this.y, bestWoodTarget[0], bestFoodTarget[1]) < 2.0) {
+                                if (!this.world.wood[arrayToKey(bestWoodTarget)]) {
                                     this.memory.wood.delete(arrayToKey(bestWoodTarget));
                                 }
                             }
@@ -1976,15 +1976,20 @@
                 const selfPersonality = this.getPersonality();
                 const partnerPersonality = partner.getPersonality();
                 
+                // === BUG FIX HERE ===
+                // We must use "|| []" to safely check .includes() on an empty list
+                // if the personality ID (e.g. 1) is not in the conflict map.
                 let conflictDetected = false;
-                // Check if self dislikes partner
-                if (PERSONALITY_CONFLICTS[selfPersonality] && PERSONALITY_CONFLICTS[selfPersonality].includes(partnerPersonality)) {
+                const selfConflictList = PERSONALITY_CONFLICTS[selfPersonality] || [];
+                const partnerConflictList = PERSONALITY_CONFLICTS[partnerPersonality] || [];
+
+                if (selfConflictList.includes(partnerPersonality)) {
                     conflictDetected = true;
                 } 
-                // Check if partner dislikes self
-                else if (PERSONALITY_CONFLICTS[partnerPersonality] && PERSONALITY_CONFLICTS[partnerPersonality].includes(selfPersonality)) {
+                else if (partnerConflictList.includes(selfPersonality)) {
                     conflictDetected = true;
                 }
+                // === END BUG FIX ===
                     
                 // If conflict detected, check aggression
                 if (conflictDetected) {
