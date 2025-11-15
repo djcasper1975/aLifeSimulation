@@ -31,10 +31,11 @@
             margin: 0 auto; 
         }
 
-        /* Fixed height for the stats panel for stability */
+        /* MODIFIED: Stats panel no longer has a fixed max-height or scrollbar */
         #statsPanel {
-            max-height: 80vh;
-            overflow-y: auto;
+            /* max-height: 80vh; <-- REMOVED */
+            /* overflow-y: auto; <-- REMOVED */
+            overflow-y: visible; /* Ensure it expands naturally */
         }
 
         /* Ensure the main container uses the full width */
@@ -133,12 +134,6 @@
         const PERSONALITY_JUDGMENTAL = 3; 
         const PERSONALITY_AGGRESSIVE_COOPERATOR = 4;
         
-        // Personality Conflict Map (Python logic implemented in Agent.communicate)
-        // const PERSONALITY_CONFLICTS = {
-        //     PERSONALITY_JUDGMENTAL: [PERSONALITY_ISOLATED],
-        //     PERSONALITY_AGGRESSIVE_COOPERATOR: [PERSONALITY_JUDGMENTAL]
-        // };
-
         // Environmental Degradation Constants
         const ENV_HEALTH_MAX = 100.0;
         const ENV_PASSIVE_RECOVERY_RATE = 0.05;
@@ -178,7 +173,7 @@
         // Campfire Parameters
         const CAMPFIRE_BURN_TIME = 300; 
         const CAMPFIRE_WOOD_COST = 3; 
-        const CAMPFIRE_REFUEL_THRESHOLD = 100; // SYNCHRONIZED
+        const CAMPFIRE_REFUEL_THRESHOLD = 100; 
 
         // Home Durability
         const HOME_DURABILITY_START = 3;
@@ -194,7 +189,7 @@
             'mating_drive': [60, 130, 5.0],
             'sociability': [0.0, 1.0, 0.1],
             'farming': [0.0, 1.0, 0.1],
-            'personality': [1.0, 4.0, 0.5] // SYNCHRONIZED
+            'personality': [1.0, 4.0, 0.5] 
         };
 
         // --- VISUAL STYLING MAPPING (No change needed) ---
@@ -286,7 +281,7 @@
                 this.campfire_location = null;
                 this.social_buff_timer = 0;
                 this.contentment_buff_timer = 0;
-                this.apathy_timer = 0; // NEW: Apathy Timer
+                this.apathy_timer = 0; 
                 this.state = "WANDERING";
                 this.exploration_vector = [0, 0];
                 this.memory = { 'food': new Set(), 'wood': new Set() };
@@ -705,7 +700,6 @@
                 
                 // Priority 8: Happy/Content -> Wandering
                 if (this.energy > PAUSE_ENERGY_THRESHOLD && this.social > PAUSE_SOCIAL_THRESHOLD) {
-                    // This state will be checked in executeAction for seeking library
                     this.state = "SOCIAL_HAPPY";
                     return;
                 }
@@ -967,21 +961,17 @@
                     case "SEEKING_SOCIAL":
                         const nearbyCampfire = this.world.getNearest(this.x, this.y, visionRadius, this.world.campfires);
                         
-                        // --- MODIFIED LOGIC: Prioritize nearby happy, pausing agents for relaxed chat ---
                         let targetAgent = null;
                         
-                        // Look for a contented agent within 3 squares
                         const happyAgents = this.world.getNearestAgents(this.x, this.y, 3, this);
                         const happyAndPausing = happyAgents.filter(
                             a => a.energy > PAUSE_ENERGY_THRESHOLD && a.social > PAUSE_SOCIAL_THRESHOLD
                         );
                         
                         if (happyAndPausing.length > 0) {
-                            // Pick the happiest one (by social score)
                             happyAndPausing.sort((a, b) => b.social - a.social);
                             targetAgent = happyAndPausing[0];
                         }
-                        // If no happy pausers, default to the nearest agent in vision
                         else if (agents.length > 0) {
                             targetAgent = agents[0];
                         }
@@ -998,7 +988,6 @@
                         } else {
                             this.moveExploring(); 
                         }
-                        // --- END MODIFIED LOGIC ---
                         break;
                     
                     case "SOCIAL_HAPPY": 
@@ -1012,7 +1001,6 @@
                                     return;
                                 }
                             }
-                            // Otherwise, just linger (pass)
                         } else {
                             this.moveRandomly(0.5, 0.0); 
                         }
@@ -1284,7 +1272,6 @@
                     for (const gene in this.genes) {
                         const [minVal, maxVal, mutRate] = GENE_RANGES[gene];
                         const avgGene = (this.genes[gene] + partner.genes[gene]) / 2;
-                        // Mutation is symmetric around 0, scaled by the range and rate
                         const mutation = (Math.random() * 2 - 1) * mutRate * (maxVal - minVal);
                         newGenes[gene] = clamp(avgGene + mutation, minVal, maxVal);
                     }
@@ -1306,7 +1293,7 @@
 
             shareSkills(partner) {
                 const skillsToShare = ['foraging', 'building', 'navigation', 'farming', 'combat'];
-                const learningRate = 0.01; // SYNCHRONIZED: Reduced learning rate significantly
+                const learningRate = 0.01; 
                 
                 for (const skill of skillsToShare) {
                     const selfSkill = this.skills[skill];
@@ -1335,7 +1322,6 @@
                 const partnerPersonality = partner.getPersonality();
                 
                 let conflictDetected = false;
-                // Simplified conflict logic from Python's map
                 if (
                     (selfPersonality === PERSONALITY_JUDGMENTAL && partnerPersonality === PERSONALITY_ISOLATED) ||
                     (partnerPersonality === PERSONALITY_JUDGMENTAL && selfPersonality === PERSONALITY_ISOLATED) ||
