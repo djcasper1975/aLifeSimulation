@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1132,7 +1131,7 @@
                             this.takeWood();
                         } else if (bestWoodTarget) { 
                             this.moveTowards(bestWoodTarget[0], bestWoodTarget[1]);
-                            if (getDistance(this.x, this.y, bestFoodTarget[0], bestFoodTarget[1]) < 2.0 && !this.world.wood[arrayToKey(bestWoodTarget)]) {
+                            if (getDistance(this.x, this.y, bestWoodTarget[0], bestWoodTarget[1]) < 2.0 && !this.world.wood[arrayToKey(bestWoodTarget)]) {
                                 this.memory.wood.delete(arrayToKey(bestWoodTarget));
                             }
                         } else {
@@ -1452,13 +1451,14 @@
                         break; 
                     
                     case "SEEKING_LIBRARY":
-                        // MODIFIED: Skill gain from Python
                         this.skills.navigation = clamp(this.skills.navigation + 0.001, 0, 5.0); 
                         
                         // State implies this.memory.library is not null
                         const [lx, ly] = this.memory.library;
+                        
+                        // --- BUG FIX: Was getDistance(this.x, self.y, ...) ---
                         if (getDistance(this.x, this.y, lx, ly) < 2.0) {
-                            this.skills.social = clamp(this.skills.social + 0.01, 0, 10.0); // Python 0.01
+                            this.skills.social = clamp(this.skills.social + 0.01, 0, 10.0); 
                             this.state = "WANDERING";
                         } else {
                             this.moveTowards(lx, ly);
