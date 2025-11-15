@@ -84,7 +84,7 @@ STARTING_WOOD = 80
 
 # Resources spawn every N turns
 FOOD_SPAWN_RATE = 25 
-WOOD_SPAWN_RATE = 80 
+WOOD_SPAWN_RATE = 60 
 
 # Farming Parameters
 FOOD_FRESHNESS = 185 
@@ -889,6 +889,10 @@ class Agent:
 
     def is_clear_tile(self, x, y):
         """Helper to check if a tile is empty for building/planting."""
+        # --- FIX: Prevent building/planting on the Library tile ---
+        if (x, y) == self.world.library_location:
+            return False
+        # --- END FIX ---
         if (x,y) in self.world.homes: return False
         if (x,y) in self.world.food: return False
         if (x,y) in self.world.wood: return False
@@ -1465,9 +1469,18 @@ class World:
     def get_random_empty_tile(self):
         """Finds a random tile that isn't occupied by anything."""
         attempts = 10
+        # --- FIX: Get library location to prevent spawning on it ---
+        lx, ly = self.library_location
+        # --- END FIX ---
+        
         for _ in range(attempts):
             x = random.randint(0, self.width - 1)
             y = random.randint(0, self.height - 1)
+            
+            # --- FIX: Check if the tile is the library ---
+            if x == lx and y == ly:
+                continue 
+            # --- END FIX ---
             
             occupied = any(agent.x == x and agent.y == y for agent in self.agents)
                 
