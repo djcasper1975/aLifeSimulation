@@ -52,6 +52,7 @@ APATHY_SOCIAL_LOSS_MULTIPLIER = 2.0
 # --- CRITICAL SURVIVAL THRESHOLDS (NEW) ---
 MIN_POPULATION_TARGET = 16 
 CRITICAL_FOOD_COUNT = 60 
+CRITICAL_ENERGY_THRESHOLD = 20  # The "panic" level.
 # --- END CRITICAL ---
 
 # --- STEP 1: Handle Colorama Import ---
@@ -194,6 +195,8 @@ class Agent:
         # Love System
         self.love = STARTING_LOVE
         
+        self.unpleasant_agents = set() # agents who I had a conflict with
+
         self.skills = {
             'foraging': 0.0,
             'social': 0.0,
@@ -370,6 +373,35 @@ class Agent:
 
     def decide_state(self):
         """The main "think" loop for the agent."""
+
+        # --- NEW: CRITICAL SELF-PRESERVATION TRIAGE ---
+        # This overrides ALL other states if energy is critically low.
+        if self.energy < CRITICAL_ENERGY_THRESHOLD:
+            # If we are carrying food, EAT IT NOW.
+            if self.food_carried > 0:
+                self.state = "FORAGING" # The "consume_food()" logic is in here
+                return
+            
+            vision_radius = int(self.genes['vision'])
+            food_in_sight = self.world.get_nearest_in_set(self.x, self.y, vision_radius, self.world.food)
+            
+            # If we see food, run for it.
+            if food_in_sight:
+                self.state = "FLEEING_FOR_FOOD" # A new state to go to the *closest* food
+                return
+            # If no food in sight, use memory.
+            elif self.memory['food']:
+                # Note: We just check if memory *exists*. The check for a *valid* target
+                # will happen in execute_action's best_food_target line.
+                # This is simpler and avoids duplicating get_closest_combined_target logic here.
+                self.state = "FLEEING_FOR_FOOD"
+                return
+            # If no food in sight OR memory, panic and wander.
+            else:
+                self.state = "SOCIAL_SAD" # This state already handles hopelessness
+                return
+        # --- END NEW: CRITICAL TRIAGE ---
+        
         vision_radius = int(self.genes['vision'])
         food_in_sight = self.world.get_nearest_in_set(self.x, self.y, vision_radius, self.world.food)
         
@@ -632,6 +664,18 @@ class Agent:
                 self.move_exploring() 
         # --- END MODIFIED FORAGING ---
 
+        elif self.state == "FLEEING_FOR_FOOD":
+            # This state is just a desperate run for food, no distractions.
+            if (self.x, self.y) in self.world.food and self.food_carried < 2: 
+                self.pickup_food()
+            elif best_food_target: 
+                self.move_towards(best_food_target[0], best_food_target[1])
+                if get_distance(self.x, self.y, best_food_target[0], best_food_target[1]) < 2.0:
+                    if (self.x, self.y) not in self.world.food:
+                        self.memory['food'].discard(best_food_target)
+            else:
+                self.move_exploring() # No food, just panic-search
+
         elif self.state == "GETTING_WOOD":
             if self.wood_carried >= 3: 
                 self.state = "WANDERING"
@@ -779,6 +823,13 @@ class Agent:
             pass
         
         elif self.state == "RETALIATING":
+            # --- NEW SELF-PRESERVATION CHECK ---
+            if self.energy < CRITICAL_ENERGY_THRESHOLD:
+                self.state = "FORAGING" # "I'm too tired for this"
+                self.was_attacked_by = None
+                return
+            # --- END NEW ---
+            
             # FIX: Use the efficient get_agent_by_id
             attacker = self.world.get_agent_by_id(self.was_attacked_by)
             
@@ -796,6 +847,12 @@ class Agent:
 
         # --- NEW: Vengeance State ---
         elif self.state == "AVENGING":
+            # --- NEW SELF-PRESERVATION CHECK ---
+            if self.energy < CRITICAL_ENERGY_THRESHOLD:
+                self.state = "FORAGING" # "Vengeance can wait, I'm starving"
+                return # Note: We don't clear avenging_target_id. They'll resume when healthy.
+            # --- END NEW ---
+
             target_parent = self.world.get_agent_by_id(self.avenging_target_id)
             
             if target_parent:
@@ -815,6 +872,11 @@ class Agent:
             # Check for agents *or* campfires
             nearby_campfire = self.world.get_nearest(self.x, self.y, vision_radius, self.world.campfires.keys())
             
+            # --- NEW: FILTER OUT UNPLEASANT AGENTS ---
+            # Only look for agents I haven't had a bad run-in with
+            pleasant_agents = [a for a in agents if a.id not in self.unpleasant_agents]
+            # --- END NEW ---
+            
             # --- MODIFIED LOGIC: Prioritize nearby happy, pausing agents for relaxed chat ---
             target_agent = None
             
@@ -830,9 +892,9 @@ class Agent:
                 happy_and_pausing.sort(key=lambda a: a.social, reverse=True)
                 target_agent = happy_and_pausing[0]
             
-            # If no happy pausers, default to the nearest agent in vision
-            elif agents:
-                target_agent = agents[0]
+            # If no happy pausers, default to the nearest *pleasant* agent in vision
+            elif pleasant_agents:
+                target_agent = pleasant_agents[0]
                 
             if target_agent:
                 if get_distance(self.x, self.y, target_agent.x, target_agent.y) < 2.0:
@@ -900,6 +962,14 @@ class Agent:
                     for pos in wood_in_sight:
                         self.memory['wood'].add(pos)
                 self.move_exploring()
+
+            # --- NEW: OPPORTUNISTIC GATHERING ---
+            # After moving, check if they "stumbled upon" food.
+            if (self.x, self.y) in self.world.food and self.food_carried < 2:
+                self.pickup_food()
+            elif (self.x, self.y) in self.world.wood and self.wood_carried < 3:
+                self.take_wood()
+            # --- END NEW ---
         
         elif self.state == "SEEKING_LIBRARY": 
             lx, ly = self.world.library_location
@@ -1189,6 +1259,11 @@ class Agent:
             
         # If conflict detected, check aggression
         if conflict_detected:
+            # --- NEW: REMEMBER THE CONFLICT ---
+            self.unpleasant_agents.add(partner.id)
+            partner.unpleasant_agents.add(self.id)
+            # --- END NEW ---
+            
             # High aggression agents are more likely to fight
             conflict_chance = self.genes['aggression'] * 0.8
             if self_personality == PERSONALITY_AGGRESSIVE_COOPERATOR:
@@ -1669,6 +1744,10 @@ class World:
                 char = 'f'
                 if agent.social_buff_timer == 0:
                     color = Style.NORMAL + Fore.CYAN
+            elif agent.state == "FLEEING_FOR_FOOD":
+                char = 'f'
+                color = Style.BRIGHT + Fore.RED
+
             elif agent.state == "BUILDING":
                 char = 'b'
                 color = Style.BRIGHT + Fore.YELLOW
@@ -1793,7 +1872,7 @@ class World:
         # Agent States (Social/Wellbeing)
         output_buffer.append(
             (Style.BRIGHT + Fore.CYAN + " A" + Style.RESET_ALL + ": Wander") + " | " +
-            (Style.NORMAL + Fore.CYAN + " f" + Style.RESET_ALL + ": Forage") + " | " +
+            (Style.NORMAL + Fore.CYAN + " f" + Style.RESET_ALL + ": Forage") + " | " + (Style.BRIGHT + Fore.RED + " f" + Style.RESET_ALL + ": Flee-Food") + " | " +
             (Style.BRIGHT + Fore.MAGENTA + " L" + Style.RESET_ALL + ": Seek Library") + " | " +
             (Style.BRIGHT + Fore.MAGENTA + " o" + Style.RESET_ALL + ": Happy/Linger") 
         )
