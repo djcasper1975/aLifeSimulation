@@ -5,7 +5,7 @@ import random
 import math
 
 # --- SIMULATION LIFE STAGE CONSTANTS ---
-ADULT_AGE = 100
+ADULT_AGE = 300
 OLD_AGE = 1500
 MAX_AGE = 2000
 # ---------------------------------------
@@ -87,8 +87,8 @@ STARTING_FOOD = 120
 STARTING_WOOD = 80  
 
 # Resources spawn every N turns
-FOOD_SPAWN_RATE = 25 
-WOOD_SPAWN_RATE = 60 
+FOOD_SPAWN_RATE = 20 
+WOOD_SPAWN_RATE = 50 
 
 # Farming Parameters
 FOOD_FRESHNESS = 185 
@@ -97,7 +97,7 @@ GROW_TIME = 10
 # Tree Parameters
 TREE_GROW_TIME = 10 
 WOOD_SEED_CHANCE = 0.5
-FOOD_SEED_BASE_CHANCE = 0.1 
+FOOD_SEED_BASE_CHANCE = 0.5 
 
 # Campfire Parameters
 CAMPFIRE_BURN_TIME = 300 
@@ -120,7 +120,7 @@ GENE_RANGES = {
     'metabolism': (0.5, 2.0, 0.1),
     'aggression': (0.0, 0.5, 0.1),
     'builder': (0.0, 1.0, 0.1),
-    'mating_drive': (60, 130, 5.0), 
+    'mating_drive': (120, 160, 5.0), 
     'sociability': (0.0, 1.0, 0.1),
     'farming': (0.0, 1.0, 0.1),
     'personality': (1.0, 4.0, 0.5) 
@@ -179,7 +179,8 @@ class Agent:
         # Agent Memory
         self.memory = {
             'food': set(),
-            'wood': set()
+            'wood': set(),
+            'library': None # NEW: Agents must learn the library location
         }
         
         # Struggle & Retaliation
@@ -389,6 +390,41 @@ class Agent:
     def decide_state(self):
         """The main "think" loop for the agent."""
         vision_radius = int(self.genes['vision'])
+        
+        # --- NEW: Opportunistic Socializing ---
+        # Check for agents right next to self (radius 1.5)
+        # Use a smaller radius than vision to mean "right next to"
+        nearby_agents = self.world.get_nearest_agents(self.x, self.y, 1.5, self)
+        
+        if nearby_agents:
+            # Avoid chatting if in crisis or combat
+            if not (self.apathy_timer > 0 or self.was_attacked_by or self.avenging_target_id):
+                target = random.choice(nearby_agents)
+                
+                # Don't chat with someone in combat or already chatting
+                if not (target.was_attacked_by or target.avenging_target_id or target.state == "COMMUNICATING"):
+                    
+                    chance = 0.0
+                    
+                    # Check if self is lingering/happy
+                    is_lingering = (self.state == "WANDERING" or self.state == "SOCIAL_HAPPY") and \
+                                   self.energy > PAUSE_ENERGY_THRESHOLD and \
+                                   self.social > PAUSE_SOCIAL_THRESHOLD
+                    
+                    if is_lingering:
+                        chance = 0.6 # High chance to chat if lingering
+                    
+                    # If I'm just wandering or working, smaller chance
+                    elif self.state in ["WANDERING", "FORAGING", "GETTING_WOOD"] and \
+                         self.social > 50 and self.genes['sociability'] > 0.5:
+                        
+                        chance = 0.1 # Small chance to pause and chat
+                    
+                    if random.random() < chance:
+                        self.communicate(target) # This sets both states
+                        return # This is our action for the turn
+        # --- END: Opportunistic Socializing ---
+
         food_in_sight = self.world.get_nearest_in_set(self.x, self.y, vision_radius, self.world.food)
         
         conserve_energy = self.genes['metabolism'] < 0.8 and self.energy < 100
@@ -444,6 +480,14 @@ class Agent:
                 self.state = "SHARING" 
                 return
         # --- END NEW: CRITICAL SURVIVAL OVERRIDES ---
+
+        # --- NEW: Mandate 3: Seek a mate if population is critically low ---
+        if population_low and self.age >= ADULT_AGE and \
+           self.energy > self.genes['mating_drive'] and self.mate_cooldown == 0:
+            
+            self.state = "SEEKING_MATE"
+            return 
+        # --- END NEW: Mandate 3 ---
 
         # Priority 1: Survival (Energy)
         forage_threshold = 70 
@@ -568,7 +612,8 @@ class Agent:
 
         if self.energy > 120 and self.social > 50 and \
            self.genes['builder'] > 0.5 and \
-           nearby_active_fire is None: 
+           nearby_active_fire is None and \
+           self.campfire_location is None: # NEW RULE: Can't build if I already own one 
            
             if conserve_energy:
                 self.state = "FORAGING" 
@@ -604,6 +649,13 @@ class Agent:
         food_in_sight = self.world.get_nearest_in_set(self.x, self.y, vision_radius, self.world.food)
         wood_in_sight = self.world.get_nearest_in_set(self.x, self.y, vision_radius, self.world.wood)
         agents = self.world.get_nearest_agents(self.x, self.y, vision_radius, exclude_self=self)
+        
+        # --- NEW: Check for Library in sight ---
+        if self.memory['library'] is None:
+            lx, ly = self.world.library_location
+            if get_distance(self.x, self.y, lx, ly) <= vision_radius:
+                self.memory['library'] = (lx, ly)
+        # --- END NEW ---
 
         # 2. Get nearest target from combined vision and memory
         best_food_target = self.get_closest_combined_target('food', food_in_sight)
@@ -859,6 +911,37 @@ class Agent:
                 self.state = "WANDERING"
         # --- END: Vengeance State ---
         
+        # --- NEW: Seeking Mate State ---
+        elif self.state == "SEEKING_MATE":
+            # Find the nearest agent who is ALSO eligible to mate
+            eligible_partners = []
+            vision_radius = int(self.genes['vision']) # Use vision, not all agents
+            
+            # Get nearby agents
+            nearby_agents = self.world.get_nearest_agents(self.x, self.y, vision_radius, self)
+
+            for agent in nearby_agents:
+                if agent.age >= ADULT_AGE and \
+                   agent.energy > agent.genes['mating_drive'] and \
+                   agent.mate_cooldown == 0:
+                    eligible_partners.append(agent)
+
+            if eligible_partners:
+                # Target the nearest one
+                eligible_partners.sort(key=lambda p: get_distance(self.x, self.y, p.x, p.y))
+                target = eligible_partners[0]
+
+                if get_distance(self.x, self.y, target.x, target.y) < 2.0:
+                    # Found them! Initiate mating.
+                    self.mate(target)
+                else:
+                    # Move towards them
+                    self.move_towards(target.x, target.y)
+            else:
+                # No eligible partners in sight, wander to find one
+                self.move_exploring()
+        # --- END NEW ---
+        
         elif self.state == "SEEKING_SOCIAL": 
             # Check for agents *or* campfires
             nearby_campfire = self.world.get_nearest(self.x, self.y, vision_radius, self.world.campfires.keys())
@@ -891,10 +974,14 @@ class Agent:
                  self.move_towards(nearby_campfire[0], nearby_campfire[1])
             else:
                 # --- MODIFICATION: The "Lonely Agent" Fix ---
-                # If no one is around, go to the Library (L) as a meeting spot.
-                lx, ly = self.world.library_location
-                self.move_towards(lx, ly)
-                self.state = "SEEKING_LIBRARY" # Use the library-seeking state
+                # If no one is around, go to the Library (L) *if they know where it is*.
+                if self.memory['library']:
+                    lx, ly = self.memory['library']
+                    self.move_towards(lx, ly)
+                    self.state = "SEEKING_LIBRARY" # Use the library-seeking state
+                else:
+                    # Don't know where library is, just wander hopelessly
+                    self.move_exploring()
             # --- END MODIFICATION ---
                 
         elif self.state == "SOCIAL_HAPPY": 
@@ -902,8 +989,9 @@ class Agent:
             if self.energy > PAUSE_ENERGY_THRESHOLD and self.social > PAUSE_SOCIAL_THRESHOLD:
                 
                 # FIX: New logic - Small chance to move to the Library (L) when content
-                if random.random() < 0.2: 
-                    lx, ly = self.world.library_location
+                # --- MODIFIED: Must *know* where library is to go ---
+                if random.random() < 0.2 and self.memory['library']: 
+                    lx, ly = self.memory['library']
                     if get_distance(self.x, self.y, lx, ly) > 5.0:
                         self.move_towards(lx, ly)
                         self.state = "SEEKING_LIBRARY" 
@@ -926,7 +1014,13 @@ class Agent:
                 elif nearby_campfire:
                     self.move_towards(nearby_campfire[0], nearby_campfire[1])
                 else:
-                    self.move_exploring()
+                    # --- MODIFIED: Try to go to library if sad and knows location ---
+                    if self.memory['library']:
+                        lx, ly = self.memory['library']
+                        self.move_towards(lx, ly)
+                        self.state = "SEEKING_LIBRARY"
+                    else:
+                        self.move_exploring()
             else:
                  self.move_exploring() 
             
@@ -935,8 +1029,9 @@ class Agent:
             if self.energy > PAUSE_ENERGY_THRESHOLD and self.social > PAUSE_SOCIAL_THRESHOLD:
                 
                 # FIX: New logic - Small chance to move to the Library (L) when content
-                if random.random() < 0.2: 
-                    lx, ly = self.world.library_location
+                # --- MODIFIED: Must *know* where library is to go ---
+                if random.random() < 0.2 and self.memory['library']: 
+                    lx, ly = self.memory['library']
                     if get_distance(self.x, self.y, lx, ly) > 5.0:
                         self.move_towards(lx, ly)
                         self.state = "SEEKING_LIBRARY" 
@@ -954,14 +1049,15 @@ class Agent:
                 self.move_exploring()
         
         elif self.state == "SEEKING_LIBRARY": 
-            lx, ly = self.world.library_location
+            # This state is only entered if self.memory['library'] is set
+            lx, ly = self.memory['library']
             
             # Add navigation skill gain for trying to find the library
-            self.skills['navigation'] = clamp(self.skills['navigation'] + 0.01, 0, 5.0) 
+            self.skills['navigation'] = clamp(self.skills['navigation'] + 0.001, 0, 5.0) 
             
             if get_distance(self.x, self.y, lx, ly) < 2.0:
                 # Arrived at library, gaining knowledge buff
-                self.skills['social'] = clamp(self.skills['social'] + 0.1, 0, 10.0)
+                self.skills['social'] = clamp(self.skills['social'] + 0.01, 0, 10.0)
                 self.state = "WANDERING"
                 
             else:
@@ -985,6 +1081,17 @@ class Agent:
         if (x,y) in self.world.growing_trees: return False 
         if (x,y) in self.world.campfires: return False
         return True
+    
+    # --- NEW: Helper for new movement logic ---
+    def is_obstacle(self, x, y):
+        """Checks if a tile is an obstacle (another agent's home)."""
+        if (x, y) in self.world.homes:
+            home_data = self.world.homes[(x, y)]
+            # It's an obstacle if it's a home and it's NOT our home
+            if home_data.get('owner_id') != self.id:
+                return True
+        return False
+    # --- END NEW ---
 
     def move_towards(self, target_x, target_y):
         """Moves one step towards a target coordinate."""
@@ -1001,10 +1108,29 @@ class Agent:
             if self.y < target_y: dy = 1
             elif self.y > target_y: dy = -1
             
-            self.x = clamp(self.x + dx, 0, self.world.width - 1)
-            self.y = clamp(self.y + dy, 0, self.world.height - 1)
+            new_x = clamp(self.x + dx, 0, self.world.width - 1)
+            new_y = clamp(self.y + dy, 0, self.world.height - 1)
             
-            self.skills['navigation'] = clamp(self.skills['navigation'] + 0.01, 0, 5.0) 
+            # --- NEW: Obstacle Avoidance Logic ---
+            if not self.is_obstacle(new_x, new_y):
+                # Path is clear, move diagonally/normally
+                self.x = new_x
+                self.y = new_y
+            else:
+                # Path is blocked. Try to slide.
+                # Try moving just horizontally
+                slide_x = clamp(self.x + dx, 0, self.world.width - 1)
+                if dx != 0 and not self.is_obstacle(slide_x, self.y):
+                    self.x = slide_x
+                # Try moving just vertically
+                elif dy != 0 and not self.is_obstacle(self.x, clamp(self.y + dy, 0, self.world.height - 1)):
+                    self.y = clamp(self.y + dy, 0, self.world.height - 1)
+                else:
+                    # Stuck, can't slide. Stop moving.
+                    break # Exit the 'steps' loop
+            # --- END NEW ---
+            
+            self.skills['navigation'] = clamp(self.skills['navigation'] + 0.001, 0, 5.0) 
             cost_multiplier = 1.0 - (self.skills['navigation'] * 0.15) 
             if cost_multiplier < 0.25: cost_multiplier = 0.25
             
@@ -1031,10 +1157,21 @@ class Agent:
                         break
             
             dx, dy = self.exploration_vector
-            self.x = clamp(self.x + dx, 0, self.world.width - 1)
-            self.y = clamp(self.y + dy, 0, self.world.height - 1)
             
-            self.skills['navigation'] = clamp(self.skills['navigation'] + 0.01, 0, 5.0) 
+            # --- NEW: Obstacle Avoidance Logic ---
+            new_x = clamp(self.x + dx, 0, self.world.width - 1)
+            new_y = clamp(self.y + dy, 0, self.world.height - 1)
+            
+            if not self.is_obstacle(new_x, new_y):
+                self.x = new_x
+                self.y = new_y
+            else:
+                # Hit an obstacle, stop moving this step
+                self.exploration_vector = (0, 0) # Force new direction next time
+                break # Stop the 'steps' loop
+            # --- END NEW ---
+            
+            self.skills['navigation'] = clamp(self.skills['navigation'] + 0.001, 0, 5.0) 
             cost_multiplier = 1.0 - (self.skills['navigation'] * 0.15) 
             if cost_multiplier < 0.25: cost_multiplier = 0.25
             
@@ -1169,17 +1306,15 @@ class Agent:
         self.state = "MATING"
         partner.state = "MATING"
         
-        self.energy -= 10
-        partner.energy -= 10
+        self.energy -= 40
+        partner.energy -= 40
         
         # FIX: Reduced mate cooldown from 70 to 65 for slightly faster frequency
-        self.mate_cooldown = 65
-        partner.mate_cooldown = 65
+        self.mate_cooldown = 600
+        partner.mate_cooldown = 600
         
-        # --- FIX: Determine number of children (Avg 2.2, a 10% increase from Avg 2.0) ---
+        # --- FIX: Number of children set to 1-3 ---
         num_children = random.randint(1, 3) 
-        if random.random() < 0.2: 
-             num_children = clamp(num_children + 1, 1, 4) 
         # --- END FIX ---
         
         for _ in range(num_children):
@@ -1210,7 +1345,7 @@ class Agent:
 
     def share_skills(self, partner):
         """Agents share knowledge when communicating."""
-        skills_to_share = ['foraging', 'building', 'navigation', 'farming', 'combat']
+        skills_to_share = ['foraging', 'building', 'navigation', 'farming', 'combat', 'social']
         # FIX: Reduced learning rate significantly for slow-burn knowledge progression
         learning_rate = 0.01 
         
@@ -1222,12 +1357,19 @@ class Agent:
                 partner.skills[skill] = clamp(partner_skill + learning_rate, 0, 10.0)
                 # High skill agent contributes to global knowledge pool
                 if self_skill > 2.0: 
-                    self.world.global_skill_knowledge[skill] = clamp(self.world.global_skill_knowledge.get(skill, 0.0) + 0.05, 0, 10.0)
+                    self.world.global_skill_knowledge[skill] = clamp(self.world.global_skill_knowledge.get(skill, 0.0) + 0.001, 0, 10.0)
             elif partner_skill > self_skill:
                 self.skills[skill] = clamp(self_skill + learning_rate, 0, 10.0)
                 # High skill agent contributes to global knowledge pool
                 if partner_skill > 2.0:
-                    self.world.global_skill_knowledge[skill] = clamp(self.world.global_skill_knowledge.get(skill, 0.0) + 0.05, 0, 10.0)
+                    self.world.global_skill_knowledge[skill] = clamp(self.world.global_skill_knowledge.get(skill, 0.0) + 0.001, 0, 10.0)
+
+        # --- NEW: Share Library Location ---
+        if self.memory['library'] and not partner.memory['library']:
+            partner.memory['library'] = self.memory['library']
+        elif partner.memory['library'] and not self.memory['library']:
+            self.memory['library'] = partner.memory['library']
+        # --- END NEW ---
 
     def communicate(self, partner):
         self.state = "COMMUNICATING" 
@@ -1261,8 +1403,8 @@ class Agent:
         self.energy -= 1.0 
         partner.energy -= 1.0
         
-        self.skills['social'] = clamp(self.skills['social'] + 0.2, 0, 10.0) 
-        partner.skills['social'] = clamp(partner.skills['social'] + 0.2, 0, 10.0) 
+        self.skills['social'] = clamp(self.skills['social'] + 0.001, 0, 10.0) 
+        partner.skills['social'] = clamp(partner.skills['social'] + 0.001, 0, 10.0) 
         
         social_gain = 50 + (self.skills['social'] * 10)
         partner_social_gain = 20 + (partner.skills['social'] * 5)
@@ -1463,7 +1605,7 @@ class World:
         self.global_skill_knowledge = {
             'foraging': 0.0,
             'social': 0.0,
-            'building': 5.0, 
+            'building': 0.0, 
             'navigation': 0.0,
             'combat': 0.0,
             'farming': 0.0 
@@ -1793,6 +1935,11 @@ class World:
             elif agent.state == "MATING":
                 char = 'm'
                 color = Style.BRIGHT + Fore.MAGENTA 
+            # --- NEW: Seeking Mate State ---
+            elif agent.state == "SEEKING_MATE":
+                char = 'M'
+                color = Style.BRIGHT + Fore.MAGENTA
+            # --- END NEW ---
             elif agent.state == "ATTACKING":
                 char = 'X'
                 color = Style.BRIGHT + Fore.RED 
@@ -1884,7 +2031,8 @@ class World:
             (Style.BRIGHT + Fore.RED + " X" + Style.RESET_ALL + ": Attack") + " | " +
             (Style.BRIGHT + Fore.RED + " r" + Style.RESET_ALL + ": Retaliate") + " | " + 
             (Style.BRIGHT + Fore.RED + " V" + Style.RESET_ALL + ": Avenge") + " | " + # MODIFIED
-            (Style.BRIGHT + Fore.MAGENTA + " m" + Style.RESET_ALL + ": Mate")
+            (Style.BRIGHT + Fore.MAGENTA + " m" + Style.RESET_ALL + ": Mate") + " | " + 
+            (Style.BRIGHT + Fore.MAGENTA + " M" + Style.RESET_ALL + ": Seek Mate")
         )
         output_buffer.append(
             (Style.NORMAL + Fore.YELLOW + " w" + Style.RESET_ALL + ": Get Wood") + " | " +
@@ -1963,7 +2111,8 @@ class World:
                              Fore.GREEN + "Farming:  " + Style.RESET_ALL + "{:>5.2f}".format(knowledge.get('farming', 0.0)))
 
         output_buffer.append(Style.BRIGHT + "\n--- DEATH ANALYSIS ---" + Style.RESET_ALL)
-        total_deaths = self.death_causes.get('TOTAL_DEATHS', 0)
+        # --- TYPO FIX: Was TOTAL_DEFAULTS, now TOTAL_DEATHS ---
+        total_deaths = self.death_causes.get('TOTAL_DEATHS', 0) 
         
         if total_deaths > 0:
             for reason, count in self.death_causes.items():
