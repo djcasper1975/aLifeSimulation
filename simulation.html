@@ -915,7 +915,7 @@
                 }
             }
 
-            // MODIFIED: Uses simSettings instead of GENE_RANGES
+            // MODIFIED: Uses simSettings and stabilization fix
             createRandomGenes(stabilize = false) {
                 const genes = {};
                 for (const gene of GENE_LIST) {
@@ -924,11 +924,8 @@
                     const maxVal = simSettings[`GENE_${geneKey}_MAX`];
                     
                     if (stabilize) {
-                        if (gene === 'metabolism') {
-                            genes[gene] = Math.random() * (0.8 - 0.5) + 0.5;
-                        } else if (gene === 'speed') {
-                            genes[gene] = Math.random() * (3.0 - 1.0) + 1.0;
-                        } else if (gene === 'personality') {
+                        // FIX 3: Removed hard-coded speed/metabolism stabilization
+                        if (gene === 'personality') {
                             if (Math.random() < 0.8) {
                                 genes[gene] = Math.floor(Math.random() * (PERSONALITY_ISOLATED - PERSONALITY_COOPERATIVE + 1)) + PERSONALITY_COOPERATIVE;
                             } else {
@@ -948,6 +945,7 @@
                 return Math.floor(clamp(this.genes.personality || 1, 1, 4));
             }
 
+            // MODIFIED: Child metabolism fix
             update() {
                 this.age += 1;
                 
@@ -980,7 +978,8 @@
                 const parentalCost = livingChildrenUnderAge * 0.2;
 
                 if (this.age < simSettings.ADULT_AGE) {
-                    metabolismCost = parentalCost;
+                    // FIX 2: Child metabolism was 0, now has a base cost
+                    metabolismCost = 0.2 + parentalCost;
                     if (this.energy < 50) { 
                         this.die('STARVATION_CHILD');
                         return;
@@ -1074,7 +1073,7 @@
                     this.apathy_timer = simSettings.APATHY_DURATION;
                 }
                 
-                // Global Knowledge Retrieval (MODIFIED: Uses new settings)
+                // Global Knowledge Retrieval
                 for (const skillKey in this.skills) {
                     const globalValue = this.world.globalSkillKnowledge[skillKey] || 0.0;
                     const currentSkill = this.skills[skillKey];
@@ -1241,7 +1240,7 @@
                             return;
                         }
                         
-                        let woodCostNeeded = Math.max(1, simSettings.HOME_WOOD_COST - Math.floor(this.skills['building'] * simSettings.SKILL_BUILD_COST_REDUCTION)); // MODIFIED
+                        let woodCostNeeded = Math.max(1, simSettings.HOME_WOOD_COST - Math.floor(this.skills['building'] * simSettings.SKILL_BUILD_COST_REDUCTION));
                         
                         if (this.wood_carried < woodCostNeeded) {
                             this.state = "GETTING_WOOD";
@@ -1329,7 +1328,7 @@
                         return;
                     }
 
-                    let woodCostNeeded = Math.max(1, simSettings.CAMPFIRE_WOOD_COST - Math.floor(this.skills['building'] * simSettings.SKILL_BUILD_COST_REDUCTION)); // MODIFIED
+                    let woodCostNeeded = Math.max(1, simSettings.CAMPFIRE_WOOD_COST - Math.floor(this.skills['building'] * simSettings.SKILL_BUILD_COST_REDUCTION));
                     
                     if (this.wood_carried >= woodCostNeeded) {
                          this.state = "BUILDING_CAMPFIRE";
@@ -1434,12 +1433,13 @@
                     case "REPAIRING_HOME":
                         if (this.home_location) {
                             const [hx, hy] = keyToArray(this.home_location);
+                            // FIX 1: Corrected this.y typo
                             const dist = getDistance(this.x, this.y, hx, hy);
                             if (dist < 2.0) {
                                 if (this.wood_carried > 0) {
                                     this.world.homes[this.home_location].durability = simSettings.HOME_DURABILITY_START;
                                     this.wood_carried--;
-                                    this.skills.building = clamp(this.skills.building + simSettings.SKILL_GAIN_REPAIR_HOME, 0, SKILL_MAXES.building); // MODIFIED
+                                    this.skills.building = clamp(this.skills.building + simSettings.SKILL_GAIN_REPAIR_HOME, 0, SKILL_MAXES.building);
                                     this.state = "WANDERING";
                                 } else {
                                     this.state = "GETTING_WOOD";
@@ -1733,12 +1733,14 @@
                         break; 
                     
                     case "SEEKING_LIBRARY":
-                        this.skills.navigation = clamp(this.skills.navigation + simSettings.SKILL_GAIN_NAVIGATION, 0, SKILL_MAXES.navigation); // MODIFIED
+                        this.skills.navigation = clamp(this.skills.navigation + simSettings.SKILL_GAIN_NAVIGATION, 0, SKILL_MAXES.navigation);
                         
                         const [lx, ly] = this.memory.library;
                         
                         if (getDistance(this.x, this.y, lx, ly) < 2.0) {
-                            this.skills.social = clamp(this.skills.social + simSettings.SKILL_GAIN_SOCIAL_LIBRARY, 0, SKILL_MAXES.social); // MODIFIED
+                            this.skills.social = clamp(this.skills.social + simSettings.SKILL_GAIN_SOCIAL_LIBRARY, 0, SKILL_MAXES.social);
+                            // FIX 4: Added social need fulfillment
+                            this.social = clamp(this.social + 10, 0, 100);
                             this.state = "WANDERING";
                         } else {
                             this.moveTowards(lx, ly);
@@ -1819,7 +1821,6 @@
                 return false;
             }
 
-            // MODIFIED: Uses new skill settings
             moveTowards(targetX, targetY) {
                 this.exploration_vector = [0, 0];
                 let steps = Math.floor(this.genes['speed']);
@@ -1859,7 +1860,6 @@
                 }
             }
 
-            // MODIFIED: Uses new skill settings
             moveRandomly(speedFactor, persistentChance) {
                 let steps = Math.floor(this.genes['speed'] * speedFactor);
                 if (steps < 1) steps = 1;
@@ -1930,7 +1930,6 @@
                 return nearestItem;
             }
 
-            // MODIFIED: Uses new skill settings
             consumeFood() {
                 if (this.food_carried > 0) {
                     this.food_carried--;
@@ -1980,7 +1979,6 @@
                 }
             }
 
-            // MODIFIED: Uses new skill settings
             buildHome() {
                 const posKey = arrayToKey([this.x, this.y]);
                 let woodCost = Math.max(1, simSettings.HOME_WOOD_COST - Math.floor(this.skills.building * simSettings.SKILL_BUILD_COST_REDUCTION));
@@ -1994,7 +1992,6 @@
                 }
             }
             
-            // MODIFIED: Uses new skill settings
             buildCampfire() {
                 const posKey = arrayToKey([this.x, this.y]);
                 let woodCost = Math.max(1, simSettings.CAMPFIRE_WOOD_COST - Math.floor(this.skills.building * simSettings.SKILL_BUILD_COST_REDUCTION));
@@ -2008,7 +2005,6 @@
                 }
             }
             
-            // MODIFIED: Uses new skill settings
             attack(target, attack_type = 'COMBAT_AGGRESSION') {
                 let energyCost = Math.max(2, simSettings.ATTACK_COST_BASE - (this.skills.combat * simSettings.SKILL_COMBAT_COST_REDUCTION));
                 let damage = simSettings.ATTACK_DAMAGE_BASE + (this.skills.combat * simSettings.SKILL_COMBAT_DAMAGE_BONUS); 
@@ -2029,7 +2025,6 @@
                 }
             }
             
-            // MODIFIED: Uses new gene/core settings
             mate(partner) {
                 this.state = "MATING";
                 partner.state = "MATING";
@@ -2072,7 +2067,6 @@
                 partner.contentment_buff_timer = 25;
             }
 
-            // MODIFIED: Uses new skill settings
             shareSkills(partner) {
                 const learningRate = simSettings.SKILL_SHARING_RATE; 
                 
@@ -2101,7 +2095,6 @@
                 }
             }
 
-            // MODIFIED: Uses new skill settings
             communicate(partner) {
                 this.state = "COMMUNICATING";
                 partner.state = "COMMUNICATING";
@@ -2188,7 +2181,6 @@
                 }
             }
 
-            // MODIFIED: Uses new skill settings
             plantSeed() {
                 if (this.seeds_carried > 0) {
                     this.seeds_carried--;
@@ -2206,7 +2198,6 @@
                 }
             }
 
-            // MODIFIED: Uses new skill settings
             plantTree() {
                 if (this.wood_seeds_carried > 0) {
                     this.wood_seeds_carried--;
