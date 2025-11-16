@@ -12,10 +12,10 @@ MAX_AGE = 2000
 
 # Love Parameters (MODIFIED)
 STARTING_LOVE = 10 
-LOVE_GAIN_EAT = 2.5
-LOVE_GAIN_SOCIAL = 5 
+LOVE_GAIN_EAT = 1.5
+LOVE_GAIN_SOCIAL = 2.5 
 LOVE_GAIN_REST = 0.5 
-LOVE_LOSS_STRUGGLE = 2.5 
+LOVE_LOSS_STRUGGLE = 4 
 PASSIVE_LOVE_GAIN = 0.0 
 
 # PAUSE THRESHOLDS (MODIFIED)
@@ -2011,7 +2011,8 @@ class World:
         for row in grid:
             output_buffer.append(" ".join(row)) 
             
-        output_buffer.append(Style.BRIGHT + "\n--- LEGEND ---" + Style.RESET_ALL)
+        # --- FIX: Removed \n ---
+        output_buffer.append(Style.BRIGHT + "--- LEGEND ---" + Style.RESET_ALL)
         output_buffer.append(Style.BRIGHT + Fore.WHITE + " Any" + Style.RESET_ALL + ": 'Wellbeing' Buff")
         
         # Agent States (Social/Wellbeing)
@@ -2069,7 +2070,8 @@ class World:
             (Style.BRIGHT + Fore.MAGENTA + " L" + Style.RESET_ALL + ": Library Location")
         )
         
-        output_buffer.append(Style.BRIGHT + "\n--- SIMULATION STATS ---" + Style.RESET_ALL)
+        # --- FIX: Removed \n ---
+        output_buffer.append(Style.BRIGHT + "--- SIMULATION STATS ---" + Style.RESET_ALL)
 
         pop_str = "Population: {:<3}".format(self.stats.get('population', 0))
         home_str = "Homes Built: {:<3}".format(self.stats.get('homes_built', 0))
@@ -2100,7 +2102,8 @@ class World:
         output_buffer.append(Fore.RED + "  Combat Skill:   " + Style.RESET_ALL + "{:>5.2f} (Deal more combat damage)".format(self.stats.get('avg_combat_skill', 0)))
         output_buffer.append(Fore.GREEN + "  Farming Skill:  " + Style.RESET_ALL + "{:>5.2f} (Learn from planting)".format(self.stats.get('avg_farming_skill', 0)))
 
-        output_buffer.append(Style.BRIGHT + "\n--- GLOBAL KNOWLEDGE LIBRARY (Communal Learning) ---" + Style.RESET_ALL)
+        # --- FIX: Removed \n ---
+        output_buffer.append(Style.BRIGHT + "--- GLOBAL KNOWLEDGE LIBRARY (Communal Learning) ---" + Style.RESET_ALL)
         
         knowledge = self.global_skill_knowledge
         output_buffer.append(Fore.GREEN + "  Foraging: " + Style.RESET_ALL + "{:>5.2f}".format(knowledge.get('foraging', 0.0)) + " | " +
@@ -2110,7 +2113,8 @@ class World:
                              Fore.RED + "Combat:   " + Style.RESET_ALL + "{:>5.2f}".format(knowledge.get('combat', 0.0)) + " | " +
                              Fore.GREEN + "Farming:  " + Style.RESET_ALL + "{:>5.2f}".format(knowledge.get('farming', 0.0)))
 
-        output_buffer.append(Style.BRIGHT + "\n--- DEATH ANALYSIS ---" + Style.RESET_ALL)
+        # --- FIX: Removed \n ---
+        output_buffer.append(Style.BRIGHT + "--- DEATH ANALYSIS ---" + Style.RESET_ALL)
         # --- TYPO FIX: Was TOTAL_DEFAULTS, now TOTAL_DEATHS ---
         total_deaths = self.death_causes.get('TOTAL_DEATHS', 0) 
         
