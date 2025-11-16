@@ -4,6 +4,6 @@ A web based sim world.
 You can run it here.
 https://djcasper1975.github.io/aLifeSimulation/simulation.html
 
-This code uses Tailwindcss from here. https://tailwindcss.com/
+The html uses Tailwindcss from here. https://tailwindcss.com/ for colours style etc.
 
 
