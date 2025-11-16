@@ -100,6 +100,20 @@
             font-weight: 600; /* font-semibold */
             color: #60a5fa; /* text-blue-400 */
         }
+
+        /* Style for sub-headings within a fieldset */
+        .fieldset-subheader {
+            font-size: 1rem; /* text-md */
+            font-weight: 600; /* font-semibold */
+            color: #9ca3af; /* text-gray-400 */
+            border-bottom: 1px solid #4b5563; /* border-gray-600 */
+            padding-bottom: 0.5rem; /* pb-2 */
+            margin-top: 1rem; /* mt-4 */
+            margin-bottom: 1rem; /* mb-4 */
+        }
+        .fieldset-subheader:first-of-type {
+            margin-top: 0.25rem; /* mt-1 */
+        }
         
     </style>
 </head>
@@ -113,203 +127,444 @@
             </div>
             
             <form id="settingsForm" class="p-6 overflow-y-auto flex-1 min-h-0">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6">
+                <div>
                     
-                    <div>
-                        <fieldset>
-                            <legend>Age & Love</legend>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label for="ADULT_AGE">Adult Age</label>
-                                    <input type="number" id="ADULT_AGE" name="ADULT_AGE" step="1">
-                                </div>
-                                <div>
-                                    <label for="OLD_AGE">Old Age</label>
-                                    <input type="number" id="OLD_AGE" name="OLD_AGE" step="1">
-                                </div>
-                                <div>
-                                    <label for="MAX_AGE">Max Age</label>
-                                    <input type="number" id="MAX_AGE" name="MAX_AGE" step="1">
-                                </div>
-                                <div>
-                                    <label for="STARTING_LOVE">Starting Love</label>
-                                    <input type="number" id="STARTING_LOVE" name="STARTING_LOVE" step="0.1">
-                                </div>
-                                <div>
-                                    <label for="LOVE_GAIN_EAT">Love Gain (Eat)</label>
-                                    <input type="number" id="LOVE_GAIN_EAT" name="LOVE_GAIN_EAT" step="0.1">
-                                </div>
-                                <div>
-                                    <label for="LOVE_GAIN_SOCIAL">Love Gain (Social)</label>
-                                    <input type="number" id="LOVE_GAIN_SOCIAL" name="LOVE_GAIN_SOCIAL" step="0.1">
-                                </div>
-                                <div>
-                                    <label for="LOVE_GAIN_REST">Love Gain (Rest)</label>
-                                    <input type="number" id="LOVE_GAIN_REST" name="LOVE_GAIN_REST" step="0.1">
-                                </div>
-                                <div>
-                                    <label for="LOVE_LOSS_STRUGGLE">Love Loss (Struggle)</label>
-                                    <input type="number" id="LOVE_LOSS_STRUGGLE" name="LOVE_LOSS_STRUGGLE" step="0.1">
-                                </div>
-                                <div>
-                                    <label for="PASSIVE_LOVE_GAIN">Passive Love Gain</label>
-                                    <input type="number" id="PASSIVE_LOVE_GAIN" name="PASSIVE_LOVE_GAIN" step="0.01">
-                                </div>
+                    <fieldset>
+                        <legend>Simulation & World</legend>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="SIM_SPEED">Sim Speed (ms)</label>
+                                <input type="number" id="SIM_SPEED" name="SIM_SPEED" step="1">
                             </div>
-                        </fieldset>
-                        
-                        <fieldset>
-                            <legend>Pause & Apathy</legend>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label for="PAUSE_ENERGY_THRESHOLD">Pause Energy</label>
-                                    <input type="number" id="PAUSE_ENERGY_THRESHOLD" name="PAUSE_ENERGY_THRESHOLD" step="1">
-                                </div>
-                                <div>
-                                    <label for="PAUSE_SOCIAL_THRESHOLD">Pause Social</label>
-                                    <input type="number" id="PAUSE_SOCIAL_THRESHOLD" name="PAUSE_SOCIAL_THRESHOLD" step="1">
-                                </div>
-                                <div>
-                                    <label for="APATHY_DURATION">Apathy Duration</label>
-                                    <input type="number" id="APATHY_DURATION" name="APATHY_DURATION" step="1">
-                                </div>
-                                <div>
-                                    <label for="APATHY_METABOLISM_PENALTY">Apathy Metabolism</label>
-                                    <input type="number" id="APATHY_METABOLISM_PENALTY" name="APATHY_METABOLISM_PENALTY" step="0.1">
-                                </div>
-                                <div>
-                                    <label for="APATHY_SOCIAL_LOSS_MULTIPLIER">Apathy Social Loss</label>
-                                    <input type="number" id="APATHY_SOCIAL_LOSS_MULTIPLIER" name="APATHY_SOCIAL_LOSS_MULTIPLIER" step="0.1">
-                                </div>
+                            <div>
+                                <label for="STARTING_AGENTS">Starting Agents</label>
+                                <input type="number" id="STARTING_AGENTS" name="STARTING_AGENTS" step="1">
                             </div>
-                        </fieldset>
+                            <div>
+                                <label for="WORLD_WIDTH">World Width</label>
+                                <input type="number" id="WORLD_WIDTH" name="WORLD_WIDTH" step="1">
+                            </div>
+                            <div>
+                                <label for="WORLD_HEIGHT">World Height</label>
+                                <input type="number" id="WORLD_HEIGHT" name="WORLD_HEIGHT" step="1">
+                            </div>
+                            <div>
+                                <label for="STARTING_FOOD">Starting Food</label>
+                                <input type="number" id="STARTING_FOOD" name="STARTING_FOOD" step="1">
+                            </div>
+                            <div>
+                                <label for="STARTING_WOOD">Starting Wood</label>
+                                <input type="number" id="STARTING_WOOD" name="STARTING_WOOD" step="1">
+                            </div>
+                            <div>
+                                <label for="MIN_POPULATION_TARGET">Min. Pop. Target</label>
+                                <input type="number" id="MIN_POPULATION_TARGET" name="MIN_POPULATION_TARGET" step="1">
+                            </div>
+                            <div>
+                                <label for="CRITICAL_FOOD_COUNT">Critical Food</label>
+                                <input type="number" id="CRITICAL_FOOD_COUNT" name="CRITICAL_FOOD_COUNT" step="1">
+                            </div>
+                        </div>
+                    </fieldset>
 
-                        <fieldset>
-                            <legend>Environment</legend>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label for="ENV_HEALTH_MAX">Env. Health Max</label>
-                                    <input type="number" id="ENV_HEALTH_MAX" name="ENV_HEALTH_MAX" step="0.1">
-                                </div>
-                                <div>
-                                    <label for="ENV_PASSIVE_RECOVERY_RATE">Env. Recovery</label>
-                                    <input type="number" id="ENV_PASSIVE_RECOVERY_RATE" name="ENV_PASSIVE_RECOVERY_RATE" step="0.01">
-                                </div>
-                                <div>
-                                    <label for="ENV_DECAY_FOOD_GATHER">Env. Decay (Food)</label>
-                                    <input type="number" id="ENV_DECAY_FOOD_GATHER" name="ENV_DECAY_FOOD_GATHER" step="0.01">
-                                </div>
-                                <div>
-                                    <label for="ENV_DECAY_WOOD_GATHER">Env. Decay (Wood)</label>
-                                    <input type="number" id="ENV_DECAY_WOOD_GATHER" name="ENV_DECAY_WOOD_GATHER" step="0.01">
-                                </div>
-                                <div>
-                                    <label for="ENV_HEAL_PLANT_BASE">Env. Heal (Plant)</label>
-                                    <input type="number" id="ENV_HEAL_PLANT_BASE" name="ENV_HEAL_PLANT_BASE" step="0.1">
-                                </div>
+                    <fieldset>
+                        <legend>Resources & Farming</legend>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="FOOD_SPAWN_RATE">Food Spawn Rate</label>
+                                <input type="number" id="FOOD_SPAWN_RATE" name="FOOD_SPAWN_RATE" step="1">
                             </div>
-                        </fieldset>
-                    </div>
+                            <div>
+                                <label for="WOOD_SPAWN_RATE">Wood Spawn Rate</label>
+                                <input type="number" id="WOOD_SPAWN_RATE" name="WOOD_SPAWN_RATE" step="1">
+                            </div>
+                            <div>
+                                <label for="FOOD_FRESHNESS">Food Freshness</label>
+                                <input type="number" id="FOOD_FRESHNESS" name="FOOD_FRESHNESS" step="1">
+                            </div>
+                            <div>
+                                <label for="GROW_TIME">Grow Time (Food)</label>
+                                <input type="number" id="GROW_TIME" name="GROW_TIME" step="1">
+                            </div>
+                            <div>
+                                <label for="TREE_GROW_TIME">Grow Time (Tree)</label>
+                                <input type="number" id="TREE_GROW_TIME" name="TREE_GROW_TIME" step="1">
+                            </div>
+                            <div>
+                                <label for="WOOD_SEED_CHANCE">Wood Seed Chance</label>
+                                <input type="number" id="WOOD_SEED_CHANCE" name="WOOD_SEED_CHANCE" step="0.01">
+                            </div>
+                            <div>
+                                <label for="FOOD_SEED_BASE_CHANCE">Food Seed Chance</label>
+                                <input type="number" id="FOOD_SEED_BASE_CHANCE" name="FOOD_SEED_BASE_CHANCE" step="0.01">
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <fieldset>
+                        <legend>Structures</legend>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="CAMPFIRE_BURN_TIME">Campfire Burn Time</label>
+                                <input type="number" id="CAMPFIRE_BURN_TIME" name="CAMPFIRE_BURN_TIME" step="1">
+                            </div>
+                            <div>
+                                <label for="CAMPFIRE_WOOD_COST">Campfire Wood Cost</label>
+                                <input type="number" id="CAMPFIRE_WOOD_COST" name="CAMPFIRE_WOOD_COST" step="1">
+                            </div>
+                            <div>
+                                <label for="CAMPFIRE_REFUEL_THRESHOLD">Campfire Refuel</label>
+                                <input type="number" id="CAMPFIRE_REFUEL_THRESHOLD" name="CAMPFIRE_REFUEL_THRESHOLD" step="1">
+                            </div>
+                            <div>
+                                <label for="HOME_DURABILITY_START">Home Durability</label>
+                                <input type="number" id="HOME_DURABILITY_START" name="HOME_DURABILITY_START" step="1">
+                            </div>
+                            <div>
+                                <label for="HOME_DECAY_RATE">Home Decay Rate</label>
+                                <input type="number" id="HOME_DECAY_RATE" name="HOME_DECAY_RATE" step="1">
+                            </div>
+                        </div>
+                    </fieldset>
                     
-                    <div>
-                        <fieldset>
-                            <legend>Simulation & World</legend>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label for="SIM_SPEED">Sim Speed (ms)</label>
-                                    <input type="number" id="SIM_SPEED" name="SIM_SPEED" step="1">
-                                </div>
-                                <div>
-                                    <label for="WORLD_WIDTH">World Width</label>
-                                    <input type="number" id="WORLD_WIDTH" name="WORLD_WIDTH" step="1">
-                                </div>
-                                <div>
-                                    <label for="WORLD_HEIGHT">World Height</label>
-                                    <input type="number" id="WORLD_HEIGHT" name="WORLD_HEIGHT" step="1">
-                                </div>
-                                <div>
-                                    <label for="STARTING_AGENTS">Starting Agents</label>
-                                    <input type="number" id="STARTING_AGENTS" name="STARTING_AGENTS" step="1">
-                                </div>
-                                <div>
-                                    <label for="STARTING_FOOD">Starting Food</label>
-                                    <input type="number" id="STARTING_FOOD" name="STARTING_FOOD" step="1">
-                                </div>
-                                <div>
-                                    <label for="STARTING_WOOD">Starting Wood</label>
-                                    <input type="number" id="STARTING_WOOD" name="STARTING_WOOD" step="1">
-                                </div>
-                                <div>
-                                    <label for="MIN_POPULATION_TARGET">Min. Pop. Target</label>
-                                    <input type="number" id="MIN_POPULATION_TARGET" name="MIN_POPULATION_TARGET" step="1">
-                                </div>
-                                <div>
-                                    <label for="CRITICAL_FOOD_COUNT">Critical Food</label>
-                                    <input type="number" id="CRITICAL_FOOD_COUNT" name="CRITICAL_FOOD_COUNT" step="1">
-                                </div>
+                    <fieldset>
+                        <legend>Age & Love</legend>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="ADULT_AGE">Adult Age</label>
+                                <input type="number" id="ADULT_AGE" name="ADULT_AGE" step="1">
                             </div>
-                        </fieldset>
+                            <div>
+                                <label for="OLD_AGE">Old Age</label>
+                                <input type="number" id="OLD_AGE" name="OLD_AGE" step="1">
+                            </div>
+                            <div>
+                                <label for="MAX_AGE">Max Age</label>
+                                <input type="number" id="MAX_AGE" name="MAX_AGE" step="1">
+                            </div>
+                            <div>
+                                <label for="STARTING_LOVE">Starting Love</label>
+                                <input type="number" id="STARTING_LOVE" name="STARTING_LOVE" step="0.1">
+                            </div>
+                            <div>
+                                <label for="LOVE_GAIN_EAT">Love Gain (Eat)</label>
+                                <input type="number" id="LOVE_GAIN_EAT" name="LOVE_GAIN_EAT" step="0.1">
+                            </div>
+                            <div>
+                                <label for="LOVE_GAIN_SOCIAL">Love Gain (Social)</label>
+                                <input type="number" id="LOVE_GAIN_SOCIAL" name="LOVE_GAIN_SOCIAL" step="0.1">
+                            </div>
+                            <div>
+                                <label for="LOVE_GAIN_REST">Love Gain (Rest)</label>
+                                <input type="number" id="LOVE_GAIN_REST" name="LOVE_GAIN_REST" step="0.1">
+                            </div>
+                            <div>
+                                <label for="LOVE_LOSS_STRUGGLE">Love Loss (Struggle)</label>
+                                <input type="number" id="LOVE_LOSS_STRUGGLE" name="LOVE_LOSS_STRUGGLE" step="0.1">
+                            </div>
+                            <div>
+                                <label for="PASSIVE_LOVE_GAIN">Passive Love Gain</label>
+                                <input type="number" id="PASSIVE_LOVE_GAIN" name="PASSIVE_LOVE_GAIN" step="0.01">
+                            </div>
+                        </div>
+                    </fieldset>
+                    
+                    <fieldset>
+                        <legend>Pause & Apathy</legend>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="PAUSE_ENERGY_THRESHOLD">Pause Energy</label>
+                                <input type="number" id="PAUSE_ENERGY_THRESHOLD" name="PAUSE_ENERGY_THRESHOLD" step="1">
+                            </div>
+                            <div>
+                                <label for="PAUSE_SOCIAL_THRESHOLD">Pause Social</label>
+                                <input type="number" id="PAUSE_SOCIAL_THRESHOLD" name="PAUSE_SOCIAL_THRESHOLD" step="1">
+                            </div>
+                            <div>
+                                <label for="APATHY_DURATION">Apathy Duration</label>
+                                <input type="number" id="APATHY_DURATION" name="APATHY_DURATION" step="1">
+                            </div>
+                            <div>
+                                <label for="APATHY_METABOLISM_PENALTY">Apathy Metabolism</label>
+                                <input type="number" id="APATHY_METABOLISM_PENALTY" name="APATHY_METABOLISM_PENALTY" step="0.1">
+                            </div>
+                            <div>
+                                <label for="APATHY_SOCIAL_LOSS_MULTIPLIER">Apathy Social Loss</label>
+                                <input type="number" id="APATHY_SOCIAL_LOSS_MULTIPLIER" name="APATHY_SOCIAL_LOSS_MULTIPLIER" step="0.1">
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <fieldset>
+                        <legend>Environment</legend>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="ENV_HEALTH_MAX">Env. Health Max</label>
+                                <input type="number" id="ENV_HEALTH_MAX" name="ENV_HEALTH_MAX" step="0.1">
+                            </div>
+                            <div>
+                                <label for="ENV_PASSIVE_RECOVERY_RATE">Env. Recovery</label>
+                                <input type="number" id="ENV_PASSIVE_RECOVERY_RATE" name="ENV_PASSIVE_RECOVERY_RATE" step="0.01">
+                            </div>
+                            <div>
+                                <label for="ENV_DECAY_FOOD_GATHER">Env. Decay (Food)</label>
+                                <input type="number" id="ENV_DECAY_FOOD_GATHER" name="ENV_DECAY_FOOD_GATHER" step="0.01">
+                            </div>
+                            <div>
+                                <label for="ENV_DECAY_WOOD_GATHER">Env. Decay (Wood)</label>
+                                <input type="number" id="ENV_DECAY_WOOD_GATHER" name="ENV_DECAY_WOOD_GATHER" step="0.01">
+                            </div>
+                            <div>
+                                <label for="ENV_HEAL_PLANT_BASE">Env. Heal (Plant)</label>
+                                <input type="number" id="ENV_HEAL_PLANT_BASE" name="ENV_HEAL_PLANT_BASE" step="0.1">
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <fieldset>
+                        <legend>Advanced Core</legend>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="STARTING_ENERGY">Starting Energy</label>
+                                <input type="number" id="STARTING_ENERGY" name="STARTING_ENERGY" step="10">
+                            </div>
+                            <div>
+                                <label for="FOOD_ENERGY_GAIN_BASE">Food Energy Gain</label>
+                                <input type="number" id="FOOD_ENERGY_GAIN_BASE" name="FOOD_ENERGY_GAIN_BASE" step="10">
+                            </div>
+                            <div>
+                                <label for="STARTING_SOCIAL_MIN">Social Min</label>
+                                <input type="number" id="STARTING_SOCIAL_MIN" name="STARTING_SOCIAL_MIN" step="1">
+                            </div>
+                            <div>
+                                <label for="STARTING_SOCIAL_MAX">Social Max</label>
+                                <input type="number" id="STARTING_SOCIAL_MAX" name="STARTING_SOCIAL_MAX" step="1">
+                            </div>
+                            <div>
+                                <label for="MAX_FOOD_CARRY">Max Food Carry</label>
+                                <input type="number" id="MAX_FOOD_CARRY" name="MAX_FOOD_CARRY" step="1">
+                            </div>
+                            <div>
+                                <label for="MAX_WOOD_CARRY">Max Wood Carry</label>
+                                <input type="number" id="MAX_WOOD_CARRY" name="MAX_WOOD_CARRY" step="1">
+                            </div>
+                            <div>
+                                <label for="MAX_STARTING_SEEDS">Max Start Seeds</label>
+                                <input type="number" id="MAX_STARTING_SEEDS" name="MAX_STARTING_SEEDS" step="1">
+                            </div>
+                            <div>
+                                <label for="MAX_STARTING_WOOD_SEEDS">Max Start Wood Seeds</label>
+                                <input type="number" id="MAX_STARTING_WOOD_SEEDS" name="MAX_STARTING_WOOD_SEEDS" step="1">
+                            </div>
+                            <div>
+                                <label for="HOME_WOOD_COST">Home Wood Cost</label>
+                                <input type="number" id="HOME_WOOD_COST" name="HOME_WOOD_COST" step="1">
+                            </div>
+                            <div>
+                                <label for="MATE_ENERGY_COST">Mate Energy Cost</label>
+                                <input type="number" id="MATE_ENERGY_COST" name="MATE_ENERGY_COST" step="1">
+                            </div>
+                            <div>
+                                <label for="MATE_COOLDOWN">Mate Cooldown</label>
+                                <input type="number" id="MATE_COOLDOWN" name="MATE_COOLDOWN" step="10">
+                            </div>
+                            <div>
+                                <label for="MAX_CHILDREN_PER_BIRTH">Max Children</label>
+                                <input type="number" id="MAX_CHILDREN_PER_BIRTH" name="MAX_CHILDREN_PER_BIRTH" step="1">
+                            </div>
+                            <div>
+                                <label for="ATTACK_DAMAGE_BASE">Attack Damage</label>
+                                <input type="number" id="ATTACK_DAMAGE_BASE" name="ATTACK_DAMAGE_BASE" step="1">
+                            </div>
+                            <div>
+                                <label for="ATTACK_COST_BASE">Attack Cost</label>
+                                <input type="number" id="ATTACK_COST_BASE" name="ATTACK_COST_BASE" step="1">
+                            </div>
+                            <div>
+                                <label for="VENGEANCE_DURATION">Vengeance Duration</label>
+                                <input type="number" id="VENGEANCE_DURATION" name="VENGEANCE_DURATION" step="1">
+                            </div>
+                            <div>
+                                <label for="ISOLATION_SOCIAL_LOSS_RATE">Isolation Social Loss</label>
+                                <input type="number" id="ISOLATION_SOCIAL_LOSS_RATE" name="ISOLATION_SOCIAL_LOSS_RATE" step="0.01">
+                            </div>
+                            <div>
+                                <label for="GLOBAL_KNOWLEDGE_LEARN_RATE">Global Know. Rate</label>
+                                <input type="number" id="GLOBAL_KNOWLEDGE_LEARN_RATE" name="GLOBAL_KNOWLEDGE_LEARN_RATE" step="0.001">
+                            </div>
+                            <div>
+                                <label for="SKILL_SHARING_RATE">Skill Share Rate</label>
+                                <input type="number" id="SKILL_SHARING_RATE" name="SKILL_SHARING_RATE" step="0.001">
+                            </div>
+                        </div>
+                    </fieldset>
+                    
+                    <fieldset>
+                        <legend>Gene Configuration</legend>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-x-3 gap-y-3">
+                            <div class="font-semibold text-gray-400 text-sm hidden sm:block">Gene</div>
+                            <div class="font-semibold text-gray-400 text-sm">Min</div>
+                            <div class="font-semibold text-gray-400 text-sm">Max</div>
+                            <div class="font-semibold text-gray-400 text-sm">Mutate Rate</div>
+                            
+                            <label for="GENE_VISION_MIN" class="self-center col-span-2 sm:col-span-1">Vision</label>
+                            <input type="number" id="GENE_VISION_MIN" name="GENE_VISION_MIN" step="0.1">
+                            <input type="number" id="GENE_VISION_MAX" name="GENE_VISION_MAX" step="0.1">
+                            <input type="number" id="GENE_VISION_MUTATE_RATE" name="GENE_VISION_MUTATE_RATE" step="0.01">
+                            
+                            <label for="GENE_SPEED_MIN" class="self-center col-span-2 sm:col-span-1">Speed</label>
+                            <input type="number" id="GENE_SPEED_MIN" name="GENE_SPEED_MIN" step="0.1">
+                            <input type="number" id="GENE_SPEED_MAX" name="GENE_SPEED_MAX" step="0.1">
+                            <input type="number" id="GENE_SPEED_MUTATE_RATE" name="GENE_SPEED_MUTATE_RATE" step="0.01">
+                            
+                            <label for="GENE_METABOLISM_MIN" class="self-center col-span-2 sm:col-span-1">Metabolism</label>
+                            <input type="number" id="GENE_METABOLISM_MIN" name="GENE_METABOLISM_MIN" step="0.1">
+                            <input type="number" id="GENE_METABOLISM_MAX" name="GENE_METABOLISM_MAX" step="0.1">
+                            <input type="number" id="GENE_METABOLISM_MUTATE_RATE" name="GENE_METABOLISM_MUTATE_RATE" step="0.01">
+
+                            <label for="GENE_AGGRESSION_MIN" class="self-center col-span-2 sm:col-span-1">Aggression</label>
+                            <input type="number" id="GENE_AGGRESSION_MIN" name="GENE_AGGRESSION_MIN" step="0.1">
+                            <input type="number" id="GENE_AGGRESSION_MAX" name="GENE_AGGRESSION_MAX" step="0.1">
+                            <input type="number" id="GENE_AGGRESSION_MUTATE_RATE" name="GENE_AGGRESSION_MUTATE_RATE" step="0.01">
+
+                            <label for="GENE_BUILDER_MIN" class="self-center col-span-2 sm:col-span-1">Builder</label>
+                            <input type="number" id="GENE_BUILDER_MIN" name="GENE_BUILDER_MIN" step="0.1">
+                            <input type="number" id="GENE_BUILDER_MAX" name="GENE_BUILDER_MAX" step="0.1">
+                            <input type="number" id="GENE_BUILDER_MUTATE_RATE" name="GENE_BUILDER_MUTATE_RATE" step="0.01">
+                            
+                            <label for="GENE_MATING_DRIVE_MIN" class="self-center col-span-2 sm:col-span-1">Mating Drive</label>
+                            <input type="number" id="GENE_MATING_DRIVE_MIN" name="GENE_MATING_DRIVE_MIN" step="1">
+                            <input type="number" id="GENE_MATING_DRIVE_MAX" name="GENE_MATING_DRIVE_MAX" step="1">
+                            <input type="number" id="GENE_MATING_DRIVE_MUTATE_RATE" name="GENE_MATING_DRIVE_MUTATE_RATE" step="0.1">
+                            
+                            <label for="GENE_SOCIABILITY_MIN" class="self-center col-span-2 sm:col-span-1">Sociability</label>
+                            <input type="number" id="GENE_SOCIABILITY_MIN" name="GENE_SOCIABILITY_MIN" step="0.1">
+                            <input type="number" id="GENE_SOCIABILITY_MAX" name="GENE_SOCIABILITY_MAX" step="0.1">
+                            <input type="number" id="GENE_SOCIABILITY_MUTATE_RATE" name="GENE_SOCIABILITY_MUTATE_RATE" step="0.01">
+                            
+                            <label for="GENE_FARMING_MIN" class="self-center col-span-2 sm:col-span-1">Farming</label>
+                            <input type="number" id="GENE_FARMING_MIN" name="GENE_FARMING_MIN" step="0.1">
+                            <input type="number" id="GENE_FARMING_MAX" name="GENE_FARMING_MAX" step="0.1">
+                            <input type="number" id="GENE_FARMING_MUTATE_RATE" name="GENE_FARMING_MUTATE_RATE" step="0.01">
+
+                            <label for="GENE_PERSONALITY_MIN" class="self-center col-span-2 sm:col-span-1">Personality</label>
+                            <input type="number" id="GENE_PERSONALITY_MIN" name="GENE_PERSONALITY_MIN" step="0.1">
+                            <input type="number" id="GENE_PERSONALITY_MAX" name="GENE_PERSONALITY_MAX" step="0.1">
+                            <input type="number" id="GENE_PERSONALITY_MUTATE_RATE" name="GENE_PERSONALITY_MUTATE_RATE" step="0.01">
+                        </div>
+                    </fieldset>
+
+                    <fieldset>
+                        <legend>Skill & Learning</legend>
                         
-                        <fieldset>
-                            <legend>Resources & Farming</legend>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label for="FOOD_SPAWN_RATE">Food Spawn Rate</label>
-                                    <input type="number" id="FOOD_SPAWN_RATE" name="FOOD_SPAWN_RATE" step="1">
-                                </div>
-                                <div>
-                                    <label for="WOOD_SPAWN_RATE">Wood Spawn Rate</label>
-                                    <input type="number" id="WOOD_SPAWN_RATE" name="WOOD_SPAWN_RATE" step="1">
-                                </div>
-                                <div>
-                                    <label for="FOOD_FRESHNESS">Food Freshness</label>
-                                    <input type="number" id="FOOD_FRESHNESS" name="FOOD_FRESHNESS" step="1">
-                                </div>
-                                <div>
-                                    <label for="GROW_TIME">Grow Time (Food)</label>
-                                    <input type="number" id="GROW_TIME" name="GROW_TIME" step="1">
-                                </div>
-                                <div>
-                                    <label for="TREE_GROW_TIME">Grow Time (Tree)</label>
-                                    <input type="number" id="TREE_GROW_TIME" name="TREE_GROW_TIME" step="1">
-                                </div>
-                                <div>
-                                    <label for="WOOD_SEED_CHANCE">Wood Seed Chance</label>
-                                    <input type="number" id="WOOD_SEED_CHANCE" name="WOOD_SEED_CHANCE" step="0.01">
-                                </div>
-                                <div>
-                                    <label for="FOOD_SEED_BASE_CHANCE">Food Seed Chance</label>
-                                    <input type="number" id="FOOD_SEED_BASE_CHANCE" name="FOOD_SEED_BASE_CHANCE" step="0.01">
-                                </div>
+                        <div class="fieldset-subheader">Skill Max Values</div>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                            <div>
+                                <label for="SKILL_FORAGE_MAX">Forage</label>
+                                <input type="number" id="SKILL_FORAGE_MAX" name="SKILL_FORAGE_MAX" step="1">
                             </div>
-                        </fieldset>
+                            <div>
+                                <label for="SKILL_SOCIAL_MAX">Social</label>
+                                <input type="number" id="SKILL_SOCIAL_MAX" name="SKILL_SOCIAL_MAX" step="1">
+                            </div>
+                            <div>
+                                <label for="SKILL_BUILD_MAX">Build</label>
+                                <input type="number" id="SKILL_BUILD_MAX" name="SKILL_BUILD_MAX" step="1">
+                            </div>
+                            <div>
+                                <label for="SKILL_NAV_MAX">Nav</label>
+                                <input type="number" id="SKILL_NAV_MAX" name="SKILL_NAV_MAX" step="1">
+                            </div>
+                            <div>
+                                <label for="SKILL_COMBAT_MAX">Combat</label>
+                                <input type="number" id="SKILL_COMBAT_MAX" name="SKILL_COMBAT_MAX" step="1">
+                            </div>
+                            <div>
+                                <label for="SKILL_FARM_MAX">Farm</label>
+                                <input type="number" id="SKILL_FARM_MAX" name="SKILL_FARM_MAX" step="1">
+                            </div>
+                        </div>
                         
-                        <fieldset>
-                            <legend>Structures</legend>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label for="CAMPFIRE_BURN_TIME">Campfire Burn Time</label>
-                                    <input type="number" id="CAMPFIRE_BURN_TIME" name="CAMPFIRE_BURN_TIME" step="1">
-                                </div>
-                                <div>
-                                    <label for="CAMPFIRE_WOOD_COST">Campfire Wood Cost</label>
-                                    <input type="number" id="CAMPFIRE_WOOD_COST" name="CAMPFIRE_WOOD_COST" step="1">
-                                </div>
-                                <div>
-                                    <label for="CAMPFIRE_REFUEL_THRESHOLD">Campfire Refuel</label>
-                                    <input type="number" id="CAMPFIRE_REFUEL_THRESHOLD" name="CAMPFIRE_REFUEL_THRESHOLD" step="1">
-                                </div>
-                                <div>
-                                    <label for="HOME_DURABILITY_START">Home Durability</label>
-                                    <input type="number" id="HOME_DURABILITY_START" name="HOME_DURABILITY_START" step="1">
-                                </div>
-                                <div>
-                                    <label for="HOME_DECAY_RATE">Home Decay Rate</label>
-                                    <input type="number" id="HOME_DECAY_RATE" name="HOME_DECAY_RATE" step="1">
-                                </div>
+                        <div class="fieldset-subheader">Skill Gain Rates</div>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                            <div>
+                                <label for="SKILL_GAIN_FORAGE">Forage</label>
+                                <input type="number" id="SKILL_GAIN_FORAGE" name="SKILL_GAIN_FORAGE" step="0.01">
                             </div>
-                        </fieldset>
-                    </div>
+                            <div>
+                                <label for="SKILL_GAIN_FARMING">Farming</label>
+                                <input type="number" id="SKILL_GAIN_FARMING" name="SKILL_GAIN_FARMING" step="0.01">
+                            </div>
+                            <div>
+                                <label for="SKILL_GAIN_COMBAT">Combat</label>
+                                <input type="number" id="SKILL_GAIN_COMBAT" name="SKILL_GAIN_COMBAT" step="0.01">
+                            </div>
+                            <div>
+                                <label for="SKILL_GAIN_BUILD_HOME">Build Home</label>
+                                <input type="number" id="SKILL_GAIN_BUILD_HOME" name="SKILL_GAIN_BUILD_HOME" step="0.01">
+                            </div>
+                            <div>
+                                <label for="SKILL_GAIN_BUILD_FIRE">Build Fire</label>
+                                <input type="number" id="SKILL_GAIN_BUILD_FIRE" name="SKILL_GAIN_BUILD_FIRE" step="0.01">
+                            </div>
+                            <div>
+                                <label for="SKILL_GAIN_REPAIR_HOME">Repair</label>
+                                <input type="number" id="SKILL_GAIN_REPAIR_HOME" name="SKILL_GAIN_REPAIR_HOME" step="0.01">
+                            </div>
+                            <div>
+                                <label for="SKILL_GAIN_SOCIAL_CHAT">Chat</label>
+                                <input type="number" id="SKILL_GAIN_SOCIAL_CHAT" name="SKILL_GAIN_SOCIAL_CHAT" step="0.001">
+                            </div>
+                            <div>
+                                <label for="SKILL_GAIN_SOCIAL_LIBRARY">Library</label>
+                                <input type="number" id="SKILL_GAIN_SOCIAL_LIBRARY" name="SKILL_GAIN_SOCIAL_LIBRARY" step="0.001">
+                            </div>
+                            <div>
+                                <label for="SKILL_GAIN_NAVIGATION">Move</label>
+                                <input type="number" id="SKILL_GAIN_NAVIGATION" name="SKILL_GAIN_NAVIGATION" step="0.001">
+                            </div>
+                        </div>
+
+                        <div class="fieldset-subheader">Skill Impact</div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="SKILL_FORAGE_ENERGY_BONUS">Forage Energy+ (per pt)</label>
+                                <input type="number" id="SKILL_FORAGE_ENERGY_BONUS" name="SKILL_FORAGE_ENERGY_BONUS" step="1">
+                            </div>
+                            <div>
+                                <label for="SKILL_FORAGE_SEED_BONUS">Forage Seed+ (per pt)</label>
+                                <input type="number" id="SKILL_FORAGE_SEED_BONUS" name="SKILL_FORAGE_SEED_BONUS" step="0.01">
+                            </div>
+                            <div>
+                                <label for="SKILL_BUILD_COST_REDUCTION">Build Cost- (per pt)</label>
+                                <input type="number" id="SKILL_BUILD_COST_REDUCTION" name="SKILL_BUILD_COST_REDUCTION" step="0.1">
+                            </div>
+                            <div>
+                                <label for="SKILL_NAV_COST_REDUCTION">Move Cost- (per pt)</label>
+                                <input type="number" id="SKILL_NAV_COST_REDUCTION" name="SKILL_NAV_COST_REDUCTION" step="0.01">
+                            </div>
+                            <div>
+                                <label for="SKILL_COMBAT_DAMAGE_BONUS">Combat Dmg+ (per pt)</label>
+                                <input type="number" id="SKILL_COMBAT_DAMAGE_BONUS" name="SKILL_COMBAT_DAMAGE_BONUS" step="0.5">
+                            </div>
+                            <div>
+                                <label for="SKILL_COMBAT_COST_REDUCTION">Combat Cost- (per pt)</label>
+                                <input type="number" id="SKILL_COMBAT_COST_REDUCTION" name="SKILL_COMBAT_COST_REDUCTION" step="0.5">
+                            </div>
+                            <div>
+                                <label for="SKILL_SOCIAL_GAIN_BONUS">Social Gain+ (per pt)</label>
+                                <input type="number" id="SKILL_SOCIAL_GAIN_BONUS" name="SKILL_SOCIAL_GAIN_BONUS" step="0.5">
+                            </div>
+                            <div>
+                                <label for="SKILL_FARM_HEAL_MULTIPLIER">Env. Heal x (per pt)</label>
+                                <input type="number" id="SKILL_FARM_HEAL_MULTIPLIER" name="SKILL_FARM_HEAL_MULTIPLIER" step="0.01">
+                            </div>
+                            <div>
+                                <label for="GLOBAL_KNOWLEDGE_UPTAKE_RATE">Global Know. Uptake</label>
+                                <input type="number" id="GLOBAL_KNOWLEDGE_UPTAKE_RATE" name="GLOBAL_KNOWLEDGE_UPTAKE_RATE" step="0.0001">
+                            </div>
+                        </div>
+                    </fieldset>
                     
                 </div>
             </form>
@@ -389,10 +644,14 @@
         // NEW: Refactored constants into objects for settings management
         
         const SETTINGS_STORAGE_KEY = 'aLifeSimSettings';
+        
+        // --- NEW: Lists of genes and skills for iteration ---
+        const GENE_LIST = ['vision', 'speed', 'metabolism', 'aggression', 'builder', 'mating_drive', 'sociability', 'farming', 'personality'];
+        const SKILL_LIST = ['foraging', 'social', 'building', 'navigation', 'combat', 'farming'];
 
         // These are the hard-coded defaults
         const defaultSimSettings = {
-            ADULT_AGE: 300, // MODIFIED
+            ADULT_AGE: 300,
             OLD_AGE: 1500,
             MAX_AGE: 2000,
             
@@ -433,8 +692,8 @@
             SIM_SPEED: 150, // Milliseconds for simulation tick
 
             // Resources spawn every N turns
-            FOOD_SPAWN_RATE: 20, // MODIFIED
-            WOOD_SPAWN_RATE: 50, // MODIFIED
+            FOOD_SPAWN_RATE: 20,
+            WOOD_SPAWN_RATE: 50,
 
             // Farming Parameters
             FOOD_FRESHNESS: 185, 
@@ -443,7 +702,7 @@
             // Tree Parameters
             TREE_GROW_TIME: 10, 
             WOOD_SEED_CHANCE: 0.5,
-            FOOD_SEED_BASE_CHANCE: 0.5, // MODIFIED
+            FOOD_SEED_BASE_CHANCE: 0.5,
 
             // Campfire Parameters
             CAMPFIRE_BURN_TIME: 300, 
@@ -452,14 +711,77 @@
 
             // Home Durability
             HOME_DURABILITY_START: 3,
-            HOME_DECAY_RATE: 400, 
+            HOME_DECAY_RATE: 400,
+
+            // --- Advanced Core Settings ---
+            VENGEANCE_DURATION: 50,
+            STARTING_ENERGY: 150,
+            STARTING_SOCIAL_MIN: 30.0,
+            STARTING_SOCIAL_MAX: 80.0,
+            MAX_FOOD_CARRY: 2,
+            MAX_WOOD_CARRY: 3,
+            MAX_STARTING_SEEDS: 3,
+            MAX_STARTING_WOOD_SEEDS: 2,
+            HOME_WOOD_COST: 3,
+            FOOD_ENERGY_GAIN_BASE: 120,
+            MATE_ENERGY_COST: 40,
+            MATE_COOLDOWN: 600,
+            MAX_CHILDREN_PER_BIRTH: 3,
+            ATTACK_DAMAGE_BASE: 15,
+            ATTACK_COST_BASE: 10,
+            ISOLATION_SOCIAL_LOSS_RATE: 0.5,
+            GLOBAL_KNOWLEDGE_LEARN_RATE: 0.001,
+            SKILL_SHARING_RATE: 0.01,
+            
+            // --- NEW: Gene Configuration ---
+            GENE_VISION_MIN: 3.0, GENE_VISION_MAX: 10.0, GENE_VISION_MUTATE_RATE: 0.1,
+            GENE_SPEED_MIN: 1.0, GENE_SPEED_MAX: 3.0, GENE_SPEED_MUTATE_RATE: 0.1,
+            GENE_METABOLISM_MIN: 0.5, GENE_METABOLISM_MAX: 2.0, GENE_METABOLISM_MUTATE_RATE: 0.1,
+            GENE_AGGRESSION_MIN: 0.0, GENE_AGGRESSION_MAX: 1.0, GENE_AGGRESSION_MUTATE_RATE: 0.1,
+            GENE_BUILDER_MIN: 0.0, GENE_BUILDER_MAX: 1.0, GENE_BUILDER_MUTATE_RATE: 0.1,
+            GENE_MATING_DRIVE_MIN: 120.0, GENE_MATING_DRIVE_MAX: 160.0, GENE_MATING_DRIVE_MUTATE_RATE: 5.0,
+            GENE_SOCIABILITY_MIN: 0.0, GENE_SOCIABILITY_MAX: 1.0, GENE_SOCIABILITY_MUTATE_RATE: 0.1,
+            GENE_FARMING_MIN: 0.0, GENE_FARMING_MAX: 1.0, GENE_FARMING_MUTATE_RATE: 0.1,
+            GENE_PERSONALITY_MIN: 1.0, GENE_PERSONALITY_MAX: 4.0, GENE_PERSONALITY_MUTATE_RATE: 0.5,
+            
+            // --- NEW: Skill & Learning ---
+            // Maxes
+            SKILL_FORAGE_MAX: 10.0,
+            SKILL_SOCIAL_MAX: 10.0,
+            SKILL_BUILD_MAX: 4.0,
+            SKILL_NAV_MAX: 5.0,
+            SKILL_COMBAT_MAX: 10.0,
+            SKILL_FARM_MAX: 10.0,
+            // Gains
+            SKILL_GAIN_FORAGE: 0.1,
+            SKILL_GAIN_FARMING: 0.2,
+            SKILL_GAIN_COMBAT: 0.2,
+            SKILL_GAIN_BUILD_HOME: 0.5,
+            SKILL_GAIN_BUILD_FIRE: 0.2,
+            SKILL_GAIN_REPAIR_HOME: 0.2,
+            SKILL_GAIN_SOCIAL_CHAT: 0.001,
+            SKILL_GAIN_SOCIAL_LIBRARY: 0.01,
+            SKILL_GAIN_NAVIGATION: 0.001,
+            // Impacts
+            SKILL_FORAGE_ENERGY_BONUS: 20.0,
+            SKILL_FORAGE_SEED_BONUS: 0.05,
+            SKILL_BUILD_COST_REDUCTION: 0.5,
+            SKILL_NAV_COST_REDUCTION: 0.15,
+            SKILL_COMBAT_DAMAGE_BONUS: 8.0,
+            SKILL_COMBAT_COST_REDUCTION: 1.0,
+            SKILL_SOCIAL_GAIN_BONUS: 10.0,
+            SKILL_FARM_HEAL_MULTIPLIER: 0.1, // Replaces division (1.0 / 10.0)
+            // Knowledge
+            GLOBAL_KNOWLEDGE_UPTAKE_RATE: 0.0001,
         };
         
         // This 'let' variable will hold the active settings (either default or loaded from storage)
         let simSettings = {};
+        
+        // --- NEW: Helper object for skill maxes, populated at runtime ---
+        let SKILL_MAXES = {};
 
         // --- STATIC CONSTANTS (Not configurable by user) ---
-        const VENGEANCE_DURATION = 50;
         const PERSONALITY_COOPERATIVE = 1;
         const PERSONALITY_ISOLATED = 2;
         const PERSONALITY_JUDGMENTAL = 3; 
@@ -470,18 +792,8 @@
             [PERSONALITY_JUDGMENTAL]: [PERSONALITY_ISOLATED],
             [PERSONALITY_AGGRESSIVE_COOPERATOR]: [PERSONALITY_JUDGMENTAL]
         };
-
-        const GENE_RANGES = {
-            'vision': [3, 10, 0.1],
-            'speed': [1, 3, 0.1],
-            'metabolism': [0.5, 2.0, 0.1],
-            'aggression': [0.0, 1.0, 0.1],
-            'builder': [0.0, 1.0, 0.1],
-            'mating_drive': [120, 160, 5.0], // MODIFIED
-            'sociability': [0.0, 1.0, 0.1],
-            'farming': [0.0, 1.0, 0.1],
-            'personality': [1.0, 4.0, 0.5] 
-        };
+        
+        // --- REMOVED: GENE_RANGES is now built from simSettings ---
 
         const COLORS = {
             CYAN_BRIGHT: '#22d3ee', // A
@@ -559,13 +871,13 @@
                 this.y = y;
                 this.char = 'A';
                 this.id = this.world.getNextAgentId();
-                this.energy = 150;
+                this.energy = simSettings.STARTING_ENERGY;
                 this.wood_carried = 0;
                 this.food_carried = 0;
                 this.mate_cooldown = 0;
-                this.seeds_carried = Math.floor(Math.random() * 3);
-                this.wood_seeds_carried = Math.floor(Math.random() * 2);
-                this.social = Math.random() * (80.0 - 30.0) + 30.0;
+                this.seeds_carried = Math.floor(Math.random() * simSettings.MAX_STARTING_SEEDS);
+                this.wood_seeds_carried = Math.floor(Math.random() * simSettings.MAX_STARTING_WOOD_SEEDS);
+                this.social = Math.random() * (simSettings.STARTING_SOCIAL_MAX - simSettings.STARTING_SOCIAL_MIN) + simSettings.STARTING_SOCIAL_MIN;
                 this.home_location = null;
                 this.campfire_location = null;
                 this.social_buff_timer = 0;
@@ -574,7 +886,6 @@
                 this.state = "WANDERING";
                 this.exploration_vector = [0, 0];
                 
-                // MODIFIED: Added library memory
                 this.memory = { 
                     'food': new Set(), 
                     'wood': new Set(),
@@ -604,10 +915,14 @@
                 }
             }
 
+            // MODIFIED: Uses simSettings instead of GENE_RANGES
             createRandomGenes(stabilize = false) {
                 const genes = {};
-                for (const gene in GENE_RANGES) {
-                    const [minVal, maxVal] = GENE_RANGES[gene];
+                for (const gene of GENE_LIST) {
+                    const geneKey = gene.toUpperCase();
+                    const minVal = simSettings[`GENE_${geneKey}_MIN`];
+                    const maxVal = simSettings[`GENE_${geneKey}_MAX`];
+                    
                     if (stabilize) {
                         if (gene === 'metabolism') {
                             genes[gene] = Math.random() * (0.8 - 0.5) + 0.5;
@@ -690,8 +1005,8 @@
 
                     if (isOwner || isFamily) {
                         metabolismCost *= 0.5;
-                        if (this.energy < 150) {
-                            this.energy = clamp(this.energy + 2.0, 0, 150);
+                        if (this.energy < simSettings.STARTING_ENERGY) {
+                            this.energy = clamp(this.energy + 2.0, 0, simSettings.STARTING_ENERGY);
                         }
                         this.social = clamp(this.social + 0.5, 0, 100);
                     }
@@ -740,7 +1055,7 @@
                     const visionRadius = Math.floor(this.genes['vision']);
                     const nearbyAgents = this.world.getNearestAgents(this.x, this.y, visionRadius, this);
                     if (nearbyAgents.length === 0 && !nearbyCampfirePosKey) { 
-                        this.social -= this.genes['sociability'] * 0.5 * socialLossMultiplier;
+                        this.social -= this.genes['sociability'] * simSettings.ISOLATION_SOCIAL_LOSS_RATE * socialLossMultiplier;
                     } else {
                         this.social += 0.1;
                     }
@@ -752,19 +1067,19 @@
                     this.love = clamp(this.love - simSettings.LOVE_LOSS_STRUGGLE, 0, simSettings.STARTING_LOVE);
                 } else {
                     this.struggle_timer = 0;
-                    // Passive love gain is 0.0, synchronized
+                    this.love = clamp(this.love + simSettings.PASSIVE_LOVE_GAIN, 0, simSettings.STARTING_LOVE); // MODIFIED
                 }
 
                 if (this.love <= 0 && this.apathy_timer === 0) {
                     this.apathy_timer = simSettings.APATHY_DURATION;
                 }
                 
-                // Global Knowledge Retrieval
+                // Global Knowledge Retrieval (MODIFIED: Uses new settings)
                 for (const skillKey in this.skills) {
                     const globalValue = this.world.globalSkillKnowledge[skillKey] || 0.0;
                     const currentSkill = this.skills[skillKey];
                     if (currentSkill < globalValue) {
-                        this.skills[skillKey] = clamp(currentSkill + 0.0001, 0, 10.0); 
+                        this.skills[skillKey] = clamp(currentSkill + simSettings.GLOBAL_KNOWLEDGE_UPTAKE_RATE, 0, SKILL_MAXES[skillKey]);
                     }
                 }
 
@@ -783,41 +1098,35 @@
             decideState() {
                 const visionRadius = Math.floor(this.genes['vision']);
                 
-                // --- NEW: Opportunistic Socializing (from Python) ---
                 const nearbyAgents = this.world.getNearestAgents(this.x, this.y, 1.5, this);
                 if (nearbyAgents.length > 0) {
-                    // Avoid chatting if in crisis or combat
                     if (!(this.apathy_timer > 0 || this.was_attacked_by || this.avenging_target_id)) {
                         const target = nearbyAgents[Math.floor(Math.random() * nearbyAgents.length)];
                         
-                        // Don't chat with someone in combat or already chatting
                         if (!(target.was_attacked_by || target.avenging_target_id || target.state === "COMMUNICATING")) {
                             
                             let chance = 0.0;
                             
-                            // Check if self is lingering/happy
                             const isLingering = (this.state === "WANDERING" || this.state === "SOCIAL_HAPPY") &&
                                                this.energy > simSettings.PAUSE_ENERGY_THRESHOLD &&
                                                this.social > simSettings.PAUSE_SOCIAL_THRESHOLD;
                             
                             if (isLingering) {
-                                chance = 0.6; // High chance to chat if lingering
+                                chance = 0.6;
                             }
-                            // If I'm just wandering or working, smaller chance
                             else if (["WANDERING", "FORAGING", "GETTING_WOOD"].includes(this.state) &&
                                  this.social > 50 && this.genes['sociability'] > 0.5) {
                                 
-                                chance = 0.1; // Small chance to pause and chat
+                                chance = 0.1;
                             }
                             
                             if (Math.random() < chance) {
-                                this.communicate(target); // This sets both states
-                                return; // This is our action for the turn
+                                this.communicate(target);
+                                return;
                             }
                         }
                     }
                 }
-                // --- END: Opportunistic Socializing ---
 
                 const foodInSight = this.world.getNearestInSet(this.x, this.y, visionRadius, this.world.food);
                 
@@ -826,7 +1135,6 @@
                 const globalFoodCrisis = Object.keys(this.world.food).length < simSettings.CRITICAL_FOOD_COUNT;
                 const populationLow = this.world.agents.length < simSettings.MIN_POPULATION_TARGET;
                 
-                // --- Vengeance System Priority ---
                 if (this.avenging_target_id !== null) {
                     const target = this.world.getAgentById(this.avenging_target_id);
                     if (target) {
@@ -848,9 +1156,6 @@
                     return;
                 }
                 
-                // --- CRITICAL SURVIVAL OVERRIDES ---
-                
-                // Mandate 1: Plant if Food Crisis or Low Population
                 if ((globalFoodCrisis || populationLow) && this.seeds_carried > 0) {
                     if (this.home_location) {
                         const [hx, hy] = keyToArray(this.home_location);
@@ -866,7 +1171,6 @@
                     return;
                 }
 
-                // Mandate 2: Share if others are desperately needy
                 if (this.energy > 100 && this.social > 50 && (this.wood_carried > 3 || this.food_carried >= 1)) {
                     const nearbyAgents = this.world.getNearestAgents(this.x, this.y, visionRadius, this);
                     const needyAgents = nearbyAgents.filter(a => a.energy < 40 && a.food_carried < 1); 
@@ -876,25 +1180,21 @@
                     }
                 }
                 
-                // --- NEW: Mandate 3: Seek a mate if population is critically low (from Python) ---
                 if (populationLow && this.age >= simSettings.ADULT_AGE &&
                     this.energy > this.genes['mating_drive'] && this.mate_cooldown === 0) {
                     
                     this.state = "SEEKING_MATE";
                     return; 
                 }
-                // --- END NEW: Mandate 3 ---
 
-                // Priority 1: Survival (Energy)
                 let forageThreshold = 70;
                 if (this.age < simSettings.ADULT_AGE) forageThreshold = 100;
 
-                if (this.energy < forageThreshold || (this.food_carried > 0 && this.energy < 150)) {
+                if (this.energy < forageThreshold || (this.food_carried > 0 && this.energy < simSettings.STARTING_ENERGY)) {
                     this.state = "FORAGING";
                     return;
                 }
                 
-                // Priority 1.5: Campfire Refuel
                 const nearbyCampfirePosKey = this.world.getNearest(this.x, this.y, visionRadius, this.world.campfires);
                 if (nearbyCampfirePosKey) {
                     const campfireTimer = this.world.campfires[nearbyCampfirePosKey];
@@ -909,7 +1209,6 @@
                     }
                 }
 
-                // Priority 2: Home Repair
                 if (this.home_location) {
                     const homeData = this.world.homes[this.home_location];
                     const isOwner = homeData && homeData.owner_id === this.id;
@@ -924,13 +1223,11 @@
                     }
                 }
                 
-                // Priority 3: Social Need
                 if (this.social < 60 && this.genes['sociability'] > 0.2) {
                     this.state = "SEEKING_SOCIAL"; 
                     return;
                 }
                 
-                // Priority 4: Claim or Build Home
                 if (this.home_location === null) {
                     const emptyHomePos = this.world.getEmptyHome();
                     if (emptyHomePos) {
@@ -944,8 +1241,7 @@
                             return;
                         }
                         
-                        // Python uses 3 for home cost, not campfire cost
-                        let woodCostNeeded = Math.max(1, 3 - Math.floor(this.skills['building'] * 0.5));
+                        let woodCostNeeded = Math.max(1, simSettings.HOME_WOOD_COST - Math.floor(this.skills['building'] * simSettings.SKILL_BUILD_COST_REDUCTION)); // MODIFIED
                         
                         if (this.wood_carried < woodCostNeeded) {
                             this.state = "GETTING_WOOD";
@@ -989,7 +1285,6 @@
                     }
                 }
                 
-                // Priority 5: Farming (Food Seeds) - Normal Planting
                 if (this.seeds_carried > 0 && this.energy > 80 && this.genes['farming'] > Math.random()) {
                     if (this.home_location) {
                         const [hx, hy] = keyToArray(this.home_location);
@@ -1005,7 +1300,6 @@
                     return;
                 }
 
-                // Priority 5.5: Planting Trees
                 if (this.wood_seeds_carried > 0 && this.energy > 80 &&
                     (Object.keys(this.world.wood).length < simSettings.STARTING_WOOD) && (this.genes['builder'] > Math.random())) { 
                     
@@ -1023,10 +1317,8 @@
                     return;
                 }
                     
-                // Priority 6: Build Campfire
                 const nearbyActiveFire = this.world.getNearest(this.x, this.y, 5, this.world.campfires);
 
-                // MODIFIED: Added check for this.campfire_location
                 if (this.energy > 120 && this.social > 50 && 
                     this.genes['builder'] > 0.5 && 
                     nearbyActiveFire === null &&
@@ -1037,7 +1329,7 @@
                         return;
                     }
 
-                    let woodCostNeeded = Math.max(1, simSettings.CAMPFIRE_WOOD_COST - Math.floor(this.skills['building'] * 0.5));
+                    let woodCostNeeded = Math.max(1, simSettings.CAMPFIRE_WOOD_COST - Math.floor(this.skills['building'] * simSettings.SKILL_BUILD_COST_REDUCTION)); // MODIFIED
                     
                     if (this.wood_carried >= woodCostNeeded) {
                          this.state = "BUILDING_CAMPFIRE";
@@ -1048,7 +1340,6 @@
                     }
                 }
                 
-                // Priority 7: Share Resources (Standard)
                 if (this.energy > 100 && this.social > 50 && (this.wood_carried > 3 || this.food_carried >= 1)) {
                     const nearbyAgents = this.world.getNearestAgents(this.x, this.y, visionRadius, this);
                     const needyAgents = nearbyAgents.filter(a => a.energy < 70 && a.food_carried < 1); 
@@ -1058,21 +1349,18 @@
                     }
                 }
                 
-                // Priority 8: Default
                 this.state = "WANDERING";
             }
 
             executeAction() {
                 const visionRadius = Math.floor(this.genes['vision']);
                 
-                // --- NEW: Check for Library in sight (from Python) ---
                 if (this.memory.library === null) {
                     const [lx, ly] = this.world.libraryLocation;
                     if (getDistance(this.x, this.y, lx, ly) <= visionRadius) {
                         this.memory.library = [lx, ly];
                     }
                 }
-                // --- END NEW ---
 
                 const foodInSight = this.world.getNearestInSet(this.x, this.y, visionRadius, this.world.food);
                 const woodInSight = this.world.getNearestInSet(this.x, this.y, visionRadius, this.world.wood);
@@ -1098,7 +1386,7 @@
                 switch (this.state) {
                     case "FORAGING":
                         const currentPosKey = arrayToKey([this.x, this.y]);
-                        if (this.food_carried > 0 && this.energy < 150) { 
+                        if (this.food_carried > 0 && this.energy < simSettings.STARTING_ENERGY) {
                             
                             const needyNeighbors = agents.filter(a => a.energy < 40 && a.food_carried < 1);
                             
@@ -1109,7 +1397,7 @@
                                 return;
                             }
                             
-                        } else if (this.world.food[currentPosKey] && this.food_carried < 2) { 
+                        } else if (this.world.food[currentPosKey] && this.food_carried < simSettings.MAX_FOOD_CARRY) {
                             this.pickupFood();
                         } else if (bestFoodTarget) { 
                             this.moveTowards(bestFoodTarget[0], bestFoodTarget[1]);
@@ -1123,11 +1411,11 @@
 
                     case "GETTING_WOOD":
                         const currentWoodPosKey = arrayToKey([this.x, this.y]);
-                        if (this.wood_carried >= 3) { 
+                        if (this.wood_carried >= simSettings.MAX_WOOD_CARRY) {
                             this.state = "WANDERING";
                             return;
                         }
-                        if (this.world.wood[currentWoodPosKey] && this.wood_carried < 3) {
+                        if (this.world.wood[currentWoodPosKey] && this.wood_carried < simSettings.MAX_WOOD_CARRY) {
                             this.takeWood();
                         } else if (bestWoodTarget) { 
                             this.moveTowards(bestWoodTarget[0], bestWoodTarget[1]);
@@ -1151,7 +1439,7 @@
                                 if (this.wood_carried > 0) {
                                     this.world.homes[this.home_location].durability = simSettings.HOME_DURABILITY_START;
                                     this.wood_carried--;
-                                    this.skills.building = clamp(this.skills.building + 0.2, 0, 4.0);
+                                    this.skills.building = clamp(this.skills.building + simSettings.SKILL_GAIN_REPAIR_HOME, 0, SKILL_MAXES.building); // MODIFIED
                                     this.state = "WANDERING";
                                 } else {
                                     this.state = "GETTING_WOOD";
@@ -1342,7 +1630,7 @@
                                 if (roll < chance) {
                                     recruit.state = "AVENGING";
                                     recruit.avenging_target_id = this.avenging_target_id;
-                                    recruit.vengeance_timer = VENGEANCE_DURATION;
+                                    recruit.vengeance_timer = simSettings.VENGEANCE_DURATION;
                                 }
                             }
 
@@ -1359,7 +1647,6 @@
                         }
                         break;
                     
-                    // --- NEW: SEEKING MATE State (from Python) ---
                     case "SEEKING_MATE":
                         let eligiblePartners = [];
                         const nearbyMates = this.world.getNearestAgents(this.x, this.y, visionRadius, this);
@@ -1373,7 +1660,6 @@
                         }
 
                         if (eligiblePartners.length > 0) {
-                            // Target the nearest one
                             eligiblePartners.sort((a, b) => 
                                 getDistance(this.x, this.y, a.x, a.y) - getDistance(this.x, this.y, b.x, b.y)
                             );
@@ -1388,7 +1674,6 @@
                             this.moveExploring();
                         }
                         break;
-                    // --- END NEW ---
                     
                     case "SEEKING_SOCIAL":
                         const nearbyCampfire = this.world.getNearest(this.x, this.y, visionRadius, this.world.campfires);
@@ -1405,7 +1690,6 @@
                             targetAgent = happyAndPausing[0];
                         }
                         else if (agents.length > 0) {
-                            // Sort by distance
                             agents.sort((a, b) => 
                                 getDistance(this.x, this.y, a.x, a.y) - getDistance(this.x, this.y, b.x, b.y)
                             );
@@ -1422,13 +1706,12 @@
                             const [cx, cy] = keyToArray(nearbyCampfire);
                             this.moveTowards(cx, cy);
                         } else {
-                            // MODIFIED: Check memory before seeking library
                             if (this.memory.library) {
                                 const [lx, ly] = this.memory.library;
                                 this.moveTowards(lx, ly);
                                 this.state = "SEEKING_LIBRARY"; 
                             } else {
-                                this.moveExploring(); // Don't know where it is
+                                this.moveExploring();
                             }
                         }
                         break;
@@ -1436,7 +1719,6 @@
                     case "SOCIAL_HAPPY": 
                         if (this.energy > simSettings.PAUSE_ENERGY_THRESHOLD && this.social > simSettings.PAUSE_SOCIAL_THRESHOLD) {
                             
-                            // MODIFIED: Check memory before seeking library
                             if (Math.random() < 0.2 && this.memory.library) { 
                                 const [lx, ly] = this.memory.library;
                                 if (getDistance(this.x, this.y, lx, ly) > 5.0) {
@@ -1451,14 +1733,12 @@
                         break; 
                     
                     case "SEEKING_LIBRARY":
-                        this.skills.navigation = clamp(this.skills.navigation + 0.001, 0, 5.0); 
+                        this.skills.navigation = clamp(this.skills.navigation + simSettings.SKILL_GAIN_NAVIGATION, 0, SKILL_MAXES.navigation); // MODIFIED
                         
-                        // State implies this.memory.library is not null
                         const [lx, ly] = this.memory.library;
                         
-                        // --- BUG FIX: Was getDistance(this.x, self.y, ...) ---
                         if (getDistance(this.x, this.y, lx, ly) < 2.0) {
-                            this.skills.social = clamp(this.skills.social + 0.01, 0, 10.0); 
+                            this.skills.social = clamp(this.skills.social + simSettings.SKILL_GAIN_SOCIAL_LIBRARY, 0, SKILL_MAXES.social); // MODIFIED
                             this.state = "WANDERING";
                         } else {
                             this.moveTowards(lx, ly);
@@ -1477,7 +1757,6 @@
                                 const [cx, cy] = keyToArray(nearestCampfireSad);
                                 this.moveTowards(cx, cy);
                             } else {
-                                // MODIFIED: Check memory before seeking library
                                 if (this.memory.library) {
                                     const [lx, ly] = this.memory.library;
                                     this.moveTowards(lx, ly);
@@ -1494,7 +1773,6 @@
                     case "WANDERING":
                         if (this.energy > simSettings.PAUSE_ENERGY_THRESHOLD && this.social > simSettings.PAUSE_SOCIAL_THRESHOLD) {
                             
-                            // MODIFIED: Check memory before seeking library
                             if (Math.random() < 0.2 && this.memory.library) { 
                                 const [lx_w, ly_w] = this.memory.library;
                                 if (getDistance(this.x, this.y, lx_w, ly_w) > 5.0) { 
@@ -1530,12 +1808,10 @@
                 return true;
             }
 
-            // --- NEW: Helper for new movement logic (from Python) ---
             isObstacle(x, y) {
                 const posKey = arrayToKey([x, y]);
                 if (this.world.homes[posKey]) {
                     const homeData = this.world.homes[posKey];
-                    // It's an obstacle if it's a home and it's NOT our home
                     if (homeData.owner_id !== this.id) {
                         return true;
                     }
@@ -1543,7 +1819,7 @@
                 return false;
             }
 
-            // --- REPLACED: moveTowards with Obstacle Avoidance (from Python) ---
+            // MODIFIED: Uses new skill settings
             moveTowards(targetX, targetY) {
                 this.exploration_vector = [0, 0];
                 let steps = Math.floor(this.genes['speed']);
@@ -1560,35 +1836,30 @@
                     const newY = clamp(this.y + dy, 0, this.world.height - 1);
                     
                     if (!this.isObstacle(newX, newY)) {
-                        // Path is clear, move diagonally/normally
                         this.x = newX;
                         this.y = newY;
                     } else {
-                        // Path is blocked. Try to slide.
-                        // Try moving just horizontally
                         const slideX = clamp(this.x + dx, 0, this.world.width - 1);
                         if (dx !== 0 && !this.isObstacle(slideX, this.y)) {
                             this.x = slideX;
                         }
-                        // Try moving just vertically
                         else if (dy !== 0 && !this.isObstacle(this.x, clamp(this.y + dy, 0, this.world.height - 1))) {
                             this.y = clamp(this.y + dy, 0, this.world.height - 1);
                         }
                         else {
-                            // Stuck, can't slide. Stop moving.
-                            break; // Exit the 'steps' loop
+                            break;
                         }
                     }
                     
-                    this.skills.navigation = clamp(this.skills.navigation + 0.001, 0, 5.0); 
-                    const costMultiplier = 1.0 - (this.skills.navigation * 0.15); 
+                    this.skills.navigation = clamp(this.skills.navigation + simSettings.SKILL_GAIN_NAVIGATION, 0, SKILL_MAXES.navigation); 
+                    const costMultiplier = 1.0 - (this.skills.navigation * simSettings.SKILL_NAV_COST_REDUCTION); 
                     const finalMultiplier = Math.max(0.25, costMultiplier);
                     
-                    this.energy -= (0.05) * finalMultiplier; 
+                    this.energy -= (0.05) * finalMultiplier;
                 }
             }
 
-            // --- REPLACED: moveRandomly with Obstacle Avoidance (from Python) ---
+            // MODIFIED: Uses new skill settings
             moveRandomly(speedFactor, persistentChance) {
                 let steps = Math.floor(this.genes['speed'] * speedFactor);
                 if (steps < 1) steps = 1;
@@ -1621,13 +1892,12 @@
                         this.x = newX;
                         this.y = newY;
                     } else {
-                        // Hit an obstacle, stop moving this step
-                        this.exploration_vector = [0, 0]; // Force new direction next time
-                        break; // Stop the 'steps' loop
+                        this.exploration_vector = [0, 0];
+                        break;
                     }
                     
-                    this.skills.navigation = clamp(this.skills.navigation + 0.001, 0, 5.0); 
-                    const costMultiplier = 1.0 - (this.skills.navigation * 0.15); 
+                    this.skills.navigation = clamp(this.skills.navigation + simSettings.SKILL_GAIN_NAVIGATION, 0, SKILL_MAXES.navigation); 
+                    const costMultiplier = 1.0 - (this.skills.navigation * simSettings.SKILL_NAV_COST_REDUCTION); 
                     const finalMultiplier = Math.max(0.25, costMultiplier);
                     
                     this.energy -= (0.05) * finalMultiplier;
@@ -1660,18 +1930,19 @@
                 return nearestItem;
             }
 
+            // MODIFIED: Uses new skill settings
             consumeFood() {
                 if (this.food_carried > 0) {
                     this.food_carried--;
-                    this.skills.foraging = clamp(this.skills.foraging + 0.1, 0, 10.0); 
-                    const energyGain = 120 + (this.skills.foraging * 20); 
+                    this.skills.foraging = clamp(this.skills.foraging + simSettings.SKILL_GAIN_FORAGE, 0, SKILL_MAXES.foraging); 
+                    const energyGain = simSettings.FOOD_ENERGY_GAIN_BASE + (this.skills.foraging * simSettings.SKILL_FORAGE_ENERGY_BONUS); 
                     this.energy += energyGain;
                     this.love = clamp(this.love + simSettings.LOVE_GAIN_EAT, 0, simSettings.STARTING_LOVE);
                     
                     const decayAmount = simSettings.ENV_DECAY_FOOD_GATHER * (1.0 - (this.skills.foraging / 10.0));
                     this.world.environmentalHealth = clamp(this.world.environmentalHealth - decayAmount, 0, simSettings.ENV_HEALTH_MAX);
 
-                    const foragingChance = simSettings.FOOD_SEED_BASE_CHANCE + (this.skills.foraging * 0.05);
+                    const foragingChance = simSettings.FOOD_SEED_BASE_CHANCE + (this.skills.foraging * simSettings.SKILL_FORAGE_SEED_BONUS);
                     if (Math.random() < foragingChance) {
                         this.seeds_carried++;
                     }
@@ -1682,7 +1953,7 @@
 
             pickupFood() {
                 const posKey = arrayToKey([this.x, this.y]);
-                if (this.world.food[posKey] && this.food_carried < 2) {
+                if (this.world.food[posKey] && this.food_carried < simSettings.MAX_FOOD_CARRY) {
                     delete this.world.food[posKey];
                     delete this.world.foodFreshness[posKey];
                     this.food_carried++;
@@ -1693,7 +1964,7 @@
 
             takeWood() {
                 const posKey = arrayToKey([this.x, this.y]);
-                if (this.world.wood[posKey] && this.wood_carried < 3) {
+                if (this.world.wood[posKey] && this.wood_carried < simSettings.MAX_WOOD_CARRY) {
                     delete this.world.wood[posKey];
                     this.wood_carried++;
                     
@@ -1709,43 +1980,45 @@
                 }
             }
 
+            // MODIFIED: Uses new skill settings
             buildHome() {
                 const posKey = arrayToKey([this.x, this.y]);
-                // MODIFIED: Python uses 3 for home cost
-                let woodCost = Math.max(1, 3 - Math.floor(this.skills.building * 0.5));
+                let woodCost = Math.max(1, simSettings.HOME_WOOD_COST - Math.floor(this.skills.building * simSettings.SKILL_BUILD_COST_REDUCTION));
                 
                 if (this.wood_carried >= woodCost) {
                     this.wood_carried -= woodCost;
                     this.world.homes[posKey] = { owner_id: this.id, durability: simSettings.HOME_DURABILITY_START };
                     this.home_location = posKey; 
                     this.state = "WANDERING";
-                    this.skills.building = clamp(this.skills.building + 0.5, 0, 4.0); 
+                    this.skills.building = clamp(this.skills.building + simSettings.SKILL_GAIN_BUILD_HOME, 0, SKILL_MAXES.building); 
                 }
             }
             
+            // MODIFIED: Uses new skill settings
             buildCampfire() {
                 const posKey = arrayToKey([this.x, this.y]);
-                let woodCost = Math.max(1, simSettings.CAMPFIRE_WOOD_COST - Math.floor(this.skills.building * 0.5));
+                let woodCost = Math.max(1, simSettings.CAMPFIRE_WOOD_COST - Math.floor(this.skills.building * simSettings.SKILL_BUILD_COST_REDUCTION));
                 
                 if (this.wood_carried >= woodCost) {
                     this.wood_carried -= woodCost;
                     this.world.campfires[posKey] = simSettings.CAMPFIRE_BURN_TIME;
                     this.campfire_location = posKey; 
-                    this.skills.building = clamp(this.skills.building + 0.2, 0, 4.0);
+                    this.skills.building = clamp(this.skills.building + simSettings.SKILL_GAIN_BUILD_FIRE, 0, SKILL_MAXES.building);
                     this.state = "WANDERING";
                 }
             }
             
+            // MODIFIED: Uses new skill settings
             attack(target, attack_type = 'COMBAT_AGGRESSION') {
-                let energyCost = Math.max(2, 10 - (this.skills.combat * 1.0));
-                let damage = 15 + (this.skills.combat * 8); 
+                let energyCost = Math.max(2, simSettings.ATTACK_COST_BASE - (this.skills.combat * simSettings.SKILL_COMBAT_COST_REDUCTION));
+                let damage = simSettings.ATTACK_DAMAGE_BASE + (this.skills.combat * simSettings.SKILL_COMBAT_DAMAGE_BONUS); 
                 
                 this.state = "ATTACKING";
                 this.energy -= energyCost;
                 this.energy += 10; 
                 
                 target.energy -= damage;
-                this.skills.combat = clamp(this.skills.combat + 0.2, 0, 10.0); 
+                this.skills.combat = clamp(this.skills.combat + simSettings.SKILL_GAIN_COMBAT, 0, SKILL_MAXES.combat); 
                 
                 this.love = clamp(this.love - 5.0, 0, simSettings.STARTING_LOVE); 
 
@@ -1756,24 +2029,27 @@
                 }
             }
             
+            // MODIFIED: Uses new gene/core settings
             mate(partner) {
                 this.state = "MATING";
                 partner.state = "MATING";
                 
-                // MODIFIED: Matched Python
-                this.energy -= 40;
-                partner.energy -= 40;
+                this.energy -= simSettings.MATE_ENERGY_COST;
+                partner.energy -= simSettings.MATE_ENERGY_COST;
                 
-                this.mate_cooldown = 600; // MODIFIED
-                partner.mate_cooldown = 600; // MODIFIED
+                this.mate_cooldown = simSettings.MATE_COOLDOWN;
+                partner.mate_cooldown = simSettings.MATE_COOLDOWN;
                 
-                // MODIFIED: Matched Python
-                let numChildren = Math.floor(Math.random() * 3) + 1; 
+                let numChildren = Math.floor(Math.random() * simSettings.MAX_CHILDREN_PER_BIRTH) + 1; 
                 
                 for (let i = 0; i < numChildren; i++) {
                     const newGenes = {};
-                    for (const gene in this.genes) {
-                        const [minVal, maxVal, mutRate] = GENE_RANGES[gene];
+                    for (const gene of GENE_LIST) {
+                        const geneKey = gene.toUpperCase();
+                        const minVal = simSettings[`GENE_${geneKey}_MIN`];
+                        const maxVal = simSettings[`GENE_${geneKey}_MAX`];
+                        const mutRate = simSettings[`GENE_${geneKey}_MUTATE_RATE`];
+
                         const avgGene = (this.genes[gene] + partner.genes[gene]) / 2;
                         const mutation = (Math.random() * 2 - 1) * mutRate * (maxVal - minVal);
                         newGenes[gene] = clamp(avgGene + mutation, minVal, maxVal);
@@ -1796,39 +2072,36 @@
                 partner.contentment_buff_timer = 25;
             }
 
+            // MODIFIED: Uses new skill settings
             shareSkills(partner) {
-                // MODIFIED: Added 'social'
-                const skillsToShare = ['foraging', 'building', 'navigation', 'farming', 'combat', 'social'];
-                const learningRate = 0.01; 
+                const learningRate = simSettings.SKILL_SHARING_RATE; 
                 
-                for (const skill of skillsToShare) {
+                for (const skill of SKILL_LIST) {
                     const selfSkill = this.skills[skill];
                     const partnerSkill = partner.skills[skill];
+                    const maxSkill = SKILL_MAXES[skill];
                     
                     if (selfSkill > partnerSkill) {
-                        partner.skills[skill] = clamp(partnerSkill + learningRate, 0, 10.0);
+                        partner.skills[skill] = clamp(partnerSkill + learningRate, 0, maxSkill);
                         if (selfSkill > 2.0) { 
-                            // MODIFIED: Matched Python learn rate
-                            this.world.globalSkillKnowledge[skill] = clamp((this.world.globalSkillKnowledge[skill] || 0.0) + 0.001, 0, 10.0);
+                            this.world.globalSkillKnowledge[skill] = clamp((this.world.globalSkillKnowledge[skill] || 0.0) + simSettings.GLOBAL_KNOWLEDGE_LEARN_RATE, 0, maxSkill);
                         }
                     } else if (partnerSkill > selfSkill) {
-                        this.skills[skill] = clamp(selfSkill + learningRate, 0, 10.0);
+                        this.skills[skill] = clamp(selfSkill + learningRate, 0, maxSkill);
                         if (partnerSkill > 2.0) {
-                            // MODIFIED: Matched Python learn rate
-                            this.world.globalSkillKnowledge[skill] = clamp((this.world.globalSkillKnowledge[skill] || 0.0) + 0.001, 0, 10.0);
+                            this.world.globalSkillKnowledge[skill] = clamp((this.world.globalSkillKnowledge[skill] || 0.0) + simSettings.GLOBAL_KNOWLEDGE_LEARN_RATE, 0, maxSkill);
                         }
                     }
                 }
 
-                // --- NEW: Share Library Location (from Python) ---
                 if (this.memory.library && !partner.memory.library) {
                     partner.memory.library = this.memory.library;
                 } else if (partner.memory.library && !this.memory.library) {
                     this.memory.library = partner.memory.library;
                 }
-                // --- END NEW ---
             }
 
+            // MODIFIED: Uses new skill settings
             communicate(partner) {
                 this.state = "COMMUNICATING";
                 partner.state = "COMMUNICATING";
@@ -1836,7 +2109,6 @@
                 const selfPersonality = this.getPersonality();
                 const partnerPersonality = partner.getPersonality();
                 
-                // --- MODIFIED: Use new PERSONALITY_CONFLICTS map ---
                 let conflictDetected = false;
                 const selfConflicts = PERSONALITY_CONFLICTS[selfPersonality] || [];
                 const partnerConflicts = PERSONALITY_CONFLICTS[partnerPersonality] || [];
@@ -1846,7 +2118,6 @@
                 } else if (partnerConflicts.includes(selfPersonality)) {
                     conflictDetected = true;
                 }
-                // --- END MODIFIED ---
                     
                 if (conflictDetected) {
                     let conflictChance = this.genes.aggression * 0.8;
@@ -1863,12 +2134,11 @@
                 this.energy -= 1.0; 
                 partner.energy -= 1.0;
 
-                // MODIFIED: Matched Python skill gain
-                this.skills.social = clamp(this.skills.social + 0.001, 0, 10.0); 
-                partner.skills.social = clamp(partner.skills.social + 0.001, 0, 10.0); 
+                this.skills.social = clamp(this.skills.social + simSettings.SKILL_GAIN_SOCIAL_CHAT, 0, SKILL_MAXES.social); 
+                partner.skills.social = clamp(partner.skills.social + simSettings.SKILL_GAIN_SOCIAL_CHAT, 0, SKILL_MAXES.social); 
                 
-                const socialGain = 50 + (this.skills.social * 10);
-                const partnerSocialGain = 20 + (partner.skills.social * 5);
+                const socialGain = 50 + (this.skills.social * simSettings.SKILL_SOCIAL_GAIN_BONUS);
+                const partnerSocialGain = 20 + (partner.skills.social * (simSettings.SKILL_SOCIAL_GAIN_BONUS / 2.0)); // Partner gains less
                 
                 this.social = clamp(this.social + socialGain, 0, 100);
                 partner.social = clamp(partner.social + partnerSocialGain, 0, 100);
@@ -1918,6 +2188,7 @@
                 }
             }
 
+            // MODIFIED: Uses new skill settings
             plantSeed() {
                 if (this.seeds_carried > 0) {
                     this.seeds_carried--;
@@ -1926,15 +2197,16 @@
                     const posKey = arrayToKey([this.x, this.y]);
                     this.world.growingPlants[posKey] = simSettings.GROW_TIME;
                     
-                    this.skills.farming = clamp(this.skills.farming + 0.2, 0, 10.0);
+                    this.skills.farming = clamp(this.skills.farming + simSettings.SKILL_GAIN_FARMING, 0, SKILL_MAXES.farming);
                     
-                    const healAmount = simSettings.ENV_HEAL_PLANT_BASE * (this.skills.farming / 10.0);
+                    const healAmount = simSettings.ENV_HEAL_PLANT_BASE * (this.skills.farming * simSettings.SKILL_FARM_HEAL_MULTIPLIER);
                     this.world.environmentalHealth = clamp(this.world.environmentalHealth + healAmount, 0, simSettings.ENV_HEALTH_MAX);
 
                     this.state = "WANDERING";
                 }
             }
 
+            // MODIFIED: Uses new skill settings
             plantTree() {
                 if (this.wood_seeds_carried > 0) {
                     this.wood_seeds_carried--;
@@ -1943,9 +2215,9 @@
                     const posKey = arrayToKey([this.x, this.y]);
                     this.world.growingTrees[posKey] = simSettings.TREE_GROW_TIME;
                     
-                    this.skills.farming = clamp(this.skills.farming + 0.2, 0, 10.0);
+                    this.skills.farming = clamp(this.skills.farming + simSettings.SKILL_GAIN_FARMING, 0, SKILL_MAXES.farming);
                     
-                    const healAmount = simSettings.ENV_HEAL_PLANT_BASE * (this.skills.farming / 10.0);
+                    const healAmount = simSettings.ENV_HEAL_PLANT_BASE * (this.skills.farming * simSettings.SKILL_FARM_HEAL_MULTIPLIER);
                     this.world.environmentalHealth = clamp(this.world.environmentalHealth + healAmount, 0, simSettings.ENV_HEALTH_MAX);
 
                     this.state = "WANDERING";
@@ -1988,7 +2260,7 @@
                             for (const witness of witnesses) {
                                 witness.state = "AVENGING";
                                 witness.avenging_target_id = closestParentAgent.id;
-                                witness.vengeance_timer = VENGEANCE_DURATION;
+                                witness.vengeance_timer = simSettings.VENGEANCE_DURATION;
                             }
                         }
                     }
@@ -2021,8 +2293,6 @@
                 if (this.home_location && this.world.homes[this.home_location]) {
                     this.world.homes[this.home_location].owner_id = null;
                 }
-                
-                // MODIFIED: Removed this.campfire_location = null; to match Python
             }
         }
 
@@ -2170,7 +2440,7 @@
                         this.homes[pos].durability--;
                         if (this.homes[pos].durability <= 0) {
                             
-                            for (let i = 0; i < 3; i++) {
+                            for (let i = 0; i < simSettings.HOME_WOOD_COST; i++) {
                                 this.wood[pos] = true;
                             }
                                 
@@ -2228,21 +2498,20 @@
                 this.calculateStats();
             }
 
+            // MODIFIED: Uses GENE_LIST and SKILL_LIST
             calculateStats() {
                 const adultAgents = this.agents.filter(agent => agent.age >= simSettings.ADULT_AGE);
                 let agentsForStats = adultAgents.length > 0 ? adultAgents : this.agents;
                 
                 if (agentsForStats.length === 0) {
                     this.stats = { population: 0, homes_built: 0, active_campfires: 0 };
-                    for (const gene in GENE_RANGES) {
+                    for (const gene of GENE_LIST) {
                         this.stats[`avg_${gene}`] = 0;
                     }
-                    const skillList = ['foraging', 'social', 'building', 'navigation', 'combat', 'farming'];
-                    for (const skill of skillList) {
+                    for (const skill of SKILL_LIST) {
                         this.stats[`avg_${skill}_skill`] = 0;
                     }
                     
-                    // MODIFIED: Matched Python's total_deaths logic
                     let totalDeaths = 0;
                     for (const reason in this.deathCauses) {
                         if (reason !== 'TOTAL_DEATHS') {
@@ -2263,20 +2532,18 @@
                 this.stats.homes_built = Object.keys(this.homes).length;
                 this.stats.active_campfires = Object.keys(this.campfires).length;
                 
-                for (const gene in GENE_RANGES) {
+                for (const gene of GENE_LIST) {
                     const avgKey = `avg_${gene}`;
                     const total = agentsForStats.reduce((sum, agent) => sum + agent.genes[gene], 0);
                     this.stats[avgKey] = total / numAgents;
                 }
                     
-                const skillList = ['foraging', 'social', 'building', 'navigation', 'combat', 'farming'];
-                for (const skill of skillList) {
+                for (const skill of SKILL_LIST) {
                     const avgKey = `avg_${skill}_skill`;
                     const total = agentsForStats.reduce((sum, agent) => sum + agent.skills[skill], 0);
                     this.stats[avgKey] = total / numAgents;
                 }
                     
-                // MODIFIED: Matched Python's total_deaths logic
                 let totalDeaths = 0;
                 for (const reason in this.deathCauses) {
                     if (reason !== 'TOTAL_DEATHS') {
@@ -2509,7 +2776,7 @@
             }
         }
 
-        // --- STATS RENDERING ---
+        // --- STATS RENDERING (MODIFIED: Uses GENE_LIST and SKILL_LIST) ---
         function updateStatsDisplay(world) {
             document.getElementById('turnCounter').textContent = world.turn;
             document.getElementById('generationCounter').textContent = world.generationCount;
@@ -2525,7 +2792,7 @@
 
             const geneStatsDiv = document.getElementById('geneStats');
             geneStatsDiv.innerHTML = '';
-            for (const gene in GENE_RANGES) {
+            for (const gene of GENE_LIST) {
                 const avg = world.stats[`avg_${gene}`] || 0;
                 let color = 'text-cyan-400';
                 if (gene === 'aggression') color = 'text-red-400';
@@ -2543,8 +2810,7 @@
 
             const skillStatsDiv = document.getElementById('skillStats');
             skillStatsDiv.innerHTML = '';
-            const skillList = ['foraging', 'social', 'building', 'navigation', 'combat', 'farming'];
-            for (const skill of skillList) {
+            for (const skill of SKILL_LIST) {
                 const avg = world.stats[`avg_${skill}_skill`] || 0;
                 let color = 'text-green-400';
                 if (skill === 'social') color = 'text-white';
@@ -2597,9 +2863,9 @@
                         { char: 't', color: COLORS.WHITE_NORMAL, desc: 'Seek Social' },
                         { char: 'T', color: COLORS.WHITE_BRIGHT, desc: 'Communicate/Share Knowledge' },
                         { char: 'm', color: COLORS.MAGENTA_BRIGHT, desc: 'Mate' },
-                        { char: 'M', color: COLORS.MAGENTA_BRIGHT, desc: 'Seek Mate' }, // NEW
+                        { char: 'M', color: COLORS.MAGENTA_BRIGHT, desc: 'Seek Mate' },
                         { char: 'X/r', color: COLORS.RED_BRIGHT, desc: 'Attack/Retaliate' },
-                        { char: 'V', color: COLORS.RED_BRIGHT, desc: 'Avenge Child Death' }, // NEW
+                        { char: 'V', color: COLORS.RED_BRIGHT, desc: 'Avenge Child Death' },
                         { char: 'g', color: COLORS.WHITE_BRIGHT, desc: 'Share Resources' },
                     ]
                 },
@@ -2655,6 +2921,7 @@
                 const storedSettings = localStorage.getItem(SETTINGS_STORAGE_KEY);
                 if (storedSettings) {
                     const parsedSettings = JSON.parse(storedSettings);
+                    // Merge stored settings with defaults to ensure new defaults are applied
                     return { ...defaultSimSettings, ...parsedSettings };
                 }
             } catch (e) {
@@ -2680,28 +2947,40 @@
         }
 
         function populateSettingsForm(settings) {
+            // Populate all settings that exist in the provided 'settings' object
             for (const key in settings) {
                 const input = document.getElementById(key);
                 if (input) {
                     input.value = settings[key];
                 }
             }
+            // Ensure any new default settings (not in saved settings) are populated
+            for (const key in defaultSimSettings) {
+                 const input = document.getElementById(key);
+                 if (input && input.value === "") { // Only fill if empty
+                     input.value = defaultSimSettings[key];
+                 }
+            }
         }
         
         function getSettingsFromForm() {
             const newSettings = {};
             const form = document.getElementById('settingsForm');
-            const inputs = form.querySelectorAll('input[type="number"]');
+            const inputs = form.querySelectorAll('input'); 
             
             inputs.forEach(input => {
-                const value = parseFloat(input.value);
-                if (!isNaN(value)) {
-                    newSettings[input.id] = value;
-                } else {
-                    newSettings[input.id] = defaultSimSettings[input.id];
+                if (input.type === 'number') {
+                    const value = parseFloat(input.value);
+                    if (!isNaN(value)) {
+                        newSettings[input.id] = value;
+                    } else {
+                        // Fallback to default if input is invalid
+                        newSettings[input.id] = defaultSimSettings[input.id];
+                    }
                 }
             });
-            return newSettings;
+            // Ensure all default keys are present even if not in form
+            return { ...defaultSimSettings, ...newSettings };
         }
         
         function setupModalControls() {
@@ -2735,6 +3014,25 @@
                 location.reload(); 
             };
         }
+        
+        // --- NEW: Helper function to build skill max map ---
+        function initializeSkillMaxes() {
+            SKILL_MAXES = {
+                'foraging': simSettings.SKILL_FORAGE_MAX,
+                'social': simSettings.SKILL_SOCIAL_MAX,
+                'building': simSettings.SKILL_BUILD_MAX,
+                'navigation': simSettings.SKILL_NAV_MAX,
+                'combat': simSettings.SKILL_COMBAT_MAX,
+                'farming': simSettings.SKILL_FARM_MAX,
+            };
+            
+            // Also update global knowledge maxes
+            for (const skill in SKILL_MAXES) {
+                if (!world.globalSkillKnowledge[skill]) {
+                     world.globalSkillKnowledge[skill] = 0.0;
+                }
+            }
+        }
 
 
         // --- MAIN INITIALIZATION ---
@@ -2744,6 +3042,9 @@
             if (interval) clearInterval(interval);
             
             world = new World(simSettings.WORLD_WIDTH, simSettings.WORLD_HEIGHT);
+            
+            // --- NEW: Initialize skill map ---
+            initializeSkillMaxes();
             
             for (let i = 0; i < simSettings.STARTING_AGENTS; i++) {
                 world.addAgent(); 
