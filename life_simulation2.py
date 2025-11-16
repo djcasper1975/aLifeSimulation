@@ -120,7 +120,7 @@ GENE_RANGES = {
     'metabolism': (0.5, 2.0, 0.1),
     'aggression': (0.0, 0.5, 0.1),
     'builder': (0.0, 1.0, 0.1),
-    'mating_drive': (120, 160, 5.0), 
+    'mating_drive': (125, 165, 5.0), 
     'sociability': (0.0, 1.0, 0.1),
     'farming': (0.0, 1.0, 0.1),
     'personality': (1.0, 4.0, 0.5) 
