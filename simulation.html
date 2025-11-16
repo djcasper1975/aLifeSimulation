@@ -945,7 +945,7 @@
                 return Math.floor(clamp(this.genes.personality || 1, 1, 4));
             }
 
-            // MODIFIED: Child metabolism fix
+            // MODIFIED: Child metabolism fix (REVERTED)
             update() {
                 this.age += 1;
                 
@@ -978,8 +978,8 @@
                 const parentalCost = livingChildrenUnderAge * 0.2;
 
                 if (this.age < simSettings.ADULT_AGE) {
-                    // FIX 2: Child metabolism was 0, now has a base cost
-                    metabolismCost = 0.2 + parentalCost;
+                    // REVERTED FIX 2: Child metabolism is just parental cost (0)
+                    metabolismCost = parentalCost;
                     if (this.energy < 50) { 
                         this.die('STARVATION_CHILD');
                         return;
@@ -1066,7 +1066,7 @@
                     this.love = clamp(this.love - simSettings.LOVE_LOSS_STRUGGLE, 0, simSettings.STARTING_LOVE);
                 } else {
                     this.struggle_timer = 0;
-                    this.love = clamp(this.love + simSettings.PASSIVE_LOVE_GAIN, 0, simSettings.STARTING_LOVE); // MODIFIED
+                    this.love = clamp(this.love + simSettings.PASSIVE_LOVE_GAIN, 0, simSettings.STARTING_LOVE);
                 }
 
                 if (this.love <= 0 && this.apathy_timer === 0) {
