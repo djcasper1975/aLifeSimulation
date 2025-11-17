@@ -1082,7 +1082,6 @@
                         } else if (gene === 'speed') {
                             genes[gene] = Math.random() * (3.0 - 1.0) + 1.0;
                         } else if (gene === 'personality') {
-                            // FIX: Ensure correct min/max for personality stabilization
                             if (Math.random() < 0.8) {
                                 genes[gene] = Math.floor(Math.random() * (PERSONALITY_ISOLATED - PERSONALITY_COOPERATIVE + 1)) + PERSONALITY_COOPERATIVE;
                             } else {
@@ -1277,7 +1276,6 @@
                 // --- NEW: Opportunistic Socializing (Check proximity 1.5) ---
                 const nearbyAgents = this.world.getNearestAgents(this.x, this.y, 1.5, this);
                 if (nearbyAgents.length > 0) {
-                    // Don't chat if in crisis, combat, or sick
                     if (!(this.apathy_timer > 0 || this.was_attacked_by || this.avenging_target_id || this.sickness_timer > 0)) {
                         const target = nearbyAgents[Math.floor(Math.random() * nearbyAgents.length)];
                         
@@ -1608,7 +1606,6 @@
                 
                 switch (this.state) {
                     case "FORAGING":
-                        // Prioritize eating carried food/fruit if energy < 100
                         if ((this.food_carried > 0 || this.fruit_carried.length > 0) && this.energy < 100) {
                             
                             const needyNeighbors = agents.filter(a => a.energy < 40 && a.food_carried < 1 && a.fruit_carried.length === 0);
@@ -1625,35 +1622,29 @@
                             }
                             
                         } 
-                        // Pick up food
                         else if (this.world.food[currentPosKey] && this.food_carried < simSettings.MAX_FOOD_CARRY) {
                             this.pickupFood();
                         }
-                        // Pick up fruit
                         else if (this.world.fruits[currentPosKey] && this.fruit_carried.length < simSettings.MAX_FRUIT_CARRIED) {
                             this.pickupFruit();
                         }
-                        // Move to nearest food (memory or sight)
                         else if (bestFoodTarget) { 
                             this.moveTowards(bestFoodTarget[0], bestFoodTarget[1]);
                             if (getDistance(this.x, this.y, bestFoodTarget[0], bestFoodTarget[1]) < 2.0 && !this.world.food[arrayToKey(bestFoodTarget)]) {
                                 this.memory.food.delete(arrayToKey(bestFoodTarget));
                             }
                         }
-                        // Move to nearest fruit (memory or sight)
                         else if (bestFruitTarget) {
                             this.moveTowards(bestFruitTarget[0], bestFruitTarget[1]);
                             if (getDistance(this.x, this.y, bestFruitTarget[0], bestFruitTarget[1]) < 2.0 && !this.world.fruits[arrayToKey(bestFruitTarget)]) {
                                 this.memory.fruit.delete(arrayToKey(bestFruitTarget));
                             }
                         }
-                        // Explore
                         else {
                             this.moveExploring(); 
                         }
                         break;
                         
-                    // --- NEW: FORAGING_FRUIT State ---
                     case "FORAGING_FRUIT":
                         if (this.fruit_carried.length > 0 && this.energy < 100) {
                             this.consumeFruit();
@@ -1686,7 +1677,6 @@
                             }
                         }
                         break;
-                    // --- END FORAGING_FRUIT State ---
 
                     case "GETTING_WOOD":
                         const currentWoodPosKey = arrayToKey([this.x, this.y]);
@@ -2797,7 +2787,6 @@
                 
                 if (results.length === 0) return [];
                     
-                // Sort by distance (simplification of original Python logic)
                 results.sort((a, b) => 
                     getDistance(x, y, a[0], a[1]) - getDistance(x, y, b[0], b[1])
                 );
@@ -2871,7 +2860,7 @@
                     this.growingTrees[pos]--;
                     if (this.growingTrees[pos] <= 0) {
                         delete this.growingTrees[pos];
-                        if (!this.food[pos] && !this.homes[pos] && !this.wood[pos] && !this.fruits[pos] && pos !== libraryPosKey) {
+                        if (!this.homes[pos] && !this.wood[pos] && !this.fruits[pos] && pos !== libraryPosKey) {
                             this.wood[pos] = true;
                         }
                     }
