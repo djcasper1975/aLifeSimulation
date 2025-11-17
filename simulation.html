@@ -461,13 +461,29 @@
                                 <label for="MAX_WOOD_CARRY">Max Wood Carry</label>
                                 <input type="number" id="MAX_WOOD_CARRY" name="MAX_WOOD_CARRY" step="1">
                             </div>
+                            
+                            <div class="fieldset-subheader sm:col-span-2">Seed Carrying Capacity</div>
                             <div>
-                                <label for="MAX_STARTING_SEEDS">Max Start Seeds</label>
-                                <input type="number" id="MAX_STARTING_SEEDS" name="MAX_STARTING_SEEDS" step="1">
+                                <label for="MAX_FOOD_SEEDS_CARRIED">Max Food Seeds</label>
+                                <input type="number" id="MAX_FOOD_SEEDS_CARRIED" name="MAX_FOOD_SEEDS_CARRIED" step="1">
                             </div>
                             <div>
-                                <label for="MAX_STARTING_WOOD_SEEDS">Max Start Wood Seeds</label>
-                                <input type="number" id="MAX_STARTING_WOOD_SEEDS" name="MAX_STARTING_WOOD_SEEDS" step="1">
+                                <label for="STARTING_FOOD_SEEDS_MAX">Max Start Food Seeds</label>
+                                <input type="number" id="STARTING_FOOD_SEEDS_MAX" name="STARTING_FOOD_SEEDS_MAX" step="1">
+                            </div>
+                             <div>
+                                <label for="MAX_WOOD_SEEDS_CARRIED">Max Wood Seeds</label>
+                                <input type="number" id="MAX_WOOD_SEEDS_CARRIED" name="MAX_WOOD_SEEDS_CARRIED" step="1">
+                            </div>
+                            <div>
+                                <label for="STARTING_WOOD_SEEDS_MAX">Max Start Wood Seeds</label>
+                                <input type="number" id="STARTING_WOOD_SEEDS_MAX" name="STARTING_WOOD_SEEDS_MAX" step="1">
+                            </div>
+                            
+                            <div class="fieldset-subheader sm:col-span-2">Mating & Combat</div>
+                            <div>
+                                <label for="MAX_POPULATION_TARGET">Max Population Target</label>
+                                <input type="number" id="MAX_POPULATION_TARGET" name="MAX_POPULATION_TARGET" step="1">
                             </div>
                             <div>
                                 <label for="HOME_WOOD_COST">Home Wood Cost</label>
@@ -493,6 +509,8 @@
                                 <label for="ATTACK_COST_BASE">Attack Cost</label>
                                 <input type="number" id="ATTACK_COST_BASE" name="ATTACK_COST_BASE" step="1">
                             </div>
+                            
+                            <div class="fieldset-subheader sm:col-span-2">Learning & Social</div>
                             <div>
                                 <label for="ISOLATION_SOCIAL_LOSS_RATE">Isolation Social Loss</label>
                                 <input type="number" id="ISOLATION_SOCIAL_LOSS_RATE" name="ISOLATION_SOCIAL_LOSS_RATE" step="0.01">
@@ -821,6 +839,7 @@
             // --- CRITICAL SURVIVAL THRESHOLDS (SYNCHRONIZED) ---
             MIN_POPULATION_TARGET: 16, 
             CRITICAL_FOOD_COUNT: 70, 
+            MAX_POPULATION_TARGET: 300,
 
             // --- SIMULATION PARAMETERS ---
             WORLD_WIDTH: 70,
@@ -872,11 +891,16 @@
             STARTING_SOCIAL_MAX: 80.0,
             MAX_FOOD_CARRY: 2,
             MAX_WOOD_CARRY: 3,
-            MAX_STARTING_SEEDS: 3,
-            MAX_STARTING_WOOD_SEEDS: 2,
+            
+            // NEW SEED CARRYING CONSTANTS (Python sync)
+            MAX_FOOD_SEEDS_CARRIED: 5,
+            STARTING_FOOD_SEEDS_MAX: 2,
+            MAX_WOOD_SEEDS_CARRIED: 3,
+            STARTING_WOOD_SEEDS_MAX: 1,
+            
             HOME_WOOD_COST: 3,
             FOOD_ENERGY_GAIN_BASE: 120,
-            MATE_ENERGY_COST: 40,
+            MATE_ENERGY_COST: 20, 
             MATE_COOLDOWN: 600,
             MAX_CHILDREN_PER_BIRTH: 3,
             ATTACK_DAMAGE_BASE: 15,
@@ -900,7 +924,7 @@
             // --- SKILL MAXES (SYNCHRONIZED) ---
             SKILL_FORAGE_MAX: 10.0,
             SKILL_SOCIAL_MAX: 10.0,
-            SKILL_BUILD_MAX: 4.0,
+            SKILL_BUILD_MAX: 4.0, 
             SKILL_NAV_MAX: 5.0,
             SKILL_COMBAT_MAX: 10.0,
             SKILL_FARM_MAX: 10.0,
@@ -934,7 +958,7 @@
         const COLORS = {
             CYAN_BRIGHT: '#22d3ee', // A
             CYAN_NORMAL: '#06b6d4', // f
-            MAGENTA_BRIGHT: '#d946ef', // m, L (Seek Library), M (Seek Mate), P (Social Fruit)
+            MAGENTA_BRIGHT: '#d946ef', // m, L (Seek Library), M (Seek Mate), P (Social Fruit), o (Happy)
             MAGENTA_DIM: '#a855f7', // s, b (Growing Bush)
             WHITE_BRIGHT: '#ffffff', // T, g, wellbeing buff
             WHITE_NORMAL: '#f3f4f6', // t, .
@@ -1016,10 +1040,12 @@
                 this.food_carried = 0;
                 this.fruit_carried = []; // New: List of fruit type strings
                 this.mate_cooldown = 0;
-                this.seeds_carried = Math.floor(Math.random() * simSettings.MAX_STARTING_SEEDS); 
-                this.wood_seeds_carried = Math.floor(Math.random() * simSettings.MAX_STARTING_WOOD_SEEDS); 
+                // --- SYNCHRONIZED SEED INVENTORY ---
+                this.seeds_carried = Math.floor(Math.random() * simSettings.STARTING_FOOD_SEEDS_MAX); 
+                this.wood_seeds_carried = Math.floor(Math.random() * simSettings.STARTING_WOOD_SEEDS_MAX); 
                 this.fruit_seeds_carried = Math.floor(Math.random() * simSettings.STARTING_FRUIT_SEEDS_MAX); 
-                
+                // --- END SYNCHRONIZED SEED INVENTORY ---
+
                 this.social = Math.random() * (simSettings.STARTING_SOCIAL_MAX - simSettings.STARTING_SOCIAL_MIN) + simSettings.STARTING_SOCIAL_MIN;
                 
                 this.home_location = null;
@@ -1029,7 +1055,7 @@
                 this.social_buff_timer = 0; 
                 this.contentment_buff_timer = 0; 
                 this.apathy_timer = 0; 
-                this.sickness_timer = 0; 
+                this.sickness_timer = 0; // NEW: Sickness Timer
                 this.speed_buff_timer = 0; 
                 
                 this.state = "WANDERING"; 
@@ -1116,7 +1142,7 @@
                 let metabolismCost = this.genes['metabolism'];
                 let livingChildrenUnderAge = 0;
 
-                // --- Parental Care Cost ---
+                // --- Parental Care Cost (SYNCHRONIZED) ---
                 for (const childId of Array.from(this.children_ids)) {
                     const child = this.world.getAgentById(childId);
                     if (child) {
@@ -1132,8 +1158,10 @@
                 const parentalCost = livingChildrenUnderAge * 0.2;
 
                 if (this.age < simSettings.ADULT_AGE) {
-                    metabolismCost = parentalCost;
-                    if (this.energy < 50) { 
+                    // Python Fix 2: Cap the child's effective metabolism rate to a low, stable value (0.25)
+                    metabolismCost = Math.min(parentalCost, 0.25);
+                    // Python Fix 1: Lower the critical death threshold from 50 to 10
+                    if (this.energy < 10) { 
                         this.die('STARVATION_CHILD');
                         return;
                     }
@@ -1173,7 +1201,7 @@
                 if (nearbyCampfirePosKey) {
                     metabolismCost *= 0.9;
                     this.social = clamp(this.social + 0.5, 0, 100);
-                    this.love = clamp(this.love + 0.1, 0, simSettings.STARTING_LOVE); 
+                    this.love = clamp(this.love + simSettings.PASSIVE_LOVE_GAIN, 0, simSettings.STARTING_LOVE); 
                 }
 
                 // --- Buff/Debuff Applications ---
@@ -1190,6 +1218,11 @@
                 if (this.sickness_timer > 0) {
                     metabolismCost += simSettings.ENV_SICKNESS_METABOLISM_PENALTY;
                     this.sickness_timer--;
+                    // NEW: Check for Sickness-Induced Death
+                    if (this.energy <= 0) { // Death check is already below, but this ensures a specific reason is logged
+                        this.die('STARVATION_SICKNESS');
+                        return;
+                    }
                 }
 
                 if (this.speed_buff_timer > 0) {
@@ -1222,8 +1255,9 @@
                 } else {
                     const visionRadius = Math.floor(this.genes['vision']);
                     const nearbyAgents = this.world.getNearestAgents(this.x, this.y, visionRadius, this);
+                    // SYNCHRONIZED: Use 0.5 social loss rate to match Python
                     if (nearbyAgents.length === 0 && !nearbyCampfirePosKey) { 
-                        this.social -= this.genes['sociability'] * simSettings.ISOLATION_SOCIAL_LOSS_RATE * socialLossMultiplier;
+                        this.social -= this.genes['sociability'] * 0.5 * socialLossMultiplier;
                     } else {
                         this.social += 0.1;
                     }
@@ -1251,6 +1285,7 @@
                 for (const skillKey in this.skills) {
                     const globalValue = this.world.globalSkillKnowledge[skillKey] || 0.0;
                     const currentSkill = this.skills[skillKey];
+                    // SYNCHRONIZED: Use Python's 0.0001 uptake rate for global knowledge
                     if (currentSkill < globalValue) {
                         this.skills[skillKey] = clamp(currentSkill + simSettings.GLOBAL_KNOWLEDGE_UPTAKE_RATE, 0, SKILL_MAXES[skillKey]);
                     }
@@ -1365,23 +1400,35 @@
                     }
                 }
 
-                // Mandate 3: Seek Mate if population is low
-                if (populationLow && this.age >= simSettings.ADULT_AGE &&
+                // Mandate 3: Seek Mate if population is low AND below max pop
+                if (populationLow && this.world.agents.length < simSettings.MAX_POPULATION_TARGET && this.age >= simSettings.ADULT_AGE &&
                     this.energy > this.genes['mating_drive'] && this.mate_cooldown === 0) {
                     
                     this.state = "SEEKING_MATE";
                     return; 
                 }
+                
+                // NEW: Environmental Crisis Priority
+                if (this.world.environmentalHealth < simSettings.ENV_SICKNESS_THRESHOLD) {
+                    if (this.seeds_carried > 0 || this.fruit_seeds_carried > 0 || this.wood_seeds_carried > 0) {
+                        this.state = "PLANTING";
+                        return;
+                    } else if (["GETTING_WOOD", "FORAGING"].includes(this.state) && this.energy > 50) {
+                        this.state = "WANDERING"; 
+                        return;
+                    }
+                }
                 // --- END CRITICAL SURVIVAL OVERRIDES ---
 
                 // Priority 1: Survival (Energy)
                 let forageThreshold = 70;
-                if (this.age < simSettings.ADULT_AGE) forageThreshold = 100;
+                // SYNCHRONIZED: Child forage threshold is 120
+                if (this.age < simSettings.ADULT_AGE) forageThreshold = 120;
 
-                if (this.energy < forageThreshold || ((this.food_carried > 0 || this.fruit_carried.length > 0) && this.energy < 100)) { 
+                if (this.energy < forageThreshold || ((this.food_carried > 0 || this.fruit_carried.length > 0) && this.energy < 150)) { 
                     
                     // NEW: Opportunistic Fruit Seeking
-                    if (this.social < 40 && this.energy > 50 && this.sickness_timer === 0) {
+                    if (this.social < 40 && this.energy > 120 && this.sickness_timer === 0) {
                         const socialFruits = this.world.getNearestFruitOfType(this.x, this.y, visionRadius, this.memory.fruit, 'social');
                         if (socialFruits.length > 0) {
                             this.state = "FORAGING_FRUIT";
@@ -1597,6 +1644,7 @@
                     const struggleBonus = Math.min(this.struggle_timer * 0.0005, 0.5); 
                     const dynamicAggression = baseAggression + struggleBonus;
                     
+                    // SYNCHRONIZED: Combat Lock Check (love <= 0 and energy > 80)
                     if (this.love <= 0 && this.energy > 80 && Math.random() < dynamicAggression) {
                         this.attack(target, 'COMBAT_AGGRESSION');
                         return; 
@@ -1606,15 +1654,17 @@
                 
                 switch (this.state) {
                     case "FORAGING":
-                        if ((this.food_carried > 0 || this.fruit_carried.length > 0) && this.energy < 100) {
+                        // SYNCHRONIZED: Eat if energy < 150 (Food Energy Gain Base)
+                        if ((this.food_carried > 0 || this.fruit_carried.length > 0) && this.energy < 150) {
                             
                             const needyNeighbors = agents.filter(a => a.energy < 40 && a.food_carried < 1 && a.fruit_carried.length === 0);
                             
                             if (needyNeighbors.length === 0) {
-                                if (this.fruit_carried.length > 0) {
-                                    this.consumeFruit();
-                                } else {
+                                // SYNCHRONIZED: Prioritize Food over Fruit if starving
+                                if (this.food_carried > 0) {
                                     this.consumeFood();
+                                } else if (this.fruit_carried.length > 0) {
+                                    this.consumeFruit();
                                 }
                             } else {
                                 this.state = "SHARING";
@@ -1625,7 +1675,8 @@
                         else if (this.world.food[currentPosKey] && this.food_carried < simSettings.MAX_FOOD_CARRY) {
                             this.pickupFood();
                         }
-                        else if (this.world.fruits[currentPosKey] && this.fruit_carried.length < simSettings.MAX_FRUIT_CARRIED) {
+                        // SYNCHRONIZED: Pick up fruit only if food is not on tile
+                        else if (this.world.fruits[currentPosKey] && this.fruit_carried.length < simSettings.MAX_FRUIT_CARRIED && !this.world.food[currentPosKey]) {
                             this.pickupFruit();
                         }
                         else if (bestFoodTarget) { 
@@ -1634,6 +1685,7 @@
                                 this.memory.food.delete(arrayToKey(bestFoodTarget));
                             }
                         }
+                        // SYNCHRONIZED: Fallback to fruit if no food
                         else if (bestFruitTarget) {
                             this.moveTowards(bestFruitTarget[0], bestFruitTarget[1]);
                             if (getDistance(this.x, this.y, bestFruitTarget[0], bestFruitTarget[1]) < 2.0 && !this.world.fruits[arrayToKey(bestFruitTarget)]) {
@@ -1646,13 +1698,14 @@
                         break;
                         
                     case "FORAGING_FRUIT":
-                        if (this.fruit_carried.length > 0 && this.energy < 100) {
+                        if (this.fruit_carried.length > 0 && this.energy < 150) {
                             this.consumeFruit();
                         } else if (this.world.fruits[currentPosKey] && this.fruit_carried.length < simSettings.MAX_FRUIT_CARRIED) {
                             this.pickupFruit();
                         } else {
                             let targetPos = null;
 
+                            // Find target based on need
                             const socialFruits = this.world.getNearestFruitOfType(this.x, this.y, visionRadius, this.memory.fruit, 'social');
                             if (this.social < 40 && socialFruits.length > 0) {
                                 targetPos = socialFruits[0];
@@ -1793,10 +1846,13 @@
 
                     case "PLANTING":
                         if (this.isClearTile(this.x, this.y)) {
+                            // SYNCHRONIZED: Prioritize Fruit > Food > Tree planting
                             if (this.fruit_seeds_carried > 0) {
                                 this.plantFruitSeed();
                             } else if (this.seeds_carried > 0) {
                                 this.plantSeed();
+                            } else if (this.wood_seeds_carried > 0) {
+                                this.plantTree();
                             } else {
                                 this.state = "WANDERING";
                             }
@@ -1846,6 +1902,7 @@
 
                         if (target) {
                             if (getDistance(this.x, this.y, target.x, target.y) < 2.0) {
+                                // SYNCHRONIZED: Share Fruit > Food > Wood
                                 if (this.fruit_carried.length > 0) {
                                     const fruitType = this.fruit_carried.pop();
                                     target.fruit_carried.push(fruitType);
@@ -1887,6 +1944,7 @@
                             const potentialRecruits = this.world.getNearestAgents(this.x, this.y, visionRadius, this)
                                 .filter(a => a.id !== targetParent.id && a.avenging_target_id === null);
                             
+                            // SYNCHRONIZED: Recruit logic
                             for (const recruit of potentialRecruits) {
                                 const roll = Math.random();
                                 let chance = recruit.genes['aggression'] * 0.5;
@@ -1906,6 +1964,7 @@
                                     recruit.vengeance_timer = simSettings.VENGEANCE_DURATION;
                                 }
                             }
+                            // END SYNCHRONIZED: Recruit logic
 
                             const dist = getDistance(this.x, this.y, targetParent.x, targetParent.y);
                             if (dist < 2.0) {
@@ -1995,6 +2054,7 @@
                         if (this.energy > simSettings.PAUSE_ENERGY_THRESHOLD && this.social > simSettings.PAUSE_SOCIAL_THRESHOLD) {
                             
                             const nearbyCampfireStory = this.world.getNearest(this.x, this.y, 2, this.world.campfires);
+                            // SYNCHRONIZED: Call broadcast_skill_to_library from Python
                             if (nearbyCampfireStory && Math.random() < 0.1) {
                                 this.broadcastSkillToLibrary();
                             }
@@ -2013,11 +2073,13 @@
                         break; 
                     
                     case "SEEKING_LIBRARY":
+                        // SYNCHRONIZED: Use 0.001 navigation gain for movement
                         this.skills.navigation = clamp(this.skills.navigation + simSettings.SKILL_GAIN_NAVIGATION, 0, SKILL_MAXES.navigation);
                         
                         const [lx, ly] = this.memory.library;
                         
                         if (getDistance(this.x, this.y, lx, ly) < 2.0) {
+                            // SYNCHRONIZED: Use 0.01 social gain for library arrival
                             this.skills.social = clamp(this.skills.social + simSettings.SKILL_GAIN_SOCIAL_LIBRARY, 0, SKILL_MAXES.social);
                             this.social = clamp(this.social + simSettings.LIBRARY_SOCIAL_GAIN, 0, 100);
                             this.state = "WANDERING";
@@ -2057,6 +2119,7 @@
                         if (this.energy > simSettings.PAUSE_ENERGY_THRESHOLD && this.social > simSettings.PAUSE_SOCIAL_THRESHOLD) {
                             
                             const nearbyCampfireStory = this.world.getNearest(this.x, this.y, 2, this.world.campfires);
+                            // SYNCHRONIZED: Call broadcast_skill_to_library from Python
                             if (nearbyCampfireStory && Math.random() < 0.1) {
                                 this.broadcastSkillToLibrary();
                             }
@@ -2085,6 +2148,7 @@
             
             isClearTile(x, y) {
                 const posKey = arrayToKey([x, y]);
+                const pos = [x, y];
                 if (posKey === arrayToKey(this.world.libraryLocation)) {
                     return false;
                 }
@@ -2096,6 +2160,8 @@
                 if (this.world.campfires[posKey]) return false;
                 if (this.world.fruits[posKey]) return false;
                 if (this.world.growingFruitBushes[posKey]) return false;
+                // CHECK AGENTS ON TILE (SYNCHRONIZED with Python planting logic)
+                if (this.world.agents.some(agent => agent.x === x && agent.y === y && agent !== this)) return false; 
                 return true;
             }
 
@@ -2237,7 +2303,8 @@
 
                     // Seed Chance
                     const foragingChance = simSettings.FOOD_SEED_BASE_CHANCE + (this.skills.foraging * simSettings.SKILL_FORAGE_SEED_BONUS);
-                    if (Math.random() < foragingChance) {
+                    // SYNCHRONIZED: Check max capacity before adding
+                    if (Math.random() < foragingChance && this.seeds_carried < simSettings.MAX_FOOD_SEEDS_CARRIED) {
                         this.seeds_carried++;
                     }
 
@@ -2269,7 +2336,8 @@
 
                     // Fruit Seed Chance
                     const foragingChance = simSettings.FRUIT_SEED_BASE_CHANCE + (this.skills.foraging * simSettings.SKILL_FORAGE_SEED_BONUS);
-                    if (Math.random() < foragingChance) {
+                     // SYNCHRONIZED: Check max capacity before adding (using STARTING_FRUIT_SEEDS_MAX for MAX_FRUIT_SEEDS_CARRIED as per Python code structure)
+                    if (Math.random() < foragingChance && this.fruit_seeds_carried < simSettings.STARTING_FRUIT_SEEDS_MAX) {
                         this.fruit_seeds_carried++;
                     }
 
@@ -2311,7 +2379,8 @@
                     this.world.environmentalHealth = clamp(this.world.environmentalHealth - decayAmount, 0, simSettings.ENV_HEALTH_MAX);
                     
                     // Wood Seed Chance
-                    if (Math.random() < simSettings.WOOD_SEED_CHANCE) {
+                    // SYNCHRONIZED: Check max capacity before adding
+                    if (Math.random() < simSettings.WOOD_SEED_CHANCE && this.wood_seeds_carried < simSettings.MAX_WOOD_SEEDS_CARRIED) {
                         this.wood_seeds_carried++;
                     }
 
@@ -2347,6 +2416,7 @@
             }
             
             attack(target, attack_type = 'COMBAT_AGGRESSION') {
+                // SYNCHRONIZED: Combat cost reduction logic
                 let energyCost = Math.max(2, simSettings.ATTACK_COST_BASE - (this.skills.combat * simSettings.SKILL_COMBAT_COST_REDUCTION));
                 let damage = simSettings.ATTACK_DAMAGE_BASE + (this.skills.combat * simSettings.SKILL_COMBAT_DAMAGE_BONUS); 
                 
@@ -2370,6 +2440,7 @@
                 this.state = "MATING";
                 partner.state = "MATING";
                 
+                // SYNCHRONIZED: Use MATE_ENERGY_COST setting
                 this.energy -= simSettings.MATE_ENERGY_COST;
                 partner.energy -= simSettings.MATE_ENERGY_COST;
                 
@@ -2382,11 +2453,13 @@
                     const newGenes = {};
                     for (const gene of GENE_LIST) {
                         const geneKey = gene.toUpperCase();
+                        // Assume GENE_RANGES logic is in simSettings for simplicity
                         const minVal = simSettings[`GENE_${geneKey}_MIN`];
                         const maxVal = simSettings[`GENE_${geneKey}_MAX`];
                         const mutRate = simSettings[`GENE_${geneKey}_MUTATE_RATE`];
 
                         const avgGene = (this.genes[gene] + partner.genes[gene]) / 2;
+                        // Mutation is symmetric around the average
                         const mutation = (Math.random() * 2 - 1) * mutRate * (maxVal - minVal);
                         newGenes[gene] = clamp(avgGene + mutation, minVal, maxVal);
                     }
@@ -2418,13 +2491,15 @@
                     
                     if (selfSkill > partnerSkill) {
                         partner.skills[skill] = clamp(partner.skills[skill] + learningRate, 0, maxSkill);
+                        // SYNCHRONIZED: Only broadcast if skill is > 2.0
                         if (selfSkill > 2.0) { 
-                            this.world.globalSkillKnowledge[skill] = clamp((this.world.globalSkillKnowledge[skill] || 0.0) + simSettings.GLOBAL_KNOWLEDGE_UPTAKE_RATE, 0, maxSkill);
+                            this.world.globalSkillKnowledge[skill] = clamp((this.world.globalSkillKnowledge[skill] || 0.0) + simSettings.GLOBAL_KNOWLEDGE_LEARN_RATE, 0, maxSkill);
                         }
                     } else if (partnerSkill > selfSkill) {
                         this.skills[skill] = clamp(selfSkill + learningRate, 0, maxSkill);
+                        // SYNCHRONIZED: Only broadcast if skill is > 2.0
                         if (partnerSkill > 2.0) {
-                            this.world.globalSkillKnowledge[skill] = clamp((this.world.globalSkillKnowledge[skill] || 0.0) + simSettings.GLOBAL_KNOWLEDGE_UPTAKE_RATE, 0, maxSkill);
+                            this.world.globalSkillKnowledge[skill] = clamp((this.world.globalSkillKnowledge[skill] || 0.0) + simSettings.GLOBAL_KNOWLEDGE_LEARN_RATE, 0, maxSkill);
                         }
                     }
                 }
@@ -2453,7 +2528,8 @@
                 if (highestSkillName && highestSkillValue > 1.0) {
                     const currentGlobal = this.world.globalSkillKnowledge[highestSkillName] || 0.0;
                     if (highestSkillValue > currentGlobal) {
-                         this.world.globalSkillKnowledge[highestSkillName] = clamp(currentGlobal + (simSettings.GLOBAL_KNOWLEDGE_UPTAKE_RATE), 0, SKILL_MAXES[highestSkillName]);
+                         // SYNCHRONIZED: Use a different, higher value for fire broadcast to match Python
+                         this.world.globalSkillKnowledge[highestSkillName] = clamp(currentGlobal + 0.005, 0, SKILL_MAXES[highestSkillName]);
                     }
                 }
             }
@@ -2465,6 +2541,7 @@
                 const selfPersonality = this.getPersonality();
                 const partnerPersonality = partner.getPersonality();
                 
+                // SYNCHRONIZED: Personality Conflict Check
                 let conflictDetected = false;
                 const selfConflicts = PERSONALITY_CONFLICTS[selfPersonality] || [];
                 const partnerConflicts = PERSONALITY_CONFLICTS[partnerPersonality] || [];
@@ -2486,6 +2563,7 @@
                         return;
                     }
                 }
+                // END SYNCHRONIZED: Personality Conflict Check
 
                 this.energy -= 1.0; 
                 partner.energy -= 1.0;
@@ -2516,6 +2594,7 @@
                 
                 this.shareSkills(partner);
                 
+                // SYNCHRONIZED: Seed combination logic
                 if (Object.keys(this.world.food).length < simSettings.STARTING_FOOD && this.seeds_carried >= 1 && partner.seeds_carried >= 1) {
                     const totalSeeds = this.seeds_carried + partner.seeds_carried;
                     if (totalSeeds >= 3) {
@@ -2525,8 +2604,19 @@
                         const [lx, ly] = this.world.libraryLocation;
                         let plantLocKey = arrayToKey([lx, ly]);
                         
-                        if (!this.isClearTile(lx, ly)) {
-                            plantLocKey = arrayToKey([this.x, this.y]);
+                        // Check if library is clear for planting
+                        const libraryClear = this.world.isTileClearForPlanting([lx, ly]);
+                        
+                        // If library is not clear, try current spot
+                        if (!libraryClear) {
+                            plantLocKey = currentPosKey;
+                            const currentClear = this.world.isTileClearForPlanting(keyToArray(currentPosKey));
+                            if (!currentClear) {
+                                // If nowhere is clear, give up
+                                this.state = "WANDERING";
+                                partner.state = "WANDERING";
+                                return;
+                            }
                         }
                         
                         this.world.food[plantLocKey] = true;
@@ -2554,7 +2644,7 @@
                     
                     this.skills.farming = clamp(this.skills.farming + simSettings.SKILL_GAIN_FARMING, 0, SKILL_MAXES.farming);
                     
-                    const healAmount = simSettings.ENV_HEAL_PLANT_BASE * (this.skills.farming * simSettings.SKILL_FARM_HEAL_MULTIPLIER);
+                    const healAmount = simSettings.ENV_HEAL_PLANT_BASE * (this.skills.farming / SKILL_MAXES.farming); // Python uses skill/10.0, so this matches.
                     this.world.environmentalHealth = clamp(this.world.environmentalHealth + healAmount, 0, simSettings.ENV_HEALTH_MAX);
 
                     this.state = "WANDERING";
@@ -2571,7 +2661,7 @@
                     
                     this.skills.farming = clamp(this.skills.farming + simSettings.SKILL_GAIN_FARMING, 0, SKILL_MAXES.farming);
                     
-                    const healAmount = simSettings.ENV_HEAL_PLANT_BASE * (this.skills.farming * simSettings.SKILL_FARM_HEAL_MULTIPLIER);
+                    const healAmount = simSettings.ENV_HEAL_PLANT_BASE * (this.skills.farming / SKILL_MAXES.farming);
                     this.world.environmentalHealth = clamp(this.world.environmentalHealth + healAmount, 0, simSettings.ENV_HEALTH_MAX);
 
                     this.state = "WANDERING";
@@ -2585,11 +2675,12 @@
                     
                     const posKey = arrayToKey([this.x, this.y]);
                     this.world.growingFruitBushes[posKey] = simSettings.FRUIT_GROW_TIME;
+                    // Assign a random type for the new bush
                     this.world.fruitTypes[posKey] = ['energy', 'social', 'speed'][Math.floor(Math.random() * 3)];
                     
                     this.skills.farming = clamp(this.skills.farming + simSettings.SKILL_GAIN_FARMING, 0, SKILL_MAXES.farming);
                     
-                    const healAmount = simSettings.ENV_HEAL_PLANT_BASE * (this.skills.farming * simSettings.SKILL_FARM_HEAL_MULTIPLIER);
+                    const healAmount = simSettings.ENV_HEAL_PLANT_BASE * (this.skills.farming / SKILL_MAXES.farming);
                     this.world.environmentalHealth = clamp(this.world.environmentalHealth + healAmount, 0, simSettings.ENV_HEALTH_MAX);
 
                     this.state = "WANDERING";
@@ -2598,7 +2689,7 @@
 
             die(reason = 'UNKNOWN') {
                 
-                // --- NEW: Vengeance System on Child Death ---
+                // --- NEW: Vengeance System on Child Death (SYNCHRONIZED) ---
                 if (this.age < simSettings.ADULT_AGE && this.parent_ids.size > 0) {
                     const witnesses = [];
                     for (const agent of this.world.agents) {
@@ -2712,6 +2803,7 @@
                     'STARVATION_ADULT': 0, 
                     'STARVATION_CHILD': 0, 
                     'NATURAL_DEATH_OLD': 0, 
+                    'STARVATION_SICKNESS': 0, // NEW: Sickness death
                     'UNKNOWN': 0,
                     'COMBAT_VENDETTA': 0,
                     'COMBAT_CONFLICT': 0,
@@ -2761,6 +2853,18 @@
             
             addFruit([x, y], fruitType) {
                 const posKey = arrayToKey([x, y]);
+                // SYNCHRONIZED: Logic for adding fruit to a clear tile
+                if (!this.isTileClearForPlanting([x, y], true)) {
+                    const nearbyEmpty = this.getEmptyTilesNear([x, y], 1);
+                    if (nearbyEmpty.length > 0) {
+                        const newPosKey = arrayToKey(nearbyEmpty[0]);
+                        this.fruits[newPosKey] = true;
+                        this.fruitTypes[newPosKey] = fruitType;
+                        return;
+                    } else {
+                        return;
+                    }
+                }
                 this.fruits[posKey] = true;
                 this.fruitTypes[posKey] = fruitType;
             }
@@ -2842,13 +2946,14 @@
             updateWorldObjects() {
                 this.environmentalHealth = clamp(this.environmentalHealth + simSettings.ENV_PASSIVE_RECOVERY_RATE, 0, simSettings.ENV_HEALTH_MAX);
                 const libraryPosKey = arrayToKey(this.libraryLocation);
+                const isTileClear = (pos) => this.isTileClearForPlanting(pos);
 
                 // Update Growing Plants (Food)
                 for (const pos in this.growingPlants) {
                     this.growingPlants[pos]--;
                     if (this.growingPlants[pos] <= 0) {
                         delete this.growingPlants[pos];
-                        if (!this.homes[pos] && !this.wood[pos] && !this.fruits[pos] && pos !== libraryPosKey) {
+                        if (isTileClear(keyToArray(pos))) {
                             this.food[pos] = true;
                             this.foodFreshness[pos] = simSettings.FOOD_FRESHNESS;
                         }
@@ -2860,7 +2965,7 @@
                     this.growingTrees[pos]--;
                     if (this.growingTrees[pos] <= 0) {
                         delete this.growingTrees[pos];
-                        if (!this.homes[pos] && !this.wood[pos] && !this.fruits[pos] && pos !== libraryPosKey) {
+                        if (isTileClear(keyToArray(pos))) {
                             this.wood[pos] = true;
                         }
                     }
@@ -2872,9 +2977,10 @@
                     if (this.growingFruitBushes[pos] <= 0) {
                         delete this.growingFruitBushes[pos];
                         const fruitType = this.fruitTypes[pos];
-                        if (fruitType && !this.homes[pos] && !this.wood[pos] && !this.food[pos] && !this.fruits[pos] && pos !== libraryPosKey) {
+                        if (fruitType && isTileClear(keyToArray(pos))) {
                              this.fruits[pos] = true;
                         } else {
+                            // If the tile is no longer clear (e.g., home was built), discard the type info too
                             delete this.fruitTypes[pos];
                         }
                     }
@@ -2905,6 +3011,7 @@
                         this.homes[pos].durability--;
                         if (this.homes[pos].durability <= 0) {
                             
+                            // Return wood to the tile
                             for (let i = 0; i < simSettings.HOME_WOOD_COST; i++) {
                                 this.wood[pos] = true;
                             }
@@ -2952,32 +3059,60 @@
                 }
             }
 
+            isTileClearForPlanting(pos, checkAgents = false) {
+                const posKey = arrayToKey(pos);
+                const [x, y] = pos;
+                
+                if (!(x >= 0 && x < this.width && y >= 0 && y < this.height)) return false;
+
+                if (posKey === arrayToKey(this.libraryLocation)) return false;
+                if (this.homes[posKey]) return false;
+                if (this.food[posKey]) return false;
+                if (this.wood[posKey]) return false;
+                if (this.growingPlants[posKey]) return false;
+                if (this.growingTrees[posKey]) return false;
+                if (this.campfires[posKey]) return false;
+                if (this.fruits[posKey]) return false;
+                if (this.growingFruitBushes[posKey]) return false;
+                
+                if (checkAgents && this.agents.some(agent => agent.x === x && agent.y === y)) return false;
+
+                return true;
+            }
+
+            getEmptyTilesNear(originPos, maxCount) {
+                const emptyTiles = [];
+                const [ox, oy] = originPos;
+                let radius = 1;
+                
+                if (this.isTileClearForPlanting(originPos)) {
+                    emptyTiles.push(originPos);
+                    if (emptyTiles.length === maxCount) return emptyTiles;
+                }
+
+                while (emptyTiles.length < maxCount && radius < 10) { 
+                    for (let dx = -radius; dx <= radius; dx++) {
+                        for (let dy = -radius; dy <= radius; dy++) {
+                             const checkPos = [ox + dx, oy + dy];
+                             if (this.isTileClearForPlanting(checkPos)) {
+                                 const posKey = arrayToKey(checkPos);
+                                 if (!emptyTiles.some(tile => arrayToKey(tile) === posKey)) {
+                                     emptyTiles.push(checkPos);
+                                 }
+                                 if (emptyTiles.length === maxCount) return emptyTiles;
+                             }
+                        }
+                    }
+                    radius++;
+                }
+                return emptyTiles;
+            }
+
             autoPlantOnDeath(originPos, foodSeeds, woodSeeds, fruitSeeds) {
                 const totalSeeds = foodSeeds + woodSeeds + fruitSeeds;
                 if (totalSeeds === 0) return;
                 
-                const emptyTiles = [];
-                const radius = 1;
-                const [ox, oy] = originPos;
-                const libraryPosKey = arrayToKey(this.libraryLocation);
-
-                for (let dx = -radius; dx <= radius; dx++) {
-                    for (let dy = -radius; dy <= radius; dy++) {
-                         if (emptyTiles.length >= totalSeeds) break;
-                         const x = ox + dx;
-                         const y = oy + dy;
-                         const posKey = arrayToKey([x, y]);
-                         if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
-                            if (!this.homes[posKey] && !this.food[posKey] && !this.wood[posKey] && 
-                                !this.growingPlants[posKey] && !this.growingTrees[posKey] && 
-                                !this.campfires[posKey] && !this.fruits[posKey] && !this.growingFruitBushes[posKey] && 
-                                posKey !== libraryPosKey) {
-                                emptyTiles.push([x, y]);
-                            }
-                         }
-                    }
-                    if (emptyTiles.length >= totalSeeds) break;
-                }
+                const emptyTiles = this.getEmptyTilesNear(originPos, totalSeeds);
                 
                 let tileIndex = 0;
                 
@@ -3008,18 +3143,10 @@
                 for (let i = 0; i < attempts; i++) {
                     const x = Math.floor(Math.random() * this.width);
                     const y = Math.floor(Math.random() * this.height);
-                    const posKey = arrayToKey([x, y]);
+                    const pos = [x, y];
                     
-                    if (posKey === arrayToKey(this.libraryLocation)) {
-                        continue;
-                    }
-                    
-                    const occupied = this.agents.some(agent => agent.x === x && agent.y === y);
-                        
-                    if (!occupied && !this.food[posKey] && !this.wood[posKey] && !this.homes[posKey] && 
-                        !this.growingPlants[posKey] && !this.growingTrees[posKey] && !this.campfires[posKey] && 
-                        !this.fruits[posKey] && !this.growingFruitBushes[posKey]) { 
-                        return [x, y];
+                    if (this.isTileClearForPlanting(pos, true)) {
+                        return pos;
                     }
                 }
                 return null; 
@@ -3060,7 +3187,7 @@
                     
                     let totalDeaths = 0;
                     for (const reason in this.deathCauses) {
-                        if (reason !== 'TOTAL_DEATHS') {
+                        if (reason !== 'TOTAL_DEATHS' && reason !== 'UNKNOWN') {
                             totalDeaths += this.deathCauses[reason];
                         }
                     }
@@ -3092,7 +3219,7 @@
                     
                 let totalDeaths = 0;
                 for (const reason in this.deathCauses) {
-                    if (reason !== 'TOTAL_DEATHS') {
+                    if (reason !== 'TOTAL_DEATHS' && reason !== 'UNKNOWN') {
                         totalDeaths += this.deathCauses[reason];
                     }
                 }
@@ -3107,7 +3234,9 @@
                 let nearestItemKey = null;
                 let minDist = Infinity;
                 
-                for (const posKey in itemMap) {
+                const items = itemMap instanceof Array ? itemMap : Object.keys(itemMap);
+                
+                for (const posKey of items) {
                     const [ix, iy] = keyToArray(posKey);
                     const dist = getDistance(x, y, ix, iy);
                     if (dist <= radius && dist < minDist) {
@@ -3287,14 +3416,16 @@
                     let color = charMapEntry.color;
                     let isDim = charMapEntry.dim;
 
+                    // Order of precedence: Sickness/Apathy/Buffs
+                    
+                    if (agent.sickness_timer > 0) {
+                        color = COLORS.GREEN_NORMAL;
+                        isDim = false;
+                    }
                     if (agent.apathy_timer > 0) {
                         color = COLORS.MAGENTA_DIM;
                         char = 's';
                         isDim = true;
-                    }
-                    else if (agent.sickness_timer > 0) {
-                        color = COLORS.GREEN_NORMAL;
-                        isDim = false;
                     }
                     
                     if (agent.social_buff_timer > 0) {
@@ -3320,14 +3451,14 @@
                     let color = charMapEntry.color;
                     let isDim = charMapEntry.dim;
 
+                    if (agent.sickness_timer > 0) {
+                         color = COLORS.GREEN_NORMAL;
+                         isDim = false;
+                    }
                     if (agent.apathy_timer > 0) {
                         color = COLORS.MAGENTA_DIM;
                         char = 's';
                         isDim = true;
-                    }
-                    else if (agent.sickness_timer > 0) {
-                         color = COLORS.GREEN_NORMAL;
-                         isDim = false;
                     }
                     
                     if (agent.social_buff_timer > 0) {
@@ -3384,7 +3515,7 @@
                 if (gene === 'mating_drive') color = 'text-pink-400';
                 if (gene === 'sociability') color = 'text-white';
                 if (gene === 'farming') color = 'text-green-400';
-                if (gene === 'personality') color = 'text-magenta-400';
+                if (gene === 'personality') color = 'text-purple-400'; // Using purple-400 for magenta
                 
                 const displayValue = gene === 'mating_drive' ? avg.toFixed(0) : avg.toFixed(2);
                 
@@ -3509,6 +3640,7 @@
                 const storedSettings = localStorage.getItem(SETTINGS_STORAGE_KEY);
                 if (storedSettings) {
                     const parsedSettings = JSON.parse(storedSettings);
+                    // Merge, prioritizing stored over defaults, but ensuring defaults fill any gaps
                     return { ...defaultSimSettings, ...parsedSettings };
                 }
             } catch (e) {
@@ -3540,6 +3672,7 @@
                     input.value = settings[key];
                 }
             }
+            // Ensure all fields have a value (even if it's the hardcoded default)
             for (const key in defaultSimSettings) {
                  const input = document.getElementById(key);
                  if (input && input.value === "") { 
@@ -3559,6 +3692,7 @@
                     if (!isNaN(value)) {
                         newSettings[input.id] = value;
                     } else {
+                        // Fall back to default if input is empty or invalid
                         newSettings[input.id] = defaultSimSettings[input.id];
                     }
                 }
@@ -3673,6 +3807,7 @@
                     console.log("--- SIMULATION END: All agents have died. ---");
                     clearInterval(interval);
                 }
+                // SYNCHRONIZED: Use the Python overpopulation check
                 if (world.agents.length > (simSettings.WORLD_WIDTH * simSettings.WORLD_HEIGHT * 0.5)) {
                     console.log("--- SIMULATION END: Overpopulation! ---");
                     clearInterval(interval);
