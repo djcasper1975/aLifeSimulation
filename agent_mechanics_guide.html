@@ -63,8 +63,8 @@
                     <ul class="list-disc ml-5 text-sm space-y-1">
                         <li>**Building Skill:** Reduces wood cost for structures.</li>
                         <li>**Navigation Skill:** Reduces energy cost of moving.</li>
-                        <li>**Foraging Skill:** Increases energy gain from food.</li>
-<li>**Combat Skill:** Increases damage in a fight.</li>
+                        <li>**Foraging Skill:** Increases energy gain from food/fruit.</li>
+                        <li>**Combat Skill:** Increases damage in a fight.</li>
                         <li>**Social Skill:** Increases social gain from chatting.</li>
                         <li>**Farming Skill:** Learned by planting.</li>
                     </ul>
@@ -87,7 +87,7 @@
                     <p class="text-sm mb-2">**Love** is the master stat for well-being. It's gained from positive interactions (eating, socializing) and lost during struggle.</p>
                     <ul class="list-disc ml-5 text-sm space-y-1">
                         <li>**The "Love Lock":** An agent **cannot be aggressive** if their Love score is above 0. It acts as their moral compass.</li>
-                        <li>**Apathy:** If Love hits 0, the agent's compass breaks. They become **Apathetic** ('s'), suffering metabolism penalties and losing social drive. This is the only state where they can choose to attack.</li>
+                        <li>**Apathy:** If Love hits 0, the agent's compass breaks. They become **Apathetic** ('s'), suffering a heavy metabolism penalty and losing social drive. This is the only state where they can choose to attack.</li>
                     </ul>
                 </div>
                 
@@ -98,7 +98,7 @@
                         <li>**Cooperative:** The standard, social agent.</li>
                         <li>**Isolated:** A-social. Prefers to be alone.</li>
                         <li>**Judgmental:** Clashes with specific personalities (like Isolated).</li>
-                        <li>**Aggressive Cooperator:** A social agent who is highly likely to join a Vengeance posse (see Section 4) but also clashes with Judgmental agents.</li>
+                        <li>**Aggressive Cooperator:** A social agent who is highly likely to join a Vengeance posse but also clashes with Judgmental agents.</li>
                         <li>**Clashes:** When conflicting personalities meet, they may refuse to socialize or even trigger a <code class="code-block inline-block p-1">COMBAT_CONFLICT</code>.</li>
                     </ul>
                 </div>
@@ -124,7 +124,7 @@
                     <h3 class="font-semibold text-lg mb-1">The Global Knowledge Library ('L')</h3>
                     <p class="text-sm mb-2">This is one of the most powerful emergent features. When a highly-skilled agent communicates, they don't just teach their partner—they contribute to the **Global Knowledge Library**, a 'tech tree' for the entire civilization.</p>
                     <ul class="list-disc ml-5 text-sm space-y-1">
-                        <li>**Contribution:** High-skill agents "upload" their knowledge when they talk.</li>
+                        <li>**Contribution:** High-skill agents "upload" their knowledge when they talk or linger near a campfire (passive discovery).</li>
                         <li>**Learning:** All agents passively "download" a tiny fraction from this global pool every turn. This represents ancestral knowledge, allowing new generations to become skilled faster.</li>
                     </ul>
                 </div>
@@ -148,7 +148,7 @@
                     <h3 class="font-semibold text-lg mb-1">The Vengeance System ('V')</h3>
                     <p class="text-sm mb-2">This is not simple retaliation. This is emergent *justice*.</p>
                     <ul class="list-disc ml-5 text-sm space-y-1">
-                        <li>**Trigger:** If a **child dies**... nearby agents who witness the death will blame the child's closest living parent (for negligence) and enter the **Avenging ('V')** state.</li>
+                        <li>**Trigger:** If a **child (age < ADULT_AGE) dies**... nearby agents who witness the death will blame the child's closest living parent (for negligence) and enter the **Avenging ('V')** state.</li>
                         <li>**The Posse:** An avenging agent becomes a vigilante. They will actively try to **recruit other nearby agents** into a "posse" to hunt down the "negligent" parent.</li>
                         <li>**Consequence:** This is a high-priority state that can pull multiple agents into a cross-map hunt, leading to a <code class="code-block inline-block p-1">COMBAT_VENDETTA</code>.</li>
                     </ul>
@@ -161,20 +161,22 @@
             <p class="mb-4">The world is a character. Agents' actions have global consequences, and the world itself will fight back, forcing the agents to adapt or die.</p>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-green-700">
-                    <h3 class="font-semibold text-lg mb-1">Environmental Impact</h3>
-                    <p class="text-sm mb-2">Agents' actions have consequences. The world has an **Environmental Health** score.</p>
+                    <h3 class="font-semibold text-lg mb-1">Environmental Impact & Sickness</h3>
+                    <p class="text-sm mb-2">The world has an **Environmental Health** score, influenced by all agent actions.</p>
                     <ul class="list-disc ml-5 text-sm space-y-1">
-                        <li>**Degradation:** Gathering food or wood *damages* the environment, reducing the world's health.</li>
+                        <li>**Degradation:** Gathering food/wood or running active campfires *damages* the environment, reducing the world's health.</li>
                         <li>**Healing:** Planting seeds ('p') *heals* the environment.</li>
-                        <li>**Consequence:** A low-health environment **spawns less food and wood**, creating a feedback loop of scarcity and desperation.</li>
+                        <li>**Sickness Feedback:** If Environmental Health drops below a critical threshold, agents will have a chance to contract a **Sickness** ('s' in green), incurring a hefty metabolism penalty.</li>
                     </ul>
                 </div>
                 <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-orange-500">
-                    <h3 class="font-semibold text-lg mb-1">Communal Crisis Response</h3>
-                    <p class="text-sm mb-2">Agents are hard-coded to survive as a species. If the simulation detects a crisis, agents will override their individual desires:</p>
+                    <h3 class="font-semibold text-lg mb-1">Resource Specialization (Fruit System)</h3>
+                    <p class="text-sm mb-2">Three different types of fruit spawn, offering specialized buffs:</p>
                     <ul class="list-disc ml-5 text-sm space-y-1">
-                        <li>**Famine/Low Pop:** If food is scarce or population is low, agents are **mandated** to use any seeds they carry to plant.</li>
-                        <li>**Communal Planting:** During communication, if food is scarce, agents will **pool their seeds** and instantly create a mature food source at the Library ('L') as a community offering.</li>
+                        <li>**Energy Fruit ('R'):** Standard high-energy food.</li>
+                        <li>**Social Fruit ('P'):** Provides a large boost to the agent's Social need.</li>
+                        <li>**Speed Fruit ('B'):** Provides a movement speed buff for a short duration.</li>
+                        <li>**Crisis Response:** If food is scarce or population is low, agents are **mandated** to use any seeds they carry to plant (food, wood, or fruit).</li>
                     </ul>
                 </div>
             </div>
@@ -192,25 +194,25 @@
                 <p class="font-normal text-gray-700 ml-4">If attacked, hunt the attacker.</p>
 
                 <li class="font-bold text-purple-600">Crisis State (Apathy/Sad):</li>
-                <p class="font-normal text-gray-700 ml-4">If Energy/Social is critical, enter 'Sad' ('s') to find help.</p>
+                <p class="font-normal text-gray-700 ml-4">If Energy/Social is critical, enter 'Sad' ('s') to find help/resources/library.</p>
 
                 <li class="font-bold text-orange-600">Global Crisis Response:</li>
-                <p class="font-normal text-gray-700 ml-4">If famine/low pop, **must** plant seeds. If near a starving agent, **must** share food.</p>
+                <p class="font-normal text-gray-700 ml-4">If famine/low pop, **must** plant seeds. If near a starving agent, **must** share food/wood/fruit.</p>
 
                 <li class="font-bold text-orange-500">Energy & Survival:</li>
-                <p class="font-normal text-gray-700 ml-4">If Energy is low, eat or find food ('f').</p>
+                <p class="font-normal text-gray-700 ml-4">If Energy is low, eat or find food/fruit ('f').</p>
 
                 <li class="font-bold text-yellow-600">Campfire Refueling:</li>
-                <p class="font-normal text-gray-700 ml-4">If a nearby Campfire is dying, get wood to refuel it ('R').</Route>
+                <p class="font-normal text-gray-700 ml-4">If a nearby Campfire is dying, get wood to refuel it ('R').</p>
                 
                 <li class="font-bold text-blue-600">Home Repair:</li>
                 <p class="font-normal text-gray-700 ml-4">If their Home is damaged, get wood to repair it ('E').</p>
                 
-                <li class_ass="font-bold text-blue-500">Social Needs:</li>
+                <li class="font-bold text-blue-500">Social Needs:</li>
                 <p class="font-normal text-gray-700 ml-4">If Social is low, seek agents or Campfires ('t'). If alone, go to the Library ('L').</p>
 
                 <li class="font-bold text-blue-700">Home Building/Claiming:</li>
-                <p class="font-normal text-gray-700 ml-4">If homeless, claim an empty Home ('k') or build a new one ('b').</lRoute>
+                <p class="font-normal text-gray-700 ml-4">If homeless, claim an empty Home ('k') or build a new one ('b').</p>
                 
                 <li class="font-bold text-green-600">Farming (Normal):</li>
                 <p class="font-normal text-gray-700 ml-4">If all needs are met and they have seeds, plant them ('p').</p>
@@ -240,7 +242,7 @@
                 <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-green-600">
                     <h3 class="font-semibold text-lg mb-1">Resources & Planting (F, W, P, T)</h3>
                     <ul class="list-disc ml-5 text-sm space-y-1">
-                        <li>**Seeds:** Agents can carry Food Seeds (for 'P'lants) and Wood Seeds (for 'T'rees).</li>
+                        <li>**Seeds:** Agents can carry Food Seeds (for 'P'lants), Wood Seeds (for 'T'rees), and **Fruit Seeds** (for new bushes).</li>
                         <li>**Spoilage:** Foraged Food ('F') has a limited freshness timer before it spoils and vanishes.</li>
                         <li>**Wood:** Agents collect wood for building and campfire maintenance.</li>
                     </ul>
