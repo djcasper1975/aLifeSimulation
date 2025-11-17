@@ -1123,7 +1123,8 @@
                     'food': new Set(),
                     'wood': new Set(),
                     'fruit': new Set(), 
-                    'library': null 
+                    'library': null,
+                    'global_news': {} // SYNCHRONIZED: News memory for social propagation
                 };
                 
                 // Struggle & Retaliation
@@ -1407,8 +1408,10 @@
                 
                 const conserveEnergy = this.genes['metabolism'] < 0.8 && this.energy < 100;
 
-                const globalFoodCrisis = Object.keys(this.world.food).length < simSettings.CRITICAL_FOOD_COUNT;
-                const populationLow = this.world.agents.length < simSettings.MIN_POPULATION_TARGET;
+                // --- SYNCHRONIZED NEWS CHECK ---
+                const hasNewsOfFoodCrisis = this.memory.global_news.food_crisis || false;
+                const hasNewsOfLowPop = this.memory.global_news.low_population || false;
+                // --- END SYNCHRONIZED NEWS CHECK ---
                 
                 // Priority -2: Avenging (NEW)
                 if (this.avenging_target_id !== null) {
@@ -1435,9 +1438,10 @@
                     return;
                 }
                 
-                // --- CRITICAL SURVIVAL OVERRIDES ---
-                // Mandate 1: Plant if Crisis or Low Pop, AND I have seeds
-                if ((globalFoodCrisis || populationLow) && (this.seeds_carried > 0 || this.fruit_seeds_carried > 0)) { 
+                // --- CRITICAL SURVIVAL OVERRIDES (MODIFIED: Use local news) ---
+                
+                // Mandate 1: Plant if Food Crisis or Low Pop News, AND I have seeds
+                if ((hasNewsOfFoodCrisis || hasNewsOfLowPop) && (this.seeds_carried > 0 || this.fruit_seeds_carried > 0)) { 
                     if (this.home_location) {
                         const [hx, hy] = keyToArray(this.home_location);
                         const dist = getDistance(this.x, this.y, hx, hy);
@@ -1462,22 +1466,31 @@
                     }
                 }
 
-                // Mandate 3: Seek Mate if population is low AND below max pop
-                if (populationLow && this.world.agents.length < simSettings.MAX_POPULATION_TARGET && this.age >= simSettings.ADULT_AGE &&
+                // Mandate 3: Seek Mate if population news is active and population is below max pop (SYNCHRONIZED)
+                if (hasNewsOfLowPop && this.world.agents.length < simSettings.MAX_POPULATION_TARGET && this.age >= simSettings.ADULT_AGE &&
                     this.energy > this.genes['mating_drive'] && this.mate_cooldown === 0) {
                     
                     this.state = "SEEKING_MATE";
                     return; 
                 }
                 
-                // NEW: Environmental Crisis Priority
-                if (this.world.environmentalHealth < simSettings.ENV_SICKNESS_THRESHOLD) {
-                    if (this.seeds_carried > 0 || this.fruit_seeds_carried > 0 || this.wood_seeds_carried > 0) {
-                        this.state = "PLANTING";
-                        return;
-                    } else if (["GETTING_WOOD", "FORAGING"].includes(this.state) && this.energy > 50) {
-                        this.state = "WANDERING"; 
-                        return;
+                // Environmental Crisis Priority (SYNCHRONIZED: Only react if sick OR if environmental health is low and I have no other tasks)
+                const envLowThreshold = simSettings.ENV_SICKNESS_THRESHOLD;
+                if (this.world.environmentalHealth < envLowThreshold) {
+                    // Agent only reacts if they are currently sick, making the effect local/delayed
+                    if (this.sickness_timer > 0) { 
+                    
+                        // 1. Prioritize Planting (Healing) if I have seeds
+                        if (this.seeds_carried > 0 || this.fruit_seeds_carried > 0 || this.wood_seeds_carried > 0) {
+                            this.state = "PLANTING"; 
+                            return;
+                        }
+                        
+                        // 2. Halt Wood/Food Gathering (Polluting actions) if not critically starving
+                        else if (["GETTING_WOOD", "FORAGING"].includes(this.state) && this.energy > 50) {
+                            this.state = "WANDERING"; // Wander to explore/reduce impact
+                            return;
+                        }
                     }
                 }
                 // --- END CRITICAL SURVIVAL OVERRIDES ---
@@ -1487,9 +1500,11 @@
                 // SYNCHRONIZED: Child forage threshold is 120
                 if (this.age < simSettings.ADULT_AGE) forageThreshold = 120;
 
+                // If low on energy OR full enough to eat carried food
                 if (this.energy < forageThreshold || ((this.food_carried > 0 || this.fruit_carried.length > 0) && this.energy < 150)) { 
                     
-                    // NEW: Opportunistic Fruit Seeking
+                    // NEW: Opportunistic Fruit Seeking (re-checked as priority 1.2 in Python)
+                    // If I need social, seek social fruit. (But only if healthy > 120 and not sick)
                     if (this.social < 40 && this.energy > 120 && this.sickness_timer === 0) {
                         const socialFruits = this.world.getNearestFruitOfType(this.x, this.y, visionRadius, this.memory.fruit, 'social');
                         if (socialFruits.length > 0) {
@@ -1497,6 +1512,7 @@
                             return;
                         }
                     }
+                    // If wandering, chance to seek speed fruit. (But not if sick)
                     if (this.state === "WANDERING" && this.speed_buff_timer === 0 && Math.random() < 0.1 && this.sickness_timer === 0) {
                         const speedFruits = this.world.getNearestFruitOfType(this.x, this.y, visionRadius, this.memory.fruit, 'speed');
                         if (speedFruits.length > 0) {
@@ -1540,7 +1556,7 @@
                     }
                 }
                 
-                // Priority 3: Social Need
+                // Priority 3: Social Need (MODIFIED: Priority Campfire)
                 if (this.social < 60 && this.genes['sociability'] > 0.2 && this.sickness_timer === 0) {
                     this.state = "SEEKING_SOCIAL"; 
                     return;
@@ -2042,7 +2058,7 @@
                             // SYNCHRONIZED: Recruit logic
                             for (const recruit of potentialRecruits) {
                                 const roll = Math.random();
-                                let chance = recruit.genes['aggression'] * 0.5;
+                                let chance = recruit.genes.aggression * 0.5;
                                 const p = recruit.getPersonality();
                                 
                                 if (p === PERSONALITY_AGGRESSIVE_COOPERATOR) {
@@ -2103,10 +2119,12 @@
                         break;
                     
                     case "SEEKING_SOCIAL":
-                        const nearbyCampfire = this.world.getNearest(this.x, this.y, visionRadius + 5, this.world.campfires); 
+                        const visionRadiusSocial = visionRadius + 5;
+                        const nearbyCampfire = this.world.getNearest(this.x, this.y, visionRadiusSocial, this.world.campfires); 
                         
                         let targetAgent = null;
                         
+                        // Check for agent targets (Radius 3)
                         const happyAgents = this.world.getNearestAgents(this.x, this.y, 3, this);
                         const happyAndPausing = happyAgents.filter(
                             a => a.energy > simSettings.PAUSE_ENERGY_THRESHOLD && a.social > simSettings.PAUSE_SOCIAL_THRESHOLD
@@ -2123,6 +2141,7 @@
                             targetAgent = agents[0];
                         }
                             
+                        // Priority 1: Agent
                         if (targetAgent) {
                             if (getDistance(this.x, this.y, targetAgent.x, targetAgent.y) < 2.0) {
                                 this.communicate(targetAgent);
@@ -2130,10 +2149,17 @@
                                 this.moveTowards(targetAgent.x, targetAgent.y);
                             }
                         } 
+                        // Priority 2: Campfire
                         else if (nearbyCampfire) {
                             const [cx, cy] = keyToArray(nearbyCampfire);
-                            this.moveTowards(cx, cy);
+                            const dist = getDistance(this.x, this.y, cx, cy);
+                            if (dist < 2.0) {
+                                this.state = "SOCIAL_HAPPY"; // Linger by the fire, then look for chat partners in SOCIAL_HAPPY
+                            } else {
+                                this.moveTowards(cx, cy);
+                            }
                         } 
+                        // Priority 3: Library
                         else {
                             if (this.memory.library) {
                                 const [lx, ly] = this.memory.library;
@@ -2649,6 +2675,10 @@
                 const learningRate = simSettings.SKILL_SHARING_RATE; 
                 
                 for (const skill of SKILL_LIST) {
+                    // Ensure global_news exists before continuing to skills
+                    this.memory.global_news = this.memory.global_news || {};
+                    partner.memory.global_news = partner.memory.global_news || {};
+                    
                     const selfSkill = this.skills[skill];
                     const partnerSkill = partner.skills[skill];
                     const maxSkill = SKILL_MAXES[skill];
@@ -2756,6 +2786,27 @@
                 }
                 partner.love = clamp(partner.love + loveGainPartner, 0, simSettings.STARTING_LOVE);
                 
+                // --- SYNCHRONIZED: NEWS SHARING LOGIC ---
+                // 1. Food Crisis News
+                if (Object.keys(this.world.food).length < simSettings.CRITICAL_FOOD_COUNT) {
+                    // Propagate the news to the partner's memory
+                    partner.memory.global_news = partner.memory.global_news || {};
+                    partner.memory.global_news.food_crisis = true;
+                    // The agent who started the chat is also reminded/refreshed of the news
+                    this.memory.global_news = this.memory.global_news || {};
+                    this.memory.global_news.food_crisis = true;
+                }
+
+                // 2. Population Crisis News
+                if (this.world.agents.length < simSettings.MIN_POPULATION_TARGET) {
+                    partner.memory.global_news = partner.memory.global_news || {};
+                    partner.memory.global_news.low_population = true;
+                    this.memory.global_news = this.memory.global_news || {};
+                    this.memory.global_news.low_population = true;
+                }
+                // --- END SYNCHRONIZED: NEWS SHARING LOGIC ---
+
+
                 this.shareSkills(partner);
                 
                 // SYNCHRONIZED: Seed combination logic
@@ -2772,6 +2823,7 @@
                         const libraryClear = this.world.isTileClearForPlanting([lx, ly]);
                         
                         // If library is not clear, try current spot
+                        const currentPosKey = arrayToKey([this.x, this.y]);
                         if (!libraryClear) {
                             plantLocKey = currentPosKey;
                             const currentClear = this.world.isTileClearForPlanting(keyToArray(currentPosKey));

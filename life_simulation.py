@@ -242,7 +242,8 @@ class Agent:
             'food': set(),
             'wood': set(),
             'fruit': set(), # NEW: Memory for fruit
-            'library': None # NEW: Agents must learn the library location
+            'library': None, # NEW: Agents must learn the library location
+            'global_news': {} # MODIFIED: Memory for propagating crisis news
         }
         
         # Struggle & Retaliation
@@ -376,8 +377,9 @@ class Agent:
              self.campfire_location = None 
             
         # Check for "Cozy" buff from a nearby campfire
+        # MODIFIED: Check radius 2, but ensure agent is NOT standing ON the campfire tile
         nearby_campfire = self.world.get_nearest(self.x, self.y, 2, self.world.campfires.keys())
-        if nearby_campfire:
+        if nearby_campfire and (self.x, self.y) != nearby_campfire:
             metabolism_cost *= 0.9 
             self.social = clamp(self.social + 0.5, 0, 100) 
             # --- NEW: Campfire Warmth/Comfort passive Love gain ---
@@ -422,7 +424,7 @@ class Agent:
         else:
             vision_radius = int(self.genes['vision'])
             nearby_agents = self.world.get_nearest_agents(self.x, self.y, vision_radius, self)
-            if not nearby_agents and not nearby_campfire: 
+            if not nearby_agents and (not nearby_campfire or (self.x, self.y) == nearby_campfire): # Added check to ignore campfire if standing on it
                 self.social -= self.genes['sociability'] * 0.5 * social_loss_multiplier
             else:
                 self.social += 0.1
@@ -537,10 +539,11 @@ class Agent:
         
         conserve_energy = self.genes['metabolism'] < 0.8 and self.energy < 100
         
-        # --- NEW: Check Global Food Crisis for Mandated Action ---
-        global_food_crisis = len(self.world.food) < CRITICAL_FOOD_COUNT
-        population_low = len(self.world.agents) < MIN_POPULATION_TARGET
+        # --- NEW: CRITICAL SURVIVAL OVERRIDES NOW USE LOCAL/REMEMBERED NEWS (Fix for Swarming) ---
         
+        has_news_of_food_crisis = self.memory.get('global_news', {}).get('food_crisis', False)
+        has_news_of_low_pop = self.memory.get('global_news', {}).get('low_population', False)
+
         # Priority -2: Avenging (NEW)
         if self.avenging_target_id is not None: # Timer logic is handled in update()
             # Check if target still exists
@@ -564,10 +567,8 @@ class Agent:
             self.state = "SOCIAL_SAD" 
             return
             
-        # --- NEW: CRITICAL SURVIVAL OVERRIDES ---
-        
-        # Mandate 1: Plant if Food Crisis or Low Population, AND I have seeds
-        if (global_food_crisis or population_low) and (self.seeds_carried > 0 or self.fruit_seeds_carried > 0):
+        # Mandate 1: Plant if Food Crisis or Low Population News, AND I have seeds
+        if (has_news_of_food_crisis or has_news_of_low_pop) and (self.seeds_carried > 0 or self.fruit_seeds_carried > 0):
             if self.home_location:
                 dist = get_distance(self.x, self.y, self.home_location[0], self.home_location[1])
                 if dist > 5: 
@@ -586,32 +587,33 @@ class Agent:
                 self.state = "SHARING" 
                 return
             
-        # --- NEW: Mandate 3: Seek a mate if population is critically low (Intelligent World Awareness) ---
-        # FIX: Check if population is below the max target to prevent over-mating
-        if population_low and len(self.world.agents) < MAX_POPULATION_TARGET and \
+        # Mandate 3: Seek a mate if population news is active and population is below the max target 
+        if has_news_of_low_pop and len(self.world.agents) < MAX_POPULATION_TARGET and \
            self.age >= ADULT_AGE and \
            self.energy > self.genes['mating_drive'] and self.mate_cooldown == 0:
             
             self.state = "SEEKING_MATE"
             return 
-        # --- END NEW: Mandate 3 ---
 
-        # --- NEW: Environmental Crisis Priority (Intelligent Learning) ---
+        # Environmental Crisis Priority (Intelligent Learning)
         env_low_threshold = ENV_SICKNESS_THRESHOLD
         if self.world.environmental_health < env_low_threshold:
             # If the environment is sick, stop polluting activities and prioritize healing
             
-            # 1. Prioritize Planting (Healing) if I have seeds
-            if self.seeds_carried > 0 or self.fruit_seeds_carried > 0 or self.wood_seeds_carried > 0:
-                self.state = "PLANTING" 
-                return
+            # Agents only react if they are currently sick, making the effect local/delayed
+            if self.sickness_timer > 0: 
             
-            # 2. Halt Wood/Food Gathering (Polluting actions) if not critically starving
-            elif self.state in ["GETTING_WOOD", "FORAGING"] and self.energy > 50:
-                self.state = "WANDERING" # Wander to explore/reduce impact
-                return
+                # 1. Prioritize Planting (Healing) if I have seeds
+                if self.seeds_carried > 0 or self.fruit_seeds_carried > 0 or self.wood_seeds_carried > 0:
+                    self.state = "PLANTING" 
+                    return
+                
+                # 2. Halt Wood/Food Gathering (Polluting actions) if not critically starving
+                elif self.state in ["GETTING_WOOD", "FORAGING"] and self.energy > 50:
+                    self.state = "WANDERING" # Wander to explore/reduce impact
+                    return
             
-        # --- END NEW: Environmental Crisis Priority ---
+        # --- END MODIFIED: CRITICAL SURVIVAL OVERRIDES ---
         
         # Priority 1: Survival (Energy)
         forage_threshold = 70 
@@ -621,7 +623,7 @@ class Agent:
             
         # --- MODIFIED: Prioritize seeking standard Food if energy is low ---
         if self.energy < forage_threshold or \
-           (self.food_carried > 0 and self.energy < 100): # Anti-greed (eat if below 100)
+           (self.food_carried > 0 and self.energy < 150): # Anti-greed (eat if below 150)
             self.state = "FORAGING" 
             return
             
@@ -642,9 +644,9 @@ class Agent:
         # --- END NEW ---
             
         # Priority 1.5: Campfire Refuel
-        nearby_campfire = self.world.get_nearest(self.x, self.y, vision_radius, self.world.campfires.keys())
-        if nearby_campfire:
-            campfire_timer = self.world.campfires.get(nearby_campfire)
+        nearby_campfire_pos = self.world.get_nearest(self.x, self.y, vision_radius, self.world.campfires.keys())
+        if nearby_campfire_pos:
+            campfire_timer = self.world.campfires.get(nearby_campfire_pos)
             if campfire_timer and campfire_timer < CAMPFIRE_REFUEL_THRESHOLD:
                 if self.wood_carried < 1:
                     self.state = "GETTING_WOOD" 
@@ -665,7 +667,7 @@ class Agent:
                     self.state = "REPAIRING_HOME" 
                     return
 
-        # Priority 3: Social Need 
+        # Priority 3: Social Need (MODIFIED: Priority Campfire)
         if self.social < 60 and self.genes['sociability'] > 0.2 and self.sickness_timer == 0:
             self.state = "SEEKING_SOCIAL" 
             return
@@ -803,6 +805,7 @@ class Agent:
         best_fruit_target = self.get_closest_combined_target('fruit', fruit_in_sight)
         
         # --- Handle "Anger" (Aggression) ---
+        # Note: Agents on the same tile is now extremely rare due to is_obstacle/movement changes
         agents_on_tile = [a for a in self.world.agents if a.x == self.x and a.y == self.y and a != self]
         if agents_on_tile:
             target = random.choice(agents_on_tile)
@@ -850,12 +853,22 @@ class Agent:
                 if get_distance(self.x, self.y, best_food_target[0], best_food_target[1]) < 2.0:
                     if (self.x, self.y) not in self.world.food:
                         self.memory['food'].discard(best_food_target)
+                # --- FIX: Stale memory guard ---
+                if get_distance(self.x, self.y, best_food_target[0], best_food_target[1]) < 5.0 and self.struggle_timer > 5:
+                    if (self.x, self.y) not in self.world.food:
+                        self.memory['food'].discard(best_food_target)
+                # --- END FIX ---
             # --- Fallback to fruit if no food target ---
             elif best_fruit_target:
                 self.move_towards(best_fruit_target[0], best_fruit_target[1])
                 if get_distance(self.x, self.y, best_fruit_target[0], best_fruit_target[1]) < 2.0:
                     if (self.x, self.y) not in self.world.fruits:
                         self.memory['fruit'].discard(best_fruit_target)
+                # --- FIX: Stale memory guard ---
+                if get_distance(self.x, self.y, best_fruit_target[0], best_fruit_target[1]) < 5.0 and self.struggle_timer > 5:
+                    if (self.x, self.y) not in self.world.fruits:
+                        self.memory['fruit'].discard(best_fruit_target)
+                # --- END FIX ---
             # --- END Fallback ---
             else:
                 self.move_exploring()
@@ -899,6 +912,11 @@ class Agent:
                 if get_distance(self.x, self.y, target_fruit_pos[0], target_fruit_pos[1]) < 2.0:
                     if (self.x, self.y) not in self.world.fruits:
                         self.memory['fruit'].discard(target_fruit_pos)
+                # --- FIX: Stale memory guard ---
+                if get_distance(self.x, self.y, target_fruit_pos[0], target_fruit_pos[1]) < 5.0 and self.struggle_timer > 5:
+                    if (self.x, self.y) not in self.world.fruits:
+                        self.memory['fruit'].discard(target_fruit_pos)
+                # --- END FIX ---
             else:
                 self.move_exploring()
         # --- END NEW ---
@@ -916,11 +934,21 @@ class Agent:
                 if get_distance(self.x, self.y, best_wood_target[0], best_wood_target[1]) < 2.0:
                     if (self.x, self.y) not in self.world.wood:
                         self.memory['wood'].discard(best_wood_target)
+                # --- FIX: Stale memory guard ---
+                if get_distance(self.x, self.y, best_wood_target[0], best_wood_target[1]) < 5.0 and self.struggle_timer > 5:
+                    if (self.x, self.y) not in self.world.wood:
+                        self.memory['wood'].discard(best_wood_target)
+                # --- END FIX ---
             else:
                 self.move_exploring()
 
         elif self.state == "BUILDING":
-            self.build_home()
+            if self.is_clear_tile(self.x, self.y): # Ensure the tile is clear of resources AND other agents
+                self.build_home()
+            else:
+                # --- FIX: Use move_exploring instead of wiggling to find a clear spot ---
+                self.move_exploring()
+                
 
         elif self.state == "REPAIRING_HOME":
             if self.home_location:
@@ -939,18 +967,20 @@ class Agent:
                 self.state = "WANDERING" 
                 
         elif self.state == "REFUELING_CAMPFIRE":
-            nearby_campfire = self.world.get_nearest(self.x, self.y, vision_radius, self.world.campfires.keys())
-            if nearby_campfire:
-                dist = get_distance(self.x, self.y, nearby_campfire[0], nearby_campfire[1])
+            # MODIFIED: Refuel at any nearby campfire (radius 2)
+            nearby_campfire_pos = self.world.get_nearest(self.x, self.y, 2, self.world.campfires.keys())
+            if nearby_campfire_pos:
+                dist = get_distance(self.x, self.y, nearby_campfire_pos[0], nearby_campfire_pos[1])
+                # Refueling doesn't require standing ON the fire, but adjacent (dist < 2.0)
                 if dist < 2.0: 
                     if self.wood_carried > 0:
-                        self.world.campfires[nearby_campfire] = CAMPFIRE_BURN_TIME
+                        self.world.campfires[nearby_campfire_pos] = CAMPFIRE_BURN_TIME
                         self.wood_carried -= 1
                         self.state = "WANDERING"
                     else:
                         self.state = "GETTING_WOOD"
                 else:
-                    self.move_towards(nearby_campfire[0], nearby_campfire[1])
+                    self.move_towards(nearby_campfire_pos[0], nearby_campfire_pos[1])
             else:
                 self.state = "WANDERING"
 
@@ -1037,17 +1067,29 @@ class Agent:
                 if get_distance(self.x, self.y, target.x, target.y) < 2.0:
                     # --- MODIFIED: Share fruit first, then food, then wood ---
                     if len(self.fruit_carried) > 0:
-                        fruit_type = self.fruit_carried.pop(0)
-                        target.fruit_carried.append(fruit_type)
-                        self.state = "WANDERING"
+                        # Check if target can carry more fruit
+                        if len(target.fruit_carried) < MAX_FRUIT_CARRIED:
+                            fruit_type = self.fruit_carried.pop(0)
+                            target.fruit_carried.append(fruit_type)
+                            self.state = "WANDERING"
+                        else:
+                            self.state = "WANDERING" # Target is full, stop sharing
                     elif self.food_carried >= 1:
-                        self.food_carried -= 1
-                        target.food_carried += 1 
-                        self.state = "WANDERING" 
+                        # Check if target can carry more food
+                        if target.food_carried < 2:
+                            self.food_carried -= 1
+                            target.food_carried += 1 
+                            self.state = "WANDERING" 
+                        else:
+                            self.state = "WANDERING" # Target is full, stop sharing
                     elif self.wood_carried >= 1: 
-                        self.wood_carried -= 1
-                        target.wood_carried += 1
-                        self.state = "WANDERING"
+                        # Check if target can carry more wood
+                        if target.wood_carried < 3:
+                            self.wood_carried -= 1
+                            target.wood_carried += 1
+                            self.state = "WANDERING"
+                        else:
+                            self.state = "WANDERING" # Target is full, stop sharing
                     else:
                          self.state = "WANDERING" 
                     # --- END MODIFIED ---
@@ -1141,10 +1183,28 @@ class Agent:
         # --- END NEW ---
         
         elif self.state == "SEEKING_SOCIAL": 
-            nearby_campfire = self.world.get_nearest(self.x, self.y, vision_radius, self.world.campfires.keys())
+            # MODIFIED: Prioritize Campfire over Agents/Library for social
+            nearby_campfire_pos = self.world.get_nearest(self.x, self.y, vision_radius, self.world.campfires.keys())
             
-            target_agent = None
+            if nearby_campfire_pos:
+                 # Move to a spot NEAR the campfire (radius 2)
+                 dist = get_distance(self.x, self.y, nearby_campfire_pos[0], nearby_campfire_pos[1])
+                 if dist > 2.0:
+                     self.move_towards(nearby_campfire_pos[0], nearby_campfire_pos[1])
+                 else:
+                     # I'm next to the fire, now look for an agent nearby to chat
+                     happy_agents = self.world.get_nearest_agents(self.x, self.y, 3, exclude_self=self)
+                     if happy_agents:
+                         target_agent = happy_agents[0]
+                         if get_distance(self.x, self.y, target_agent.x, target_agent.y) < 2.0:
+                             self.communicate(target_agent)
+                         else:
+                             self.move_towards(target_agent.x, target_agent.y)
+                     else:
+                         self.state = "SOCIAL_HAPPY" # Linger by the fire
+                 return
             
+            # Fallback 1: Seek Agent
             happy_agents = self.world.get_nearest_agents(self.x, self.y, 3, exclude_self=self)
             happy_and_pausing = [
                 a for a in happy_agents 
@@ -1152,19 +1212,20 @@ class Agent:
             ]
             
             if happy_and_pausing:
-                happy_and_pausing.sort(key=lambda a: a.social, reverse=True)
+                happy_and_pausing.sort(key=lambda a: get_distance(self.x, self.y, a.x, a.y))
                 target_agent = happy_and_pausing[0]
-            
             elif agents:
                 target_agent = agents[0]
+            else:
+                target_agent = None
                 
             if target_agent:
                 if get_distance(self.x, self.y, target_agent.x, target_agent.y) < 2.0:
                     self.communicate(target_agent)
                 else:
                     self.move_towards(target_agent.x, target_agent.y)
-            elif nearby_campfire:
-                 self.move_towards(nearby_campfire[0], nearby_campfire[1])
+            
+            # Fallback 2: Seek Library
             else:
                 if self.memory['library']:
                     lx, ly = self.memory['library']
@@ -1176,8 +1237,9 @@ class Agent:
         elif self.state == "SOCIAL_HAPPY": 
             if self.energy > PAUSE_ENERGY_THRESHOLD and self.social > PAUSE_SOCIAL_THRESHOLD:
                 
-                nearby_campfire = self.world.get_nearest(self.x, self.y, 2, self.world.campfires.keys())
-                if nearby_campfire and random.random() < 0.1:
+                # Still linger, but chance to broadcast skill nearby
+                nearby_campfire_pos = self.world.get_nearest(self.x, self.y, 2, self.world.campfires.keys())
+                if nearby_campfire_pos and random.random() < 0.1 and (self.x, self.y) != nearby_campfire_pos:
                     self.broadcast_skill_to_library()
                 
                 elif random.random() < 0.2 and self.memory['library']: 
@@ -1198,11 +1260,12 @@ class Agent:
                 self.move_towards(best_food_target[0], best_food_target[1])
             
             elif self.social < 10:
-                nearby_campfire = self.world.get_nearest(self.x, self.y, vision_radius, self.world.campfires.keys())
+                # Prioritize a campfire or agent to relieve sadness
+                nearby_campfire_pos = self.world.get_nearest(self.x, self.y, vision_radius, self.world.campfires.keys())
                 if agents:
                     self.move_towards(agents[0].x, agents[0].y)
-                elif nearby_campfire:
-                    self.move_towards(nearby_campfire[0], nearby_campfire[1])
+                elif nearby_campfire_pos:
+                    self.move_towards(nearby_campfire_pos[0], nearby_campfire_pos[1])
                 else:
                     if self.memory['library']:
                         lx, ly = self.memory['library']
@@ -1216,8 +1279,9 @@ class Agent:
         elif self.state == "WANDERING":
             if self.energy > PAUSE_ENERGY_THRESHOLD and self.social > PAUSE_SOCIAL_THRESHOLD:
                 
-                nearby_campfire = self.world.get_nearest(self.x, self.y, 2, self.world.campfires.keys())
-                if nearby_campfire and random.random() < 0.1:
+                # Chance to linger by a fire and contribute knowledge
+                nearby_campfire_pos = self.world.get_nearest(self.x, self.y, 2, self.world.campfires.keys())
+                if nearby_campfire_pos and random.random() < 0.1 and (self.x, self.y) != nearby_campfire_pos:
                     self.broadcast_skill_to_library()
                 
                 elif random.random() < 0.2 and self.memory['library']: 
@@ -1256,11 +1320,11 @@ class Agent:
             pass 
 
 
+    # --- MODIFIED: Is Clear Tile (For Building/Planting) ---
     def is_clear_tile(self, x, y):
-        """Helper to check if a tile is empty for building/planting."""
+        """Helper to check if a tile is empty for building/planting. (Now checks agents)."""
         pos = (x, y)
-        if pos == self.world.library_location:
-            return False
+        if pos == self.world.library_location: return False
         if pos in self.world.homes: return False
         if pos in self.world.food: return False
         if pos in self.world.wood: return False
@@ -1269,14 +1333,70 @@ class Agent:
         if pos in self.world.campfires: return False
         if pos in self.world.fruits: return False
         if pos in self.world.growing_fruit_bushes: return False
+        
+        # NEW: Check for other agents on the tile
+        for agent in self.world.agents:
+            if agent != self and agent.x == x and agent.y == y:
+                # EXCEPTION 1: Library (communal space)
+                if pos == self.world.library_location:
+                    continue 
+                
+                # EXCEPTION 2: Shared Home (family only)
+                if self.home_location == pos:
+                    home_data = self.world.homes.get(pos)
+                    if home_data:
+                        owner_id = home_data.get('owner_id')
+                        owner_agent = self.world.get_agent_by_id(owner_id)
+                        is_family = (owner_id is not None) and (agent.id in owner_agent.children_ids if owner_agent else False)
+                        
+                        # If the other agent is family, it is NOT an obstacle for planting/building *at home*.
+                        if owner_id == agent.id or is_family:
+                            continue
+                
+                # If there's another agent and it's not a special case, the tile is NOT clear.
+                return False
+                
         return True
     
+    # --- MODIFIED: Is Obstacle (For Movement) ---
     def is_obstacle(self, x, y):
-        """Checks if a tile is an obstacle (another agent's home)."""
-        if (x, y) in self.world.homes:
+        """Checks if a tile is an obstacle (another agent's home, campfire, or occupied space)."""
+        pos = (x, y)
+        
+        # 1. Structures and Resources
+        if pos in self.world.campfires: # Cannot stand ON the fire
+            return True 
+        
+        # 2. Homes/Building (only other agents' homes are obstacles)
+        if pos in self.world.homes:
             home_data = self.world.homes[(x, y)]
-            if home_data.get('owner_id') != self.id:
+            if home_data.get('owner_id') != self.id and home_data.get('owner_id') is not None:
                 return True
+                
+        # 3. Other Agents (Prevent cohabitation except for specific shared spaces)
+        for agent in self.world.agents:
+            if agent != self and agent.x == x and agent.y == y:
+                
+                # EXCEPTION 1: Library
+                if pos == self.world.library_location:
+                    continue 
+                    
+                # EXCEPTION 2: Shared Home (If *I* own or am family to the home they are standing on)
+                if self.home_location == pos:
+                    home_data = self.world.homes.get(pos)
+                    if home_data:
+                        owner_id = home_data.get('owner_id')
+                        is_owner = (self.id == owner_id)
+                        owner_agent = self.world.get_agent_by_id(owner_id)
+                        is_family = (owner_id is not None) and (self.id in owner_agent.children_ids if owner_agent else False)
+                        
+                        # If the spot they occupy is MY communal home, it's not an obstacle for ME.
+                        if is_owner or is_family:
+                            continue 
+                
+                # If another agent is there, and it wasn't a library or my home tile, it's an obstacle.
+                return True
+
         return False
 
     def move_towards(self, target_x, target_y):
@@ -1299,16 +1419,30 @@ class Agent:
             new_x = clamp(self.x + dx, 0, self.world.width - 1)
             new_y = clamp(self.y + dy, 0, self.world.height - 1)
             
+            # MODIFIED: Check for obstacle and prevent move if so.
             if not self.is_obstacle(new_x, new_y):
                 self.x = new_x
                 self.y = new_y
             else:
+                # NEW: Sliding logic to bypass obstacles
                 slide_x = clamp(self.x + dx, 0, self.world.width - 1)
+                slide_y = clamp(self.y + dy, 0, self.world.height - 1)
+                
+                moved = False
+                
+                # Try to slide in X only
                 if dx != 0 and not self.is_obstacle(slide_x, self.y):
                     self.x = slide_x
-                elif dy != 0 and not self.is_obstacle(self.x, clamp(self.y + dy, 0, self.world.height - 1)):
-                    self.y = clamp(self.y + dy, 0, self.world.height - 1)
-                else:
+                    moved = True
+                # Try to slide in Y only
+                elif dy != 0 and not self.is_obstacle(self.x, slide_y):
+                    self.y = slide_y
+                    moved = True
+                
+                if not moved:
+                    # --- FIX: Deadlock Guard ---
+                    # Stuck or blocked by multiple things, stop movement for this step and force a re-evaluation
+                    self.exploration_vector = (random.randint(-1, 1), random.randint(-1, 1))
                     break 
             
             self.skills['navigation'] = clamp(self.skills['navigation'] + 0.001, 0, 5.0) 
@@ -1334,16 +1468,20 @@ class Agent:
                     stuck = True 
 
             if self.exploration_vector == (0, 0) or stuck or random.random() > persistent_chance:
-                while True: 
+                # Loop to find a valid non-zero vector
+                for _ in range(4): # Limit attempts
                     self.exploration_vector = (random.randint(-1, 1), random.randint(-1, 1))
                     if self.exploration_vector != (0, 0):
                         break
+                if self.exploration_vector == (0, 0): # If it still failed to find a non-zero vector
+                    break
             
             dx, dy = self.exploration_vector
             
             new_x = clamp(self.x + dx, 0, self.world.width - 1)
             new_y = clamp(self.y + dy, 0, self.world.height - 1)
             
+            # MODIFIED: Check for obstacle and prevent move if so.
             if not self.is_obstacle(new_x, new_y):
                 self.x = new_x
                 self.y = new_y
@@ -1572,6 +1710,9 @@ class Agent:
         learning_rate = 0.01 
         
         for skill in skills_to_share:
+            self.memory.setdefault('global_news', {}) # Ensure global_news exists before using it
+            partner.memory.setdefault('global_news', {}) # Ensure global_news exists before using it
+            
             self_skill = self.skills[skill]
             partner_skill = partner.skills[skill]
             
@@ -1656,7 +1797,23 @@ class Agent:
             
         partner.love = clamp(partner.love + love_gain_partner, 0, STARTING_LOVE)
         
-        self.share_skills(partner)
+        # --- MODIFIED: NEWS SHARING (Only share if the world is in crisis) ---
+        
+        # 1. Food Crisis News
+        if len(self.world.food) < CRITICAL_FOOD_COUNT:
+            # Propagate the news to the partner's memory
+            partner.memory.setdefault('global_news', {})['food_crisis'] = True
+            # The agent who started the chat is also reminded/refreshed of the news
+            self.memory.setdefault('global_news', {})['food_crisis'] = True
+
+        # 2. Population Crisis News
+        if len(self.world.agents) < MIN_POPULATION_TARGET:
+            partner.memory.setdefault('global_news', {})['low_population'] = True
+            self.memory.setdefault('global_news', {})['low_population'] = True
+            
+        # --- END MODIFIED: NEWS SHARING ---
+
+        self.share_skills(partner) # Share skills and library location
         
         if len(self.world.food) < STARTING_FOOD and \
            self.seeds_carried >= 1 and partner.seeds_carried >= 1:
@@ -2055,6 +2212,7 @@ class World:
     def is_tile_clear_for_planting(self, pos, check_agents=False):
         """
         Helper to check if a tile is empty for building/planting.
+        Used by the World for spawning/growth, doesn't need the complex agent check.
         """
         x, y = pos
         if not (0 <= x < self.width and 0 <= y < self.height):
