@@ -1835,7 +1835,7 @@
                             const [hx, hy] = keyToArray(this.home_location);
                             const dist = getDistance(this.x, this.y, hx, hy);
                             if (dist <= 5.0) {
-                                this.state = "PLANTING";
+                                this.state = "PLANTING"; 
                             } else {
                                 this.moveTowards(hx, hy);
                             }
@@ -2060,9 +2060,9 @@
                             }
                             
                             if (Math.random() < 0.2 && this.memory.library) { 
-                                const [lx, ly] = this.memory.library;
-                                if (getDistance(this.x, this.y, lx, ly) > 5.0) { 
-                                    this.moveTowards(lx, ly);
+                                const [lx_w, ly_w] = this.memory.library;
+                                if (getDistance(this.x, this.y, lx_w, ly_w) > 5.0) { 
+                                    this.moveTowards(lx_w, ly_w);
                                     this.state = "SEEKING_LIBRARY"; 
                                     return;
                                 }
@@ -3428,10 +3428,13 @@
                         isDim = true;
                     }
                     
-                    if (agent.social_buff_timer > 0) {
+                    // --- MODIFICATION: REMOVE BRIGHT WHITE SOCIAL BUFF OVERRIDE ---
+                    /* if (agent.social_buff_timer > 0) {
                         color = COLORS.WHITE_BRIGHT; 
                         isDim = false;
                     }
+                    */
+                    // -----------------------------------------------------------
                     
                     if (agent.speed_buff_timer > 0) {
                         color = COLORS.BLUE_BRIGHT;
@@ -3461,10 +3464,14 @@
                         isDim = true;
                     }
                     
+                    // --- MODIFICATION: REMOVE BRIGHT WHITE SOCIAL BUFF OVERRIDE ---
+                    /*
                     if (agent.social_buff_timer > 0) {
                         color = COLORS.WHITE_BRIGHT; 
                         isDim = false;
                     }
+                    */
+                    // -----------------------------------------------------------
                     
                     if (agent.speed_buff_timer > 0) {
                         color = COLORS.BLUE_BRIGHT;
@@ -3616,7 +3623,7 @@
                         { char: 'H/h', color: COLORS.BLUE_BRIGHT, desc: 'Home (Healthy/Damaged)' },
                         { char: 'C', color: COLORS.RED_BRIGHT, desc: 'Active Campfire' },
                         { char: 'L', color: COLORS.LIBRARY, desc: 'Library Location' },
-                        { char: 'Any', color: COLORS.WHITE_BRIGHT, desc: 'Agent with Wellbeing Buff' },
+                        { char: 'Any', color: COLORS.WHITE_BRIGHT, desc: 'Agent with Wellbeing Buff (Defaulting to primary state color)' },
                     ]
                 }
             ];
