@@ -49,7 +49,7 @@
         /* Custom styles for the grid visualization */
         #worldCanvas {
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            background-color: #0d1117; /* Dark background for console feel */
+            background-color: #0d1117; /* Default Dark background for console feel */
             border-radius: 0.5rem;
             /* CRITICAL: Ensures characters are drawn without interpolation/blurring */
             image-rendering: pixelated; 
@@ -68,6 +68,28 @@
             margin: 0;
             background-color: #1f2937;
         }
+
+        /* --- START WORLD-ONLY LIGHT MODE STYLES (New) --- */
+        
+        /* The canvas wrapper and canvas itself */
+        .world-light-mode #canvasWrapper {
+            background-color: #ffffff !important; /* bg-white */
+            border: 1px solid #d1d5db; /* border-gray-300 */
+        }
+        
+        .world-light-mode #worldCanvas {
+            background-color: #ffffff !important; /* White background for world container */
+        }
+        
+        /* Agent characters will have their colors inverted in the JS Renderer, 
+           but the default text color for the '.' background character needs
+           to be inverted directly for visibility. */
+        .world-light-mode .dim-background-char {
+            color: #d1d5db; /* A lighter gray for dim background dots */
+        }
+
+        /* --- END WORLD-ONLY LIGHT MODE STYLES --- */
+
 
         #canvasWrapper {
             width: fit-content;
@@ -154,6 +176,14 @@
             <form id="settingsForm" class="p-6 overflow-y-auto flex-1 min-h-0">
                 <div>
                     
+                    <fieldset>
+                        <legend>Display</legend>
+                        <div class="flex items-center space-x-4">
+                            <label for="DISPLAY_WORLD_LIGHT_MODE" class="flex-1 !mb-0">Toggle World Light Mode</label>
+                            <input type="checkbox" id="DISPLAY_WORLD_LIGHT_MODE" name="DISPLAY_WORLD_LIGHT_MODE" class="h-6 w-6 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                        </div>
+                    </fieldset>
+
                     <fieldset>
                         <legend>Simulation & World</legend>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -793,6 +823,9 @@
 
         // These are the hard-coded defaults (SYNCHRONIZED WITH PYTHON life_simulation.py)
         const defaultSimSettings = {
+            // NEW DISPLAY SETTING
+            DISPLAY_WORLD_LIGHT_MODE: false, 
+            
             // --- SIMULATION LIFE STAGE CONSTANTS ---
             ADULT_AGE: 300,
             OLD_AGE: 1500,
@@ -953,9 +986,9 @@
         
         let simSettings = {};
         let SKILL_MAXES = {};
-
-        // --- COLORS (for Renderer) ---
-        const COLORS = {
+        
+        // Base Colors - will be modified by applyDisplaySettings
+        const BASE_COLORS = {
             CYAN_BRIGHT: '#22d3ee', // A
             CYAN_NORMAL: '#06b6d4', // f
             MAGENTA_BRIGHT: '#d946ef', // m, L (Seek Library), M (Seek Mate), P (Social Fruit), o (Happy)
@@ -974,36 +1007,60 @@
             GREEN_DIM: '#059669', // T (Tree)
             LIBRARY: '#a855f7', // L (Structure)
         };
+
+        // Inverted Colors for World Light Mode
+        const INVERTED_COLORS = {
+            CYAN_BRIGHT: '#064e3b', // Darker Cyan
+            CYAN_NORMAL: '#0891b2', // Dark Cyan
+            MAGENTA_BRIGHT: '#7e22ce', // Darker Magenta
+            MAGENTA_DIM: '#4c1d95', // Dark Magenta Dim
+            WHITE_BRIGHT: '#000000', // Black
+            WHITE_NORMAL: '#374151', // Dark Gray
+            YELLOW_BRIGHT: '#b45309', // Dark Yellow
+            YELLOW_NORMAL: '#854d0e', // Darker Yellow
+            RED_BRIGHT: '#b91c1c', // Dark Red
+            RED_NORMAL: '#991b1b', // Darker Red
+            BLUE_BRIGHT: '#2563eb', // Dark Blue
+            BLUE_NORMAL: '#1e40af', // Darker Blue
+            BLUE_DIM: '#1e3a8a', // Darkest Blue
+            GREEN_BRIGHT: '#16a34a', // Dark Green
+            GREEN_NORMAL: '#065f46', // Darker Green
+            GREEN_DIM: '#047857', // Dark Green Dim
+            LIBRARY: '#4c1d95', // Dark Magenta Dim
+        };
+
+        let COLORS = { ...BASE_COLORS }; // The currently active color map
         
         // --- CHAR MAP (SYNCHRONIZED) ---
+        // Note: The CHAR_MAP uses the KEYS of the COLORS object.
         const CHAR_MAP = {
-            'WANDERING': { char: 'A', color: COLORS.CYAN_BRIGHT, dim: false },
-            'FORAGING': { char: 'f', color: COLORS.CYAN_NORMAL, dim: false },
-            'FORAGING_FRUIT': { char: 'f', color: COLORS.CYAN_NORMAL, dim: false }, 
-            'BUILDING': { char: 'b', color: COLORS.YELLOW_BRIGHT, dim: false },
-            'WANDERING_TO_BUILD': { char: 'B', color: COLORS.BLUE_NORMAL, dim: false },
-            'SEEKING_COMMUNITY': { char: 'C', color: COLORS.BLUE_BRIGHT, dim: false },
-            'SEEKING_REMOTE_SPOT': { char: 'S', color: COLORS.BLUE_DIM, dim: true },
-            'GETTING_WOOD': { char: 'w', color: COLORS.YELLOW_NORMAL, dim: false },
-            'PLANTING': { char: 'p', color: COLORS.GREEN_NORMAL, dim: false },
-            'PLANTING_WOOD': { char: 'p', color: COLORS.GREEN_NORMAL, dim: false },
-            'GOING_HOME_TO_FARM': { char: 'G', color: COLORS.GREEN_BRIGHT, dim: false },
-            'GOING_HOME_TO_PLANT_WOOD': { char: 'G', color: COLORS.GREEN_BRIGHT, dim: false },
-            'SHARING': { char: 'g', color: COLORS.WHITE_BRIGHT, dim: false },
-            'BUILDING_CAMPFIRE': { char: 'c', color: COLORS.RED_NORMAL, dim: false },
-            'REPAIRING_HOME': { char: 'E', color: COLORS.YELLOW_NORMAL, dim: false },
-            'CLAIMING_HOME': { char: 'k', color: COLORS.BLUE_BRIGHT, dim: false },
-            'REFUELING_CAMPFIRE': { char: 'R', color: COLORS.RED_BRIGHT, dim: false },
-            'MATING': { char: 'm', color: COLORS.MAGENTA_BRIGHT, dim: false },
-            'SEEKING_MATE': { char: 'M', color: COLORS.MAGENTA_BRIGHT, dim: false }, 
-            'ATTACKING': { char: 'X', color: COLORS.RED_BRIGHT, dim: false },
-            'RETALIATING': { char: 'r', color: COLORS.RED_BRIGHT, dim: false },
-            'AVENGING': { char: 'V', color: COLORS.RED_BRIGHT, dim: false }, 
-            'SEEKING_SOCIAL': { char: 't', color: COLORS.WHITE_NORMAL, dim: false },
-            'COMMUNICATING': { char: 'T', color: COLORS.WHITE_BRIGHT, dim: false },
-            'SEEKING_LIBRARY': { char: 'L', color: COLORS.MAGENTA_BRIGHT, dim: false },
-            'SOCIAL_SAD': { char: 's', color: COLORS.MAGENTA_DIM, dim: true },
-            'SOCIAL_HAPPY': { char: 'o', color: COLORS.MAGENTA_BRIGHT, dim: false },
+            'WANDERING': { char: 'A', color: 'CYAN_BRIGHT', dim: false },
+            'FORAGING': { char: 'f', color: 'CYAN_NORMAL', dim: false },
+            'FORAGING_FRUIT': { char: 'f', color: 'CYAN_NORMAL', dim: false }, 
+            'BUILDING': { char: 'b', color: 'YELLOW_BRIGHT', dim: false },
+            'WANDERING_TO_BUILD': { char: 'B', color: 'BLUE_NORMAL', dim: false },
+            'SEEKING_COMMUNITY': { char: 'C', color: 'BLUE_BRIGHT', dim: false },
+            'SEEKING_REMOTE_SPOT': { char: 'S', color: 'BLUE_DIM', dim: true },
+            'GETTING_WOOD': { char: 'w', color: 'YELLOW_NORMAL', dim: false },
+            'PLANTING': { char: 'p', color: 'GREEN_NORMAL', dim: false },
+            'PLANTING_WOOD': { char: 'p', color: 'GREEN_NORMAL', dim: false },
+            'GOING_HOME_TO_FARM': { char: 'G', color: 'GREEN_BRIGHT', dim: false },
+            'GOING_HOME_TO_PLANT_WOOD': { char: 'G', color: 'GREEN_BRIGHT', dim: false },
+            'SHARING': { char: 'g', color: 'WHITE_BRIGHT', dim: false },
+            'BUILDING_CAMPFIRE': { char: 'c', color: 'RED_NORMAL', dim: false },
+            'REPAIRING_HOME': { char: 'E', color: 'YELLOW_NORMAL', dim: false },
+            'CLAIMING_HOME': { char: 'k', color: 'BLUE_BRIGHT', dim: false },
+            'REFUELING_CAMPFIRE': { char: 'R', color: 'RED_BRIGHT', dim: false },
+            'MATING': { char: 'm', color: 'MAGENTA_BRIGHT', dim: false },
+            'SEEKING_MATE': { char: 'M', color: 'MAGENTA_BRIGHT', dim: false }, 
+            'ATTACKING': { char: 'X', color: 'RED_BRIGHT', dim: false },
+            'RETALIATING': { char: 'r', color: 'RED_BRIGHT', dim: false },
+            'AVENGING': { char: 'V', color: 'RED_BRIGHT', dim: false }, 
+            'SEEKING_SOCIAL': { char: 't', color: 'WHITE_NORMAL', dim: false },
+            'COMMUNICATING': { char: 'T', color: 'WHITE_BRIGHT', dim: false },
+            'SEEKING_LIBRARY': { char: 'L', color: 'MAGENTA_BRIGHT', dim: false },
+            'SOCIAL_SAD': { char: 's', color: 'MAGENTA_DIM', dim: true },
+            'SOCIAL_HAPPY': { char: 'o', color: 'MAGENTA_BRIGHT', dim: false },
         };
         
         // --- UTILITY FUNCTIONS ---
@@ -1198,7 +1255,8 @@
                 }
 
                 const nearbyCampfirePosKey = this.world.getNearest(this.x, this.y, 2, this.world.campfires);
-                if (nearbyCampfirePosKey) {
+                // SYNCHRONIZED: Added check for agent NOT standing on campfire tile
+                if (nearbyCampfirePosKey && nearbyCampfirePosKey !== currentPosKey) { 
                     metabolismCost *= 0.9;
                     this.social = clamp(this.social + 0.5, 0, 100);
                     this.love = clamp(this.love + simSettings.PASSIVE_LOVE_GAIN, 0, simSettings.STARTING_LOVE); 
@@ -1218,11 +1276,7 @@
                 if (this.sickness_timer > 0) {
                     metabolismCost += simSettings.ENV_SICKNESS_METABOLISM_PENALTY;
                     this.sickness_timer--;
-                    // NEW: Check for Sickness-Induced Death
-                    if (this.energy <= 0) { // Death check is already below, but this ensures a specific reason is logged
-                        this.die('STARVATION_SICKNESS');
-                        return;
-                    }
+                    // The main death check is below, but this logic aligns with Python's flow
                 }
 
                 if (this.speed_buff_timer > 0) {
@@ -1255,8 +1309,11 @@
                 } else {
                     const visionRadius = Math.floor(this.genes['vision']);
                     const nearbyAgents = this.world.getNearestAgents(this.x, this.y, visionRadius, this);
-                    // SYNCHRONIZED: Use 0.5 social loss rate to match Python
-                    if (nearbyAgents.length === 0 && !nearbyCampfirePosKey) { 
+                    
+                    // Check if isolating (no nearby agents AND no nearby campfire buff)
+                    const isIsolated = (nearbyAgents.length === 0 && (!nearbyCampfirePosKey || nearbyCampfirePosKey === currentPosKey)); 
+                    
+                    if (isIsolated) { 
                         this.social -= this.genes['sociability'] * 0.5 * socialLossMultiplier;
                     } else {
                         this.social += 0.1;
@@ -1296,7 +1353,12 @@
                     if (!this.world.agents.includes(this)) {
                         return;
                     }
-                    this.die('STARVATION_ADULT');
+                    // SYNCHRONIZED: Check if sickness overrides starvation reason
+                    if (this.sickness_timer > 0) {
+                        this.die('STARVATION_SICKNESS');
+                    } else {
+                        this.die('STARVATION_ADULT');
+                    }
                     return;
                 }
 
@@ -1684,6 +1746,13 @@
                             if (getDistance(this.x, this.y, bestFoodTarget[0], bestFoodTarget[1]) < 2.0 && !this.world.food[arrayToKey(bestFoodTarget)]) {
                                 this.memory.food.delete(arrayToKey(bestFoodTarget));
                             }
+                            // --- FIX: Stale memory guard ---
+                            if (getDistance(this.x, this.y, bestFoodTarget[0], bestFoodTarget[1]) < 5.0 && this.struggle_timer > 5) {
+                                if (!this.world.food[arrayToKey(bestFoodTarget)]) {
+                                    this.memory.food.delete(arrayToKey(bestFoodTarget));
+                                }
+                            }
+                            // --- END FIX ---
                         }
                         // SYNCHRONIZED: Fallback to fruit if no food
                         else if (bestFruitTarget) {
@@ -1691,6 +1760,13 @@
                             if (getDistance(this.x, this.y, bestFruitTarget[0], bestFruitTarget[1]) < 2.0 && !this.world.fruits[arrayToKey(bestFruitTarget)]) {
                                 this.memory.fruit.delete(arrayToKey(bestFruitTarget));
                             }
+                            // --- FIX: Stale memory guard ---
+                            if (getDistance(this.x, this.y, bestFruitTarget[0], bestFruitTarget[1]) < 5.0 && this.struggle_timer > 5) {
+                                if (!this.world.fruits[arrayToKey(bestFruitTarget)]) {
+                                    this.memory.fruit.delete(arrayToKey(bestFruitTarget));
+                                }
+                            }
+                            // --- END FIX ---
                         }
                         else {
                             this.moveExploring(); 
@@ -1725,6 +1801,13 @@
                                 if (getDistance(this.x, this.y, targetPos[0], targetPos[1]) < 2.0 && !this.world.fruits[arrayToKey(targetPos)]) {
                                     this.memory.fruit.delete(arrayToKey(targetPos));
                                 }
+                                // --- FIX: Stale memory guard ---
+                                if (getDistance(this.x, this.y, targetPos[0], targetPos[1]) < 5.0 && this.struggle_timer > 5) {
+                                    if (!this.world.fruits[arrayToKey(targetPos)]) {
+                                        this.memory.fruit.delete(arrayToKey(targetPos));
+                                    }
+                                }
+                                // --- END FIX ---
                             } else {
                                 this.state = "WANDERING"; 
                             }
@@ -1744,13 +1827,25 @@
                             if (getDistance(this.x, this.y, bestWoodTarget[0], bestWoodTarget[1]) < 2.0 && !this.world.wood[arrayToKey(bestWoodTarget)]) {
                                 this.memory.wood.delete(arrayToKey(bestWoodTarget));
                             }
+                            // --- FIX: Stale memory guard ---
+                            if (getDistance(this.x, this.y, bestWoodTarget[0], bestWoodTarget[1]) < 5.0 && this.struggle_timer > 5) {
+                                if (!this.world.wood[arrayToKey(bestWoodTarget)]) {
+                                    this.memory.wood.delete(arrayToKey(bestWoodTarget));
+                                }
+                            }
+                            // --- END FIX ---
                         } else {
                             this.moveExploring();
                         }
                         break;
 
                     case "BUILDING":
-                        this.buildHome();
+                        if (this.isClearTile(this.x, this.y)) {
+                            this.buildHome();
+                        } else {
+                            // --- FIX: Use moveExploring for deterministic pathing ---
+                            this.moveExploring(); 
+                        }
                         break;
 
                     case "REPAIRING_HOME":
@@ -1775,7 +1870,7 @@
                         break;
 
                     case "REFUELING_CAMPFIRE":
-                        const nearbyCampfireKey = this.world.getNearest(this.x, this.y, visionRadius, this.world.campfires);
+                        const nearbyCampfireKey = this.world.getNearest(this.x, this.y, 2, this.world.campfires); // Use radius 2 check for refuel
                         if (nearbyCampfireKey) {
                             const [cx, cy] = keyToArray(nearbyCampfireKey);
                             const dist = getDistance(this.x, this.y, cx, cy);
@@ -1903,13 +1998,13 @@
                         if (target) {
                             if (getDistance(this.x, this.y, target.x, target.y) < 2.0) {
                                 // SYNCHRONIZED: Share Fruit > Food > Wood
-                                if (this.fruit_carried.length > 0) {
+                                if (this.fruit_carried.length > 0 && target.fruit_carried.length < simSettings.MAX_FRUIT_CARRIED) {
                                     const fruitType = this.fruit_carried.pop();
                                     target.fruit_carried.push(fruitType);
-                                } else if (this.food_carried >= 1) {
+                                } else if (this.food_carried >= 1 && target.food_carried < simSettings.MAX_FOOD_CARRY) {
                                     this.food_carried--;
                                     target.food_carried++;
-                                } else if (this.wood_carried >= 1) {
+                                } else if (this.wood_carried >= 1 && target.wood_carried < simSettings.MAX_WOOD_CARRY) {
                                     this.wood_carried--;
                                     target.wood_carried++;
                                 } 
@@ -2055,7 +2150,7 @@
                             
                             const nearbyCampfireStory = this.world.getNearest(this.x, this.y, 2, this.world.campfires);
                             // SYNCHRONIZED: Call broadcast_skill_to_library from Python
-                            if (nearbyCampfireStory && Math.random() < 0.1) {
+                            if (nearbyCampfireStory && nearbyCampfireStory !== currentPosKey && Math.random() < 0.1) {
                                 this.broadcastSkillToLibrary();
                             }
                             
@@ -2120,7 +2215,7 @@
                             
                             const nearbyCampfireStory = this.world.getNearest(this.x, this.y, 2, this.world.campfires);
                             // SYNCHRONIZED: Call broadcast_skill_to_library from Python
-                            if (nearbyCampfireStory && Math.random() < 0.1) {
+                            if (nearbyCampfireStory && nearbyCampfireStory !== currentPosKey && Math.random() < 0.1) {
                                 this.broadcastSkillToLibrary();
                             }
                             
@@ -2161,18 +2256,68 @@
                 if (this.world.fruits[posKey]) return false;
                 if (this.world.growingFruitBushes[posKey]) return false;
                 // CHECK AGENTS ON TILE (SYNCHRONIZED with Python planting logic)
-                if (this.world.agents.some(agent => agent.x === x && agent.y === y && agent !== this)) return false; 
+                for (const agent of this.world.agents) {
+                    if (agent.x === x && agent.y === y && agent !== this) {
+                         const pos = [x, y];
+                         // EXCEPTION 1: Library
+                         if (posKey === arrayToKey(this.world.libraryLocation)) {
+                             continue;
+                         } 
+                         // EXCEPTION 2: Shared Home
+                         if (this.home_location === posKey) {
+                             const homeData = this.world.homes[posKey];
+                             if (homeData) {
+                                 const ownerId = homeData.owner_id;
+                                 const ownerAgent = this.world.getAgentById(ownerId);
+                                 const isFamily = (ownerId !== null) && (ownerAgent && ownerAgent.children_ids.has(agent.id));
+                                 if (ownerId === agent.id || isFamily) {
+                                     continue;
+                                 }
+                             }
+                         }
+                         return false;
+                    }
+                }
                 return true;
             }
 
             isObstacle(x, y) {
                 const posKey = arrayToKey([x, y]);
+                const currentPosKey = arrayToKey([this.x, this.y]);
+                
+                // 1. Structures and Resources
+                if (this.world.campfires[posKey]) return true; // Cannot stand ON the fire
+                
+                // 2. Homes/Building (only other agents' homes are obstacles)
                 if (this.world.homes[posKey]) {
                     const homeData = this.world.homes[posKey];
-                    if (homeData.owner_id !== this.id) {
+                    if (homeData.owner_id !== this.id && homeData.owner_id !== null) {
                         return true;
                     }
                 }
+                
+                // 3. Other Agents
+                for (const agent of this.world.agents) {
+                    if (agent !== this && agent.x === x && agent.y === y) {
+                        // EXCEPTION 1: Library
+                        if (posKey === arrayToKey(this.world.libraryLocation)) continue;
+                        
+                        // EXCEPTION 2: Shared Home
+                        if (this.home_location === posKey) {
+                            const homeData = this.world.homes[posKey];
+                            if (homeData) {
+                                const ownerId = homeData.owner_id;
+                                const ownerAgent = this.world.getAgentById(ownerId);
+                                const isFamily = (ownerId !== null) && (this.id === ownerId || (ownerAgent && ownerAgent.children_ids.has(this.id)));
+                                
+                                if (isFamily) continue;
+                            }
+                        }
+                        
+                        return true;
+                    }
+                }
+                
                 return false;
             }
 
@@ -2192,19 +2337,33 @@
                     const newX = clamp(this.x + dx, 0, this.world.width - 1);
                     const newY = clamp(this.y + dy, 0, this.world.height - 1);
                     
+                    let moved = false;
+                    
                     if (!this.isObstacle(newX, newY)) {
                         this.x = newX;
                         this.y = newY;
+                        moved = true;
                     } else {
+                        // Sliding logic to bypass obstacles
                         const slideX = clamp(this.x + dx, 0, this.world.width - 1);
+                        const slideY = clamp(this.y + dy, 0, this.world.height - 1);
+                        
+                        // Try to slide in X only
                         if (dx !== 0 && !this.isObstacle(slideX, this.y)) {
                             this.x = slideX;
+                            moved = true;
                         }
-                        else if (dy !== 0 && !this.isObstacle(this.x, clamp(this.y + dy, 0, this.world.height - 1))) {
-                            this.y = clamp(this.y + dy, 0, this.world.height - 1);
+                        // Try to slide in Y only
+                        else if (dy !== 0 && !this.isObstacle(this.x, slideY)) {
+                            this.y = slideY;
+                            moved = true;
                         }
-                        else {
-                            break;
+                        
+                        // --- FIX: Deadlock Guard ---
+                        if (!moved) {
+                            // Stuck or blocked by multiple things: Stop movement for this step and force a re-evaluation
+                            this.exploration_vector = [Math.floor(Math.random() * 3) - 1, Math.floor(Math.random() * 3) - 1];
+                            break; 
                         }
                     }
                     
@@ -2232,10 +2391,15 @@
                     }
 
                     if (this.exploration_vector[0] === 0 && this.exploration_vector[1] === 0 || stuck || Math.random() > persistentChance) {
-                        while (true) { 
+                        // Loop to find a valid non-zero vector
+                        let attempts = 4;
+                        while (attempts--) { 
                             this.exploration_vector = [Math.floor(Math.random() * 3) - 1, Math.floor(Math.random() * 3) - 1];
                             if (this.exploration_vector[0] !== 0 || this.exploration_vector[1] !== 0) {
                                 break;
+                            }
+                            if (attempts === 0) {
+                                return; // Cannot move
                             }
                         }
                     }
@@ -3311,13 +3475,13 @@
                 this.render(); 
             }
 
-            drawCell(x, y, char, color, isDim) {
+            drawCell(x, y, char, colorKey, isDim) {
                 const ctx = this.ctx;
                 const size = this.cellSize;
                 const px = x * size + size / 2;
                 const py = y * size + size / 2;
 
-                ctx.fillStyle = color;
+                ctx.fillStyle = COLORS[colorKey];
                 if (isDim) {
                     ctx.globalAlpha = 0.5;
                 } else {
@@ -3326,14 +3490,32 @@
 
                 ctx.fillText(char, px, py);
             }
+            
+            // NEW: Separate function for dim background chars to use the inverted text color
+            drawDimBackgroundChar(x, y) {
+                const ctx = this.ctx;
+                const size = this.cellSize;
+                const px = x * size + size / 2;
+                const py = y * size + size / 2;
+                
+                let colorKey = 'WHITE_NORMAL';
+                // Use BLACK if world light mode is active for contrast
+                if (simSettings.DISPLAY_WORLD_LIGHT_MODE) {
+                    colorKey = 'WHITE_NORMAL'; // This will be mapped to a dark color in INVERTED_COLORS
+                }
+                
+                ctx.fillStyle = COLORS[colorKey];
+                ctx.globalAlpha = 0.5;
+                ctx.fillText('.', px, py);
+            }
+
 
             render() {
                 const ctx = this.ctx;
                 const size = this.cellSize;
 
                 ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-                ctx.fillStyle = '#0d1117';
-                ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                // The canvas background color is set via CSS now
                 
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
@@ -3347,37 +3529,37 @@
                     }
                 });
 
-
+                // Draw background '.'
                 for(let y = 0; y < this.world.height; y++) {
                     for(let x = 0; x < this.world.width; x++) {
                         const posKey = arrayToKey([x, y]);
                         if (!agentPositions[posKey]) { 
-                            this.drawCell(x, y, '.', COLORS.WHITE_NORMAL, true);
+                            this.drawDimBackgroundChar(x, y); 
                         }
                     }
                 }
 
                 const resources = [
-                    { map: this.world.growingPlants, char: 'P', color: COLORS.GREEN_NORMAL, dim: false },
-                    { map: this.world.growingTrees, char: 'T', color: COLORS.GREEN_DIM, dim: false },
-                    { map: this.world.growingFruitBushes, char: 'b', color: COLORS.MAGENTA_DIM, dim: true },
-                    { map: this.world.food, char: 'F', color: COLORS.GREEN_BRIGHT, dim: false },
-                    { map: this.world.wood, char: 'W', color: COLORS.YELLOW_BRIGHT, dim: false },
-                    { map: this.world.campfires, char: 'C', color: COLORS.RED_BRIGHT, dim: false },
+                    { map: this.world.growingPlants, char: 'P', color: 'GREEN_NORMAL', dim: false },
+                    { map: this.world.growingTrees, char: 'T', color: 'GREEN_DIM', dim: false },
+                    { map: this.world.growingFruitBushes, char: 'b', color: 'MAGENTA_DIM', dim: true },
+                    { map: this.world.food, char: 'F', color: 'GREEN_BRIGHT', dim: false },
+                    { map: this.world.wood, char: 'W', color: 'YELLOW_BRIGHT', dim: false },
+                    { map: this.world.campfires, char: 'C', color: 'RED_BRIGHT', dim: false },
                 ];
                 
                 // Draw Fruit Types
                 for(const posKey in this.world.fruits) {
                     const fruitType = this.world.fruitTypes[posKey];
                     let char = '?';
-                    let color = COLORS.WHITE_BRIGHT;
-                    if (fruitType === 'energy') { char = 'R'; color = COLORS.RED_NORMAL; }
-                    else if (fruitType === 'social') { char = 'P'; color = COLORS.MAGENTA_BRIGHT; }
-                    else if (fruitType === 'speed') { char = 'B'; color = COLORS.BLUE_NORMAL; }
+                    let colorKey = 'WHITE_BRIGHT';
+                    if (fruitType === 'energy') { char = 'R'; colorKey = 'RED_NORMAL'; }
+                    else if (fruitType === 'social') { char = 'P'; colorKey = 'MAGENTA_BRIGHT'; }
+                    else if (fruitType === 'speed') { char = 'B'; colorKey = 'BLUE_NORMAL'; }
                     
                     if (!agentPositions[posKey]) {
                         const [x, y] = keyToArray(posKey);
-                        this.drawCell(x, y, char, color, false);
+                        this.drawCell(x, y, char, colorKey, false);
                     }
                 }
 
@@ -3394,12 +3576,12 @@
                     const [x, y] = keyToArray(posKey);
                     const durability = this.world.homes[posKey].durability;
                     const char = durability < 2 ? 'h' : 'H';
-                    const color = durability < 2 ? COLORS.BLUE_NORMAL : COLORS.BLUE_BRIGHT;
-                    this.drawCell(x, y, char, color, false);
+                    const colorKey = durability < 2 ? 'BLUE_NORMAL' : 'BLUE_BRIGHT';
+                    this.drawCell(x, y, char, colorKey, false);
                 }
                 
                 const [lx, ly] = this.world.libraryLocation;
-                this.drawCell(lx, ly, 'L', COLORS.LIBRARY, false);
+                this.drawCell(lx, ly, 'L', 'LIBRARY', false);
 
 
                 const agentsAtHome = [];
@@ -3413,35 +3595,27 @@
                     
                     let charMapEntry = CHAR_MAP[agent.state] || CHAR_MAP['WANDERING'];
                     let char = charMapEntry.char;
-                    let color = charMapEntry.color;
+                    let colorKey = charMapEntry.color;
                     let isDim = charMapEntry.dim;
 
                     // Order of precedence: Sickness/Apathy/Buffs
                     
                     if (agent.sickness_timer > 0) {
-                        color = COLORS.GREEN_NORMAL;
+                        colorKey = 'GREEN_NORMAL';
                         isDim = false;
                     }
                     if (agent.apathy_timer > 0) {
-                        color = COLORS.MAGENTA_DIM;
+                        colorKey = 'MAGENTA_DIM';
                         char = 's';
                         isDim = true;
                     }
                     
-                    // --- MODIFICATION: REMOVE BRIGHT WHITE SOCIAL BUFF OVERRIDE ---
-                    /* if (agent.social_buff_timer > 0) {
-                        color = COLORS.WHITE_BRIGHT; 
-                        isDim = false;
-                    }
-                    */
-                    // -----------------------------------------------------------
-                    
                     if (agent.speed_buff_timer > 0) {
-                        color = COLORS.BLUE_BRIGHT;
+                        colorKey = 'BLUE_BRIGHT';
                         isDim = false;
                     }
                     
-                    this.drawCell(agent.x, agent.y, char, color, isDim);
+                    this.drawCell(agent.x, agent.y, char, colorKey, isDim);
                 });
 
                 agentsAtHome.forEach(agent => {
@@ -3451,30 +3625,21 @@
                     
                     let charMapEntry = CHAR_MAP[agent.state] || CHAR_MAP['WANDERING'];
                     let char = charMapEntry.char;
-                    let color = charMapEntry.color;
+                    let colorKey = charMapEntry.color;
                     let isDim = charMapEntry.dim;
 
                     if (agent.sickness_timer > 0) {
-                         color = COLORS.GREEN_NORMAL;
+                         colorKey = 'GREEN_NORMAL';
                          isDim = false;
                     }
                     if (agent.apathy_timer > 0) {
-                        color = COLORS.MAGENTA_DIM;
+                        colorKey = 'MAGENTA_DIM';
                         char = 's';
                         isDim = true;
                     }
                     
-                    // --- MODIFICATION: REMOVE BRIGHT WHITE SOCIAL BUFF OVERRIDE ---
-                    /*
-                    if (agent.social_buff_timer > 0) {
-                        color = COLORS.WHITE_BRIGHT; 
-                        isDim = false;
-                    }
-                    */
-                    // -----------------------------------------------------------
-                    
                     if (agent.speed_buff_timer > 0) {
-                        color = COLORS.BLUE_BRIGHT;
+                        colorKey = 'BLUE_BRIGHT';
                         isDim = false;
                     }
 
@@ -3482,7 +3647,7 @@
                     ctx.font = `${this.cellSize * 0.4}px Consolas, monospace`; 
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    ctx.fillStyle = color;
+                    ctx.fillStyle = COLORS[colorKey];
                     if (isDim) {
                         ctx.globalAlpha = 0.5;
                     } else {
@@ -3509,6 +3674,10 @@
             let envColor = 'text-green-400';
             if (envHealth <= 70) envColor = 'text-yellow-400';
             if (envHealth <= 30) envColor = 'text-red-400';
+            
+            // NEW: Invert stat panel colors if light mode is on (though it wasn't requested, it's a good fail-safe/alignment)
+            // Note: Since we are keeping the outer page dark, we don't need to invert the text colors here.
+
             document.getElementById('statEnvHealth').innerHTML = `<span class="${envColor}">${envHealth.toFixed(1)}%</span>`;
 
             const geneStatsDiv = document.getElementById('geneStats');
@@ -3571,59 +3740,64 @@
         function populateLegend() {
             const legendDiv = document.getElementById('legend');
             
+            const getDisplayColor = (colorKey) => {
+                // Returns the actual hex color for the legend
+                return COLORS[colorKey] || BASE_COLORS[colorKey];
+            };
+
             const groups = [
                 {
                     title: 'Status & Interaction',
                     items: [
-                        { char: 'A', color: COLORS.CYAN_BRIGHT, desc: 'Wander (Default)' },
-                        { char: 'f', color: COLORS.CYAN_NORMAL, desc: 'Forage/Eat (Food/Fruit)' }, 
-                        { char: 's', color: COLORS.MAGENTA_DIM, desc: 'Sad/Crisis/Apathy' },
-                        { char: 'o', color: COLORS.MAGENTA_BRIGHT, desc: 'Happy/Linger' },
-                        { char: 'L', color: COLORS.MAGENTA_BRIGHT, desc: 'Seek Library' },
-                        { char: 't', color: COLORS.WHITE_NORMAL, desc: 'Seek Social' },
-                        { char: 'T', color: COLORS.WHITE_BRIGHT, desc: 'Communicate/Share Knowledge' },
-                        { char: 'm', color: COLORS.MAGENTA_BRIGHT, desc: 'Mate' },
-                        { char: 'M', color: COLORS.MAGENTA_BRIGHT, desc: 'Seek Mate' },
-                        { char: 'X/r', color: COLORS.RED_BRIGHT, desc: 'Attack/Retaliate' },
-                        { char: 'V', color: COLORS.RED_BRIGHT, desc: 'Avenge Child Death' },
-                        { char: 'g', color: COLORS.WHITE_BRIGHT, desc: 'Share Resources' },
-                        { char: 'Any', color: COLORS.GREEN_NORMAL, desc: 'Agent is Sick' },
-                        { char: 'Any', color: COLORS.BLUE_BRIGHT, desc: 'Agent has Speed Buff' },
+                        { char: 'A', color: 'CYAN_BRIGHT', desc: 'Wander (Default)' },
+                        { char: 'f', color: 'CYAN_NORMAL', desc: 'Forage/Eat (Food/Fruit)' }, 
+                        { char: 's', color: 'MAGENTA_DIM', desc: 'Sad/Crisis/Apathy' },
+                        { char: 'o', color: 'MAGENTA_BRIGHT', desc: 'Happy/Linger' },
+                        { char: 'L', color: 'MAGENTA_BRIGHT', desc: 'Seek Library' },
+                        { char: 't', color: 'WHITE_NORMAL', desc: 'Seek Social' },
+                        { char: 'T', color: 'WHITE_BRIGHT', desc: 'Communicate/Share Knowledge' },
+                        { char: 'm', color: 'MAGENTA_BRIGHT', desc: 'Mate' },
+                        { char: 'M', color: 'MAGENTA_BRIGHT', desc: 'Seek Mate' },
+                        { char: 'X/r', color: 'RED_BRIGHT', desc: 'Attack/Retaliate' },
+                        { char: 'V', color: 'RED_BRIGHT', desc: 'Avenge Child Death' },
+                        { char: 'g', color: 'WHITE_BRIGHT', desc: 'Share Resources' },
+                        { char: 'Any', color: 'GREEN_NORMAL', desc: 'Agent is Sick' },
+                        { char: 'Any', color: 'BLUE_BRIGHT', desc: 'Agent has Speed Buff' },
                     ]
                 },
                 {
                     title: 'Building & Wood',
                     items: [
-                        { char: 'w', color: COLORS.YELLOW_NORMAL, desc: 'Get Wood' },
-                        { char: 'b', color: COLORS.YELLOW_BRIGHT, desc: 'Build Home' },
-                        { char: 'k', color: COLORS.BLUE_BRIGHT, desc: 'Claim Home' },
-                        { char: 'E', color: COLORS.YELLOW_NORMAL, desc: 'Repair Home' },
-                        { char: 'c', color: COLORS.RED_NORMAL, desc: 'Build Fire' },
-                        { char: 'R', color: COLORS.RED_BRIGHT, desc: 'Refuel Fire' },
+                        { char: 'w', color: 'YELLOW_NORMAL', desc: 'Get Wood' },
+                        { char: 'b', color: 'YELLOW_BRIGHT', desc: 'Build Home' },
+                        { char: 'k', color: 'BLUE_BRIGHT', desc: 'Claim Home' },
+                        { char: 'E', color: 'YELLOW_NORMAL', desc: 'Repair Home' },
+                        { char: 'c', color: 'RED_NORMAL', desc: 'Build Fire' },
+                        { char: 'R', color: 'RED_BRIGHT', desc: 'Refuel Fire' },
                     ]
                 },
                 {
                     title: 'Farming & Resources',
                     items: [
-                        { char: 'p', color: COLORS.GREEN_NORMAL, desc: 'Plant (Food/Tree/Fruit)' }, 
-                        { char: 'G', color: COLORS.GREEN_BRIGHT, desc: 'Go Home to Plant' },
-                        { char: 'F', color: COLORS.GREEN_BRIGHT, desc: 'Food (Ready to Eat)' },
-                        { char: 'P', color: COLORS.GREEN_NORMAL, desc: 'Plant (Growing Food)' },
-                        { char: 'W', color: COLORS.YELLOW_BRIGHT, desc: 'Wood (Lumber)' },
-                        { char: 'T', color: COLORS.GREEN_DIM, desc: 'Tree (Growing Wood)' },
-                        { char: 'R', color: COLORS.RED_NORMAL, desc: 'Energy Fruit' }, 
-                        { char: 'P', color: COLORS.MAGENTA_BRIGHT, desc: 'Social Fruit' }, 
-                        { char: 'B', color: COLORS.BLUE_NORMAL, desc: 'Speed Fruit' }, 
-                        { char: 'b', color: COLORS.MAGENTA_DIM, desc: 'Growing Bush' }, 
+                        { char: 'p', color: 'GREEN_NORMAL', desc: 'Plant (Food/Tree/Fruit)' }, 
+                        { char: 'G', color: 'GREEN_BRIGHT', desc: 'Go Home to Plant' },
+                        { char: 'F', color: 'GREEN_BRIGHT', desc: 'Food (Ready to Eat)' },
+                        { char: 'P', color: 'GREEN_NORMAL', desc: 'Plant (Growing Food)' },
+                        { char: 'W', color: 'YELLOW_BRIGHT', desc: 'Wood (Lumber)' },
+                        { char: 'T', color: 'GREEN_DIM', desc: 'Tree (Growing Wood)' },
+                        { char: 'R', color: 'RED_NORMAL', desc: 'Energy Fruit' }, 
+                        { char: 'P', color: 'MAGENTA_BRIGHT', desc: 'Social Fruit' }, 
+                        { char: 'B', color: 'BLUE_NORMAL', desc: 'Speed Fruit' }, 
+                        { char: 'b', color: 'MAGENTA_DIM', desc: 'Growing Bush' }, 
                     ]
                 },
                 {
                     title: 'Permanent Structures',
                     items: [
-                        { char: 'H/h', color: COLORS.BLUE_BRIGHT, desc: 'Home (Healthy/Damaged)' },
-                        { char: 'C', color: COLORS.RED_BRIGHT, desc: 'Active Campfire' },
-                        { char: 'L', color: COLORS.LIBRARY, desc: 'Library Location' },
-                        { char: 'Any', color: COLORS.WHITE_BRIGHT, desc: 'Agent with Wellbeing Buff (Defaulting to primary state color)' },
+                        { char: 'H/h', color: 'BLUE_BRIGHT', desc: 'Home (Healthy/Damaged)' },
+                        { char: 'C', color: 'RED_BRIGHT', desc: 'Active Campfire' },
+                        { char: 'L', color: 'LIBRARY', desc: 'Library Location' },
+                        { char: 'Any', color: 'WHITE_BRIGHT', desc: 'Agent with Wellbeing Buff (Defaulting to primary state color)' },
                     ]
                 }
             ];
@@ -3633,7 +3807,7 @@
             groups.forEach(group => {
                 html += `<div class="w-full mt-2 mb-1 border-t border-gray-700 pt-2"><h3 class="font-semibold text-sm text-cyan-300">${group.title}</h3></div>`;
                 group.items.forEach(item => {
-                    html += `<p class="flex items-center min-w-[200px] lg:min-w-[250px]"><span style="color: ${item.color}; font-weight: bold; width: 30px;">${item.char}</span> ${item.desc}</p>`;
+                    html += `<p class="flex items-center min-w-[200px] lg:min-w-[250px]"><span style="color: ${getDisplayColor(item.color)}; font-weight: bold; width: 30px;">${item.char}</span> ${item.desc}</p>`;
                 });
             });
 
@@ -3658,6 +3832,7 @@
 
         function saveSettings(settings) {
             try {
+                // Only save the non-default settings to keep storage clean, OR all settings
                 localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
             } catch (e) {
                 console.error("Failed to save settings to localStorage", e);
@@ -3676,13 +3851,17 @@
             for (const key in settings) {
                 const input = document.getElementById(key);
                 if (input) {
-                    input.value = settings[key];
+                    if (input.type === 'checkbox') {
+                         input.checked = settings[key] === true || settings[key] === 1; // Handle 0/1 from form submission
+                    } else {
+                         input.value = settings[key];
+                    }
                 }
             }
-            // Ensure all fields have a value (even if it's the hardcoded default)
+            // Ensure all number fields have a value (even if it's the hardcoded default)
             for (const key in defaultSimSettings) {
                  const input = document.getElementById(key);
-                 if (input && input.value === "") { 
+                 if (input && input.type === 'number' && input.value === "") { 
                      input.value = defaultSimSettings[key];
                  }
             }
@@ -3702,6 +3881,8 @@
                         // Fall back to default if input is empty or invalid
                         newSettings[input.id] = defaultSimSettings[input.id];
                     }
+                } else if (input.type === 'checkbox') {
+                    newSettings[input.id] = input.checked;
                 }
             });
             return { ...defaultSimSettings, ...newSettings };
@@ -3758,6 +3939,29 @@
                 }
             }
         }
+        
+        // --- NEW: Display Settings Handler ---
+        function applyDisplaySettings(settings) {
+            const body = document.body;
+            const isLightMode = settings.DISPLAY_WORLD_LIGHT_MODE;
+            
+            if (isLightMode) {
+                body.classList.add('world-light-mode');
+                COLORS = INVERTED_COLORS;
+            } else {
+                body.classList.remove('world-light-mode');
+                COLORS = BASE_COLORS;
+            }
+            
+            // Re-render legend to show correct colors
+            populateLegend();
+            
+            // Re-render canvas if the renderer exists
+            if (renderer) {
+                renderer.render();
+            }
+        }
+        // --- END NEW: Display Settings Handler ---
 
 
         // --- MAIN INITIALIZATION ---
@@ -3766,6 +3970,10 @@
         function initializeSimulation() {
             if (interval) clearInterval(interval);
             
+            // Load and apply settings before initializing world/renderer
+            simSettings = loadSettings();
+            applyDisplaySettings(simSettings); // Apply theme on load
+
             world = new World(simSettings.WORLD_WIDTH, simSettings.WORLD_HEIGHT);
             
             initializeSkillMaxes();
@@ -3826,10 +4034,17 @@
         }
 
         window.onload = () => {
-            simSettings = loadSettings();
+            // Load settings and apply display settings before doing anything else
+            simSettings = loadSettings(); 
+            applyDisplaySettings(simSettings);
+            
             populateSettingsForm(simSettings);
             setupModalControls();
-            populateLegend();
+            
+            // The legend must be populated AFTER COLORS are set by applyDisplaySettings
+            // and before initializeSimulation calls renderer.render()
+            // populateLegend(); // Called inside applyDisplaySettings
+            
             initializeSimulation();
         };
 
