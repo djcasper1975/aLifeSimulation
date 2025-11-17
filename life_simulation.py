@@ -2264,10 +2264,7 @@ class World:
             if agent.apathy_timer > 0:
                 color = Style.DIM + Fore.WHITE
                 char = 's' 
-                
-            if agent.social_buff_timer > 0 and agent.apathy_timer == 0:
-                color = Style.BRIGHT + Fore.WHITE 
-            
+
             if agent.speed_buff_timer > 0:
                 color = Style.BRIGHT + Fore.BLUE
 
