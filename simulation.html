@@ -7,18 +7,43 @@
 	<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <script src="https://cdn.tailwindcss.com"></script>
+
     <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        mono: ['Consolas', 'Monaco', 'monospace'],
-                    },
-                }
-            }
+        // Function to dynamically load a script and return a Promise
+        function loadScript(url) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = url;
+                script.onload = resolve;
+                script.onerror = () => reject();
+                document.head.appendChild(script);
+            });
         }
+
+        const externalCdn = "https://cdn.tailwindcss.com";
+        const localCdn = "tailwind-cdn.js"; 
+
+        loadScript(externalCdn)
+            .catch(() => {
+                console.warn("External Tailwind CDN failed to load. Falling back to local 'tailwind-cdn.js'.");
+                return loadScript(localCdn);
+            })
+            .then(() => {
+                 // Once Tailwind is loaded (either CDN or local), apply config
+                 tailwind.config = {
+                     theme: {
+                         extend: {
+                             fontFamily: {
+                                 sans: ['Inter', 'sans-serif'],
+                                 mono: ['Consolas', 'Monaco', 'monospace'],
+                             },
+                         }
+                     }
+                 };
+            })
+            .catch(() => {
+                 console.error("Failed to load Tailwind CSS from both CDN and local file. Styling may be incorrect.");
+            });
     </script>
     <style>
         /* Custom styles for the grid visualization */
@@ -198,6 +223,53 @@
                                 <label for="FOOD_SEED_BASE_CHANCE">Food Seed Chance</label>
                                 <input type="number" id="FOOD_SEED_BASE_CHANCE" name="FOOD_SEED_BASE_CHANCE" step="0.01">
                             </div>
+                            
+                            <div class="fieldset-subheader sm:col-span-2">Fruit Parameters</div>
+                            <div>
+                                <label for="STARTING_FRUIT_BUSHES">Starting Fruit Bushes</label>
+                                <input type="number" id="STARTING_FRUIT_BUSHES" name="STARTING_FRUIT_BUSHES" step="1">
+                            </div>
+                            <div>
+                                <label for="FRUIT_SPAWN_RATE">Fruit Spawn Rate</label>
+                                <input type="number" id="FRUIT_SPAWN_RATE" name="FRUIT_SPAWN_RATE" step="1">
+                            </div>
+                            <div>
+                                <label for="FRUIT_GROW_TIME">Fruit Grow Time</label>
+                                <input type="number" id="FRUIT_GROW_TIME" name="FRUIT_GROW_TIME" step="1">
+                            </div>
+                            <div>
+                                <label for="FRUIT_SEED_BASE_CHANCE">Fruit Seed Chance</label>
+                                <input type="number" id="FRUIT_SEED_BASE_CHANCE" name="FRUIT_SEED_BASE_CHANCE" step="0.01">
+                            </div>
+                            <div>
+                                <label for="MAX_FRUIT_CARRIED">Max Fruit Carried</label>
+                                <input type="number" id="MAX_FRUIT_CARRIED" name="MAX_FRUIT_CARRIED" step="1">
+                            </div>
+                            <div>
+                                <label for="STARTING_FRUIT_SEEDS_MAX">Max Start Fruit Seeds</label>
+                                <input type="number" id="STARTING_FRUIT_SEEDS_MAX" name="STARTING_FRUIT_SEEDS_MAX" step="1">
+                            </div>
+                            <div class="fieldset-subheader sm:col-span-2">Fruit Benefits</div>
+                            <div>
+                                <label for="FRUIT_BENEFIT_ENERGY_VAL">Energy Fruit Value</label>
+                                <input type="number" id="FRUIT_BENEFIT_ENERGY_VAL" name="FRUIT_BENEFIT_ENERGY_VAL" step="10">
+                            </div>
+                            <div>
+                                <label for="FRUIT_BENEFIT_SOCIAL_ENERGY_VAL">Social Fruit Energy</label>
+                                <input type="number" id="FRUIT_BENEFIT_SOCIAL_ENERGY_VAL" name="FRUIT_BENEFIT_SOCIAL_ENERGY_VAL" step="10">
+                            </div>
+                            <div>
+                                <label for="FRUIT_BENEFIT_SOCIAL_SOCIAL_VAL">Social Fruit Social</label>
+                                <input type="number" id="FRUIT_BENEFIT_SOCIAL_SOCIAL_VAL" name="FRUIT_BENEFIT_SOCIAL_SOCIAL_VAL" step="10">
+                            </div>
+                            <div>
+                                <label for="FRUIT_BENEFIT_SPEED_ENERGY_VAL">Speed Fruit Energy</label>
+                                <input type="number" id="FRUIT_BENEFIT_SPEED_ENERGY_VAL" name="FRUIT_BENEFIT_SPEED_ENERGY_VAL" step="1">
+                            </div>
+                            <div>
+                                <label for="FRUIT_BENEFIT_SPEED_DURATION">Speed Fruit Duration</label>
+                                <input type="number" id="FRUIT_BENEFIT_SPEED_DURATION" name="FRUIT_BENEFIT_SPEED_DURATION" step="1">
+                            </div>
                         </div>
                     </fieldset>
 
@@ -228,7 +300,7 @@
                     </fieldset>
                     
                     <fieldset>
-                        <legend>Age & Love</legend>
+                        <legend>Age & Love & Pause</legend>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label for="ADULT_AGE">Adult Age</label>
@@ -266,12 +338,7 @@
                                 <label for="PASSIVE_LOVE_GAIN">Passive Love Gain</label>
                                 <input type="number" id="PASSIVE_LOVE_GAIN" name="PASSIVE_LOVE_GAIN" step="0.01">
                             </div>
-                        </div>
-                    </fieldset>
-                    
-                    <fieldset>
-                        <legend>Pause & Apathy</legend>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="fieldset-subheader sm:col-span-2">Pause Thresholds</div>
                             <div>
                                 <label for="PAUSE_ENERGY_THRESHOLD">Pause Energy</label>
                                 <input type="number" id="PAUSE_ENERGY_THRESHOLD" name="PAUSE_ENERGY_THRESHOLD" step="1">
@@ -280,6 +347,12 @@
                                 <label for="PAUSE_SOCIAL_THRESHOLD">Pause Social</label>
                                 <input type="number" id="PAUSE_SOCIAL_THRESHOLD" name="PAUSE_SOCIAL_THRESHOLD" step="1">
                             </div>
+                        </div>
+                    </fieldset>
+                    
+                    <fieldset>
+                        <legend>Apathy & Vengeance</legend>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label for="APATHY_DURATION">Apathy Duration</label>
                                 <input type="number" id="APATHY_DURATION" name="APATHY_DURATION" step="1">
@@ -289,14 +362,18 @@
                                 <input type="number" id="APATHY_METABOLISM_PENALTY" name="APATHY_METABOLISM_PENALTY" step="0.1">
                             </div>
                             <div>
-                                <label for="APATHY_SOCIAL_LOSS_MULTIPLIER">Apathy Social Loss</label>
+                                <label for="APATHY_SOCIAL_LOSS_MULTIPLIER">Apathy Social Loss Multiplier</label>
                                 <input type="number" id="APATHY_SOCIAL_LOSS_MULTIPLIER" name="APATHY_SOCIAL_LOSS_MULTIPLIER" step="0.1">
+                            </div>
+                            <div>
+                                <label for="VENGEANCE_DURATION">Vengeance Duration</label>
+                                <input type="number" id="VENGEANCE_DURATION" name="VENGEANCE_DURATION" step="1">
                             </div>
                         </div>
                     </fieldset>
 
                     <fieldset>
-                        <legend>Environment</legend>
+                        <legend>Environment & Sickness</legend>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label for="ENV_HEALTH_MAX">Env. Health Max</label>
@@ -315,8 +392,44 @@
                                 <input type="number" id="ENV_DECAY_WOOD_GATHER" name="ENV_DECAY_WOOD_GATHER" step="0.01">
                             </div>
                             <div>
-                                <label for="ENV_HEAL_PLANT_BASE">Env. Heal (Plant)</label>
+                                <label for="ENV_HEAL_PLANT_BASE">Env. Heal (Plant Base)</label>
                                 <input type="number" id="ENV_HEAL_PLANT_BASE" name="ENV_HEAL_PLANT_BASE" step="0.1">
+                            </div>
+                            
+                            <div class="fieldset-subheader sm:col-span-2">Pollution & Density</div>
+                            <div>
+                                <label for="ENV_DECAY_CAMPFIRE_POLLUTION">Campfire Pollution</label>
+                                <input type="number" id="ENV_DECAY_CAMPFIRE_POLLUTION" name="ENV_DECAY_CAMPFIRE_POLLUTION" step="0.01">
+                            </div>
+                            <div>
+                                <label for="ENV_OVERPOPULATION_RADIUS">Overpop. Radius</label>
+                                <input type="number" id="ENV_OVERPOPULATION_RADIUS" name="ENV_OVERPOPULATION_RADIUS" step="1">
+                            </div>
+                            <div>
+                                <label for="ENV_OVERPOPULATION_THRESHOLD">Overpop. Threshold</label>
+                                <input type="number" id="ENV_OVERPOPULATION_THRESHOLD" name="ENV_OVERPOPULATION_THRESHOLD" step="1">
+                            </div>
+                            <div>
+                                <label for="ENV_OVERPOPULATION_DECAY">Overpop. Decay</label>
+                                <input type="number" id="ENV_OVERPOPULATION_DECAY" name="ENV_OVERPOPULATION_DECAY" step="0.01">
+                            </div>
+                            
+                            <div class="fieldset-subheader sm:col-span-2">Sickness</div>
+                            <div>
+                                <label for="ENV_SICKNESS_THRESHOLD">Sickness Health %</label>
+                                <input type="number" id="ENV_SICKNESS_THRESHOLD" name="ENV_SICKNESS_THRESHOLD" step="1">
+                            </div>
+                            <div>
+                                <label for="ENV_SICKNESS_CHANCE">Sickness Chance</label>
+                                <input type="number" id="ENV_SICKNESS_CHANCE" name="ENV_SICKNESS_CHANCE" step="0.0001">
+                            </div>
+                            <div>
+                                <label for="ENV_SICKNESS_DURATION">Sickness Duration</label>
+                                <input type="number" id="ENV_SICKNESS_DURATION" name="ENV_SICKNESS_DURATION" step="1">
+                            </div>
+                            <div>
+                                <label for="ENV_SICKNESS_METABOLISM_PENALTY">Sickness Metabolism Penalty</label>
+                                <input type="number" id="ENV_SICKNESS_METABOLISM_PENALTY" name="ENV_SICKNESS_METABOLISM_PENALTY" step="0.1">
                             </div>
                         </div>
                     </fieldset>
@@ -381,15 +494,11 @@
                                 <input type="number" id="ATTACK_COST_BASE" name="ATTACK_COST_BASE" step="1">
                             </div>
                             <div>
-                                <label for="VENGEANCE_DURATION">Vengeance Duration</label>
-                                <input type="number" id="VENGEANCE_DURATION" name="VENGEANCE_DURATION" step="1">
-                            </div>
-                            <div>
                                 <label for="ISOLATION_SOCIAL_LOSS_RATE">Isolation Social Loss</label>
                                 <input type="number" id="ISOLATION_SOCIAL_LOSS_RATE" name="ISOLATION_SOCIAL_LOSS_RATE" step="0.01">
                             </div>
                             <div>
-                                <label for="GLOBAL_KNOWLEDGE_LEARN_RATE">Global Know. Rate</label>
+                                <label for="GLOBAL_KNOWLEDGE_LEARN_RATE">Global Know. Learn</label>
                                 <input type="number" id="GLOBAL_KNOWLEDGE_LEARN_RATE" name="GLOBAL_KNOWLEDGE_LEARN_RATE" step="0.001">
                             </div>
                             <div>
@@ -644,69 +753,109 @@
     </div>
 
     <script>
-        // --- CONSTANTS MAPPING FROM PYTHON ---
-        // NEW: Refactored constants into objects for settings management
+        // --- CONSTANTS MAPPING FROM PYTHON (SYNCHRONIZED) ---
         
         const SETTINGS_STORAGE_KEY = 'aLifeSimSettings';
         
-        // --- NEW: Lists of genes and skills for iteration ---
+        // --- Lists of genes and skills for iteration (SYNCHRONIZED) ---
         const GENE_LIST = ['vision', 'speed', 'metabolism', 'aggression', 'builder', 'mating_drive', 'sociability', 'farming', 'personality'];
         const SKILL_LIST = ['foraging', 'social', 'building', 'navigation', 'combat', 'farming'];
+        
+        // --- PERSONALITY CONSTANTS (SYNCHRONIZED) ---
+        const PERSONALITY_COOPERATIVE = 1;
+        const PERSONALITY_ISOLATED = 2;
+        const PERSONALITY_JUDGMENTAL = 3; 
+        const PERSONALITY_AGGRESSIVE_COOPERATOR = 4;
 
-        // These are the hard-coded defaults
+        const PERSONALITY_CONFLICTS = {
+            [PERSONALITY_JUDGMENTAL]: [PERSONALITY_ISOLATED],
+            [PERSONALITY_AGGRESSIVE_COOPERATOR]: [PERSONALITY_JUDGMENTAL]
+        };
+        // --- END PERSONALITY ---
+
+        // These are the hard-coded defaults (SYNCHRONIZED WITH PYTHON life_simulation.py)
         const defaultSimSettings = {
+            // --- SIMULATION LIFE STAGE CONSTANTS ---
             ADULT_AGE: 300,
             OLD_AGE: 1500,
             MAX_AGE: 2000,
             
             // Love Parameters
             STARTING_LOVE: 10, 
-            LOVE_GAIN_EAT: 1.5,
-            LOVE_GAIN_SOCIAL: 2.5, 
+            LOVE_GAIN_EAT: 2.0,
+            LOVE_GAIN_SOCIAL: 2.0, 
             LOVE_GAIN_REST: 0.5,
-            LOVE_LOSS_STRUGGLE: 4, 
+            LOVE_LOSS_STRUGGLE: 5, 
             PASSIVE_LOVE_GAIN: 0.0,
 
             // PAUSE THRESHOLDS
             PAUSE_ENERGY_THRESHOLD: 100,
             PAUSE_SOCIAL_THRESHOLD: 80, 
 
-            // Environmental Degradation Constants
+            // --- ENVIRONMENTAL DEGRADATION CONSTANTS (NEW) ---
             ENV_HEALTH_MAX: 100.0,
-            ENV_PASSIVE_RECOVERY_RATE: 0.05,
-            ENV_DECAY_FOOD_GATHER: 0.1,   
-            ENV_DECAY_WOOD_GATHER: 0.2,   
-            ENV_HEAL_PLANT_BASE: 1.0,    
+            ENV_PASSIVE_RECOVERY_RATE: 0.10,
+            ENV_DECAY_FOOD_GATHER: 0.05,   
+            ENV_DECAY_WOOD_GATHER: 0.05,   
+            ENV_HEAL_PLANT_BASE: 2.0,    
+            ENV_DECAY_CAMPFIRE_POLLUTION: 0.02, 
+            ENV_OVERPOPULATION_RADIUS: 5,      
+            ENV_OVERPOPULATION_THRESHOLD: 10,   
+            ENV_OVERPOPULATION_DECAY: 0.05,     
+            ENV_SICKNESS_THRESHOLD: 30.0,      
+            ENV_SICKNESS_CHANCE: 0.001,        
+            ENV_SICKNESS_DURATION: 50,        
+            ENV_SICKNESS_METABOLISM_PENALTY: 0.4, 
+            // --- END ENVIRONMENTAL ---
 
-            // Apathy System Constants
+            // --- APATHY SYSTEM CONSTANTS (NEW) ---
             APATHY_DURATION: 50, 
             APATHY_METABOLISM_PENALTY: 0.5,
             APATHY_SOCIAL_LOSS_MULTIPLIER: 2.0,
-
-            // Critical Survival Thresholds
+            // --- END APATHY ---
+            
+            // --- VENGEANCE SYSTEM (NEW) ---
+            VENGEANCE_DURATION: 50,
+            // --- END VENGEANCE ---
+            
+            // --- CRITICAL SURVIVAL THRESHOLDS (SYNCHRONIZED) ---
             MIN_POPULATION_TARGET: 16, 
-            CRITICAL_FOOD_COUNT: 60, 
+            CRITICAL_FOOD_COUNT: 70, 
 
-            // Simulation Parameters
+            // --- SIMULATION PARAMETERS ---
             WORLD_WIDTH: 70,
             WORLD_HEIGHT: 30,
             STARTING_AGENTS: 15,
             STARTING_FOOD: 120,  
             STARTING_WOOD: 80,  
-            SIM_SPEED: 150, // Milliseconds for simulation tick
+            SIM_SPEED: 150, 
 
             // Resources spawn every N turns
             FOOD_SPAWN_RATE: 20,
             WOOD_SPAWN_RATE: 50,
 
+            // --- FRUIT PARAMETERS (NEW) ---
+            STARTING_FRUIT_BUSHES: 5,      
+            FRUIT_SPAWN_RATE: 200,          
+            FRUIT_GROW_TIME: 15,            
+            FRUIT_SEED_BASE_CHANCE: 0.5,    
+            MAX_FRUIT_CARRIED: 2,          
+            STARTING_FRUIT_SEEDS_MAX: 0,    
+            FRUIT_BENEFIT_ENERGY_VAL: 100,       
+            FRUIT_BENEFIT_SOCIAL_ENERGY_VAL: 60, 
+            FRUIT_BENEFIT_SOCIAL_SOCIAL_VAL: 80, 
+            FRUIT_BENEFIT_SPEED_ENERGY_VAL: 20,  
+            FRUIT_BENEFIT_SPEED_DURATION: 20,     
+            // --- END FRUIT ---
+
             // Farming Parameters
-            FOOD_FRESHNESS: 185, 
+            FOOD_FRESHNESS: 200, 
             GROW_TIME: 10, 
 
             // Tree Parameters
             TREE_GROW_TIME: 10, 
             WOOD_SEED_CHANCE: 0.5,
-            FOOD_SEED_BASE_CHANCE: 0.5,
+            FOOD_SEED_BASE_CHANCE: 1.0,
 
             // Campfire Parameters
             CAMPFIRE_BURN_TIME: 300, 
@@ -717,9 +866,8 @@
             HOME_DURABILITY_START: 3,
             HOME_DECAY_RATE: 400,
 
-            // --- Advanced Core Settings ---
-            VENGEANCE_DURATION: 50,
-            STARTING_ENERGY: 150,
+            // --- Advanced Core Settings (SYNCHRONIZED) ---
+            STARTING_ENERGY: 150, 
             STARTING_SOCIAL_MIN: 30.0,
             STARTING_SOCIAL_MAX: 80.0,
             MAX_FOOD_CARRY: 2,
@@ -733,96 +881,81 @@
             MAX_CHILDREN_PER_BIRTH: 3,
             ATTACK_DAMAGE_BASE: 15,
             ATTACK_COST_BASE: 10,
-            ISOLATION_SOCIAL_LOSS_RATE: 0.5,
-            GLOBAL_KNOWLEDGE_LEARN_RATE: 0.001,
+            ISOLATION_SOCIAL_LOSS_RATE: 0.5, 
+            GLOBAL_KNOWLEDGE_LEARN_RATE: 0.001, 
             SKILL_SHARING_RATE: 0.01,
-            LIBRARY_SOCIAL_GAIN: 2.5, // NEW SETTING
+            LIBRARY_SOCIAL_GAIN: 2.5, 
             
-            // --- NEW: Gene Configuration ---
+            // --- GENE PARAMETERS (Min, Max, Mutation Rate) ---
             GENE_VISION_MIN: 3.0, GENE_VISION_MAX: 10.0, GENE_VISION_MUTATE_RATE: 0.1,
             GENE_SPEED_MIN: 1.0, GENE_SPEED_MAX: 3.0, GENE_SPEED_MUTATE_RATE: 0.1,
             GENE_METABOLISM_MIN: 0.5, GENE_METABOLISM_MAX: 2.0, GENE_METABOLISM_MUTATE_RATE: 0.1,
             GENE_AGGRESSION_MIN: 0.0, GENE_AGGRESSION_MAX: 1.0, GENE_AGGRESSION_MUTATE_RATE: 0.1,
             GENE_BUILDER_MIN: 0.0, GENE_BUILDER_MAX: 1.0, GENE_BUILDER_MUTATE_RATE: 0.1,
-            GENE_MATING_DRIVE_MIN: 120.0, GENE_MATING_DRIVE_MAX: 160.0, GENE_MATING_DRIVE_MUTATE_RATE: 5.0,
+            GENE_MATING_DRIVE_MIN: 123.0, GENE_MATING_DRIVE_MAX: 160.0, GENE_MATING_DRIVE_MUTATE_RATE: 5.0,
             GENE_SOCIABILITY_MIN: 0.0, GENE_SOCIABILITY_MAX: 1.0, GENE_SOCIABILITY_MUTATE_RATE: 0.1,
             GENE_FARMING_MIN: 0.0, GENE_FARMING_MAX: 1.0, GENE_FARMING_MUTATE_RATE: 0.1,
             GENE_PERSONALITY_MIN: 1.0, GENE_PERSONALITY_MAX: 4.0, GENE_PERSONALITY_MUTATE_RATE: 0.5,
             
-            // --- NEW: Skill & Learning ---
-            // Maxes
+            // --- SKILL MAXES (SYNCHRONIZED) ---
             SKILL_FORAGE_MAX: 10.0,
             SKILL_SOCIAL_MAX: 10.0,
             SKILL_BUILD_MAX: 4.0,
             SKILL_NAV_MAX: 5.0,
             SKILL_COMBAT_MAX: 10.0,
             SKILL_FARM_MAX: 10.0,
-            // Gains
-            SKILL_GAIN_FORAGE: 0.1,
-            SKILL_GAIN_FARMING: 0.2,
-            SKILL_GAIN_COMBAT: 0.2,
-            SKILL_GAIN_BUILD_HOME: 0.5,
-            SKILL_GAIN_BUILD_FIRE: 0.2,
-            SKILL_GAIN_REPAIR_HOME: 0.2,
-            SKILL_GAIN_SOCIAL_CHAT: 0.001,
-            SKILL_GAIN_SOCIAL_LIBRARY: 0.01,
-            SKILL_GAIN_NAVIGATION: 0.001,
-            // Impacts
-            SKILL_FORAGE_ENERGY_BONUS: 20.0,
-            SKILL_FORAGE_SEED_BONUS: 0.05,
-            SKILL_BUILD_COST_REDUCTION: 0.5,
-            SKILL_NAV_COST_REDUCTION: 0.15,
-            SKILL_COMBAT_DAMAGE_BONUS: 8.0,
-            SKILL_COMBAT_COST_REDUCTION: 1.0,
-            SKILL_SOCIAL_GAIN_BONUS: 10.0,
-            SKILL_FARM_HEAL_MULTIPLIER: 0.1, // Replaces division (1.0 / 10.0)
-            // Knowledge
-            GLOBAL_KNOWLEDGE_UPTAKE_RATE: 0.0001,
+
+            // --- SKILL GAIN RATES/IMPACTS (SYNCHRONIZED) ---
+            SKILL_GAIN_FORAGE: 0.1, 
+            SKILL_GAIN_FARMING: 0.2, 
+            SKILL_GAIN_COMBAT: 0.2, 
+            SKILL_GAIN_BUILD_HOME: 0.5, 
+            SKILL_GAIN_BUILD_FIRE: 0.2, 
+            SKILL_GAIN_REPAIR_HOME: 0.2, 
+            SKILL_GAIN_SOCIAL_CHAT: 0.001, 
+            SKILL_GAIN_SOCIAL_LIBRARY: 0.01, 
+            SKILL_GAIN_NAVIGATION: 0.001, 
+            
+            SKILL_FORAGE_ENERGY_BONUS: 20.0, 
+            SKILL_FORAGE_SEED_BONUS: 0.05, 
+            SKILL_BUILD_COST_REDUCTION: 0.5, 
+            SKILL_NAV_COST_REDUCTION: 0.15, 
+            SKILL_COMBAT_DAMAGE_BONUS: 8.0, 
+            SKILL_COMBAT_COST_REDUCTION: 1.0, 
+            SKILL_SOCIAL_GAIN_BONUS: 10.0, 
+            SKILL_FARM_HEAL_MULTIPLIER: 0.1, 
+            GLOBAL_KNOWLEDGE_UPTAKE_RATE: 0.0001, 
         };
         
-        // This 'let' variable will hold the active settings (either default or loaded from storage)
         let simSettings = {};
-        
-        // --- NEW: Helper object for skill maxes, populated at runtime ---
         let SKILL_MAXES = {};
 
-        // --- STATIC CONSTANTS (Not configurable by user) ---
-        const PERSONALITY_COOPERATIVE = 1;
-        const PERSONALITY_ISOLATED = 2;
-        const PERSONALITY_JUDGMENTAL = 3; 
-        const PERSONALITY_AGGRESSIVE_COOPERATOR = 4;
-
-        // --- NEW: Personality Conflicts Map ---
-        const PERSONALITY_CONFLICTS = {
-            [PERSONALITY_JUDGMENTAL]: [PERSONALITY_ISOLATED],
-            [PERSONALITY_AGGRESSIVE_COOPERATOR]: [PERSONALITY_JUDGMENTAL]
-        };
-        
-        // --- REMOVED: GENE_RANGES is now built from simSettings ---
-
+        // --- COLORS (for Renderer) ---
         const COLORS = {
             CYAN_BRIGHT: '#22d3ee', // A
             CYAN_NORMAL: '#06b6d4', // f
-            MAGENTA_BRIGHT: '#d946ef', // m, L (Seek Library), M (Seek Mate)
-            MAGENTA_DIM: '#a855f7', // s
-            WHITE_BRIGHT: '#ffffff', // T, g, wellbeing
-            WHITE_NORMAL: '#f3f4f6', // t
+            MAGENTA_BRIGHT: '#d946ef', // m, L (Seek Library), M (Seek Mate), P (Social Fruit)
+            MAGENTA_DIM: '#a855f7', // s, b (Growing Bush)
+            WHITE_BRIGHT: '#ffffff', // T, g, wellbeing buff
+            WHITE_NORMAL: '#f3f4f6', // t, .
             YELLOW_BRIGHT: '#fcd34d', // b, W
             YELLOW_NORMAL: '#f59e0b', // w, E
             RED_BRIGHT: '#f87171', // X, r, V, R, C
-            RED_NORMAL: '#ef4444', // c
-            BLUE_BRIGHT: '#60a5fa', // H, C, k
-            BLUE_NORMAL: '#3b82f6', // B, h
-            BLUE_DIM: '#1d4ed8', // S(remote spot), .
+            RED_NORMAL: '#ef4444', // c, R (Energy Fruit)
+            BLUE_BRIGHT: '#60a5fa', // H, C, k, Speed Buff
+            BLUE_NORMAL: '#3b82f6', // B, h, B (Speed Fruit)
+            BLUE_DIM: '#1d4ed8', // S(remote spot)
             GREEN_BRIGHT: '#4ade80', // F, G
-            GREEN_NORMAL: '#10b981', // p, P
+            GREEN_NORMAL: '#10b981', // p, P, Sickness Buff
             GREEN_DIM: '#059669', // T (Tree)
             LIBRARY: '#a855f7', // L (Structure)
         };
         
+        // --- CHAR MAP (SYNCHRONIZED) ---
         const CHAR_MAP = {
             'WANDERING': { char: 'A', color: COLORS.CYAN_BRIGHT, dim: false },
             'FORAGING': { char: 'f', color: COLORS.CYAN_NORMAL, dim: false },
+            'FORAGING_FRUIT': { char: 'f', color: COLORS.CYAN_NORMAL, dim: false }, 
             'BUILDING': { char: 'b', color: COLORS.YELLOW_BRIGHT, dim: false },
             'WANDERING_TO_BUILD': { char: 'B', color: COLORS.BLUE_NORMAL, dim: false },
             'SEEKING_COMMUNITY': { char: 'C', color: COLORS.BLUE_BRIGHT, dim: false },
@@ -838,18 +971,18 @@
             'CLAIMING_HOME': { char: 'k', color: COLORS.BLUE_BRIGHT, dim: false },
             'REFUELING_CAMPFIRE': { char: 'R', color: COLORS.RED_BRIGHT, dim: false },
             'MATING': { char: 'm', color: COLORS.MAGENTA_BRIGHT, dim: false },
-            'SEEKING_MATE': { char: 'M', color: COLORS.MAGENTA_BRIGHT, dim: false }, // NEW
+            'SEEKING_MATE': { char: 'M', color: COLORS.MAGENTA_BRIGHT, dim: false }, 
             'ATTACKING': { char: 'X', color: COLORS.RED_BRIGHT, dim: false },
             'RETALIATING': { char: 'r', color: COLORS.RED_BRIGHT, dim: false },
-            'AVENGING': { char: 'V', color: COLORS.RED_BRIGHT, dim: false }, // NEW
+            'AVENGING': { char: 'V', color: COLORS.RED_BRIGHT, dim: false }, 
             'SEEKING_SOCIAL': { char: 't', color: COLORS.WHITE_NORMAL, dim: false },
             'COMMUNICATING': { char: 'T', color: COLORS.WHITE_BRIGHT, dim: false },
             'SEEKING_LIBRARY': { char: 'L', color: COLORS.MAGENTA_BRIGHT, dim: false },
             'SOCIAL_SAD': { char: 's', color: COLORS.MAGENTA_DIM, dim: true },
             'SOCIAL_HAPPY': { char: 'o', color: COLORS.MAGENTA_BRIGHT, dim: false },
         };
-
-        // --- HELPERS ---
+        
+        // --- UTILITY FUNCTIONS ---
 
         function clamp(value, minVal, maxVal) {
             return Math.max(minVal, Math.min(value, maxVal));
@@ -867,7 +1000,7 @@
             return key.split(',').map(Number);
         }
 
-        // --- AGENT CLASS ---
+        // --- AGENT CLASS (SYNCHRONIZED & DEBUGGED) ---
 
         class Agent {
             constructor(x, y, world, genes = null) {
@@ -876,43 +1009,59 @@
                 this.y = y;
                 this.char = 'A';
                 this.id = this.world.getNextAgentId();
-                this.energy = simSettings.STARTING_ENERGY;
+                
+                // Physical Needs
+                this.energy = simSettings.STARTING_ENERGY; 
                 this.wood_carried = 0;
                 this.food_carried = 0;
+                this.fruit_carried = []; // New: List of fruit type strings
                 this.mate_cooldown = 0;
-                this.seeds_carried = Math.floor(Math.random() * simSettings.MAX_STARTING_SEEDS);
-                this.wood_seeds_carried = Math.floor(Math.random() * simSettings.MAX_STARTING_WOOD_SEEDS);
-                this.social = Math.random() * (simSettings.STARTING_SOCIAL_MAX - simSettings.STARTING_SOCIAL_MIN) + simSettings.STARTING_SOCIAL_MIN;
-                this.home_location = null;
-                this.campfire_location = null;
-                this.social_buff_timer = 0;
-                this.contentment_buff_timer = 0;
-                this.apathy_timer = 0; 
-                this.state = "WANDERING";
-                this.exploration_vector = [0, 0];
+                this.seeds_carried = Math.floor(Math.random() * simSettings.MAX_STARTING_SEEDS); 
+                this.wood_seeds_carried = Math.floor(Math.random() * simSettings.MAX_STARTING_WOOD_SEEDS); 
+                this.fruit_seeds_carried = Math.floor(Math.random() * simSettings.STARTING_FRUIT_SEEDS_MAX); 
                 
-                this.memory = { 
-                    'food': new Set(), 
+                this.social = Math.random() * (simSettings.STARTING_SOCIAL_MAX - simSettings.STARTING_SOCIAL_MIN) + simSettings.STARTING_SOCIAL_MIN;
+                
+                this.home_location = null;
+                this.campfire_location = null; 
+                
+                // Buffs/Debuffs
+                this.social_buff_timer = 0; 
+                this.contentment_buff_timer = 0; 
+                this.apathy_timer = 0; 
+                this.sickness_timer = 0; 
+                this.speed_buff_timer = 0; 
+                
+                this.state = "WANDERING"; 
+                this.exploration_vector = [0, 0]; 
+                
+                // Agent Memory
+                this.memory = {
+                    'food': new Set(),
                     'wood': new Set(),
+                    'fruit': new Set(), 
                     'library': null 
                 };
-
-                this.struggle_timer = 0;
-                this.was_attacked_by = null;
                 
+                // Struggle & Retaliation
+                this.struggle_timer = 0; 
+                this.was_attacked_by = null; 
                 this.avenging_target_id = null; 
-                this.vengeance_timer = 0;
+                this.vengeance_timer = 0; 
                 
-                this.age = 0;
-                this.children_ids = new Set();
+                // Age Tracking and Parental Tracking
+                this.age = 0; 
+                this.children_ids = new Set(); 
                 this.parent_ids = new Set(); 
                 
+                // Love System
                 this.love = simSettings.STARTING_LOVE;
+                
                 this.skills = {
                     'foraging': 0.0, 'social': 0.0, 'building': 0.0,
                     'navigation': 0.0, 'combat': 0.0, 'farming': 0.0
                 };
-
+                
                 if (genes) {
                     this.genes = genes;
                 } else {
@@ -920,7 +1069,6 @@
                 }
             }
 
-            // MODIFIED: Uses simSettings and stabilization fix
             createRandomGenes(stabilize = false) {
                 const genes = {};
                 for (const gene of GENE_LIST) {
@@ -929,8 +1077,12 @@
                     const maxVal = simSettings[`GENE_${geneKey}_MAX`];
                     
                     if (stabilize) {
-                        // FIX 3: Removed hard-coded speed/metabolism stabilization
-                        if (gene === 'personality') {
+                        if (gene === 'metabolism') {
+                            genes[gene] = Math.random() * (0.8 - 0.5) + 0.5;
+                        } else if (gene === 'speed') {
+                            genes[gene] = Math.random() * (3.0 - 1.0) + 1.0;
+                        } else if (gene === 'personality') {
+                            // FIX: Ensure correct min/max for personality stabilization
                             if (Math.random() < 0.8) {
                                 genes[gene] = Math.floor(Math.random() * (PERSONALITY_ISOLATED - PERSONALITY_COOPERATIVE + 1)) + PERSONALITY_COOPERATIVE;
                             } else {
@@ -950,23 +1102,22 @@
                 return Math.floor(clamp(this.genes.personality || 1, 1, 4));
             }
 
-            // MODIFIED: Child metabolism fix (REVERTED)
             update() {
                 this.age += 1;
-                
-                if (this.age >= simSettings.OLD_AGE && this.energy < 100) { 
-                    this.die('NATURAL_DEATH_OLD');
-                    return;
-                }
                 
                 if (this.age >= simSettings.MAX_AGE) {
                     this.die('MAX_AGE');
                     return;
                 }
-
+                if (this.age >= simSettings.OLD_AGE && this.energy < 100) { 
+                    this.die('NATURAL_DEATH_OLD');
+                    return;
+                }
+                
                 let metabolismCost = this.genes['metabolism'];
                 let livingChildrenUnderAge = 0;
 
+                // --- Parental Care Cost ---
                 for (const childId of Array.from(this.children_ids)) {
                     const child = this.world.getAgentById(childId);
                     if (child) {
@@ -979,11 +1130,9 @@
                         this.children_ids.delete(childId);
                     }
                 }
-
                 const parentalCost = livingChildrenUnderAge * 0.2;
 
                 if (this.age < simSettings.ADULT_AGE) {
-                    // REVERTED FIX 2: Child metabolism is just parental cost (0)
                     metabolismCost = parentalCost;
                     if (this.energy < 50) { 
                         this.die('STARVATION_CHILD');
@@ -992,6 +1141,7 @@
                 } else {
                     metabolismCost += parentalCost;
                 }
+                // --- End Parental Care Cost ---
 
                 const currentPosKey = arrayToKey([this.x, this.y]);
                 if (this.world.homes[currentPosKey]) {
@@ -1024,16 +1174,27 @@
                 if (nearbyCampfirePosKey) {
                     metabolismCost *= 0.9;
                     this.social = clamp(this.social + 0.5, 0, 100);
+                    this.love = clamp(this.love + 0.1, 0, simSettings.STARTING_LOVE); 
                 }
 
+                // --- Buff/Debuff Applications ---
                 if (this.social_buff_timer > 0) {
-                    metabolismCost *= 0.8;
+                    metabolismCost *= 0.8; 
                     this.social_buff_timer--;
                 }
                 
                 if (this.apathy_timer > 0) {
                     metabolismCost += simSettings.APATHY_METABOLISM_PENALTY; 
                     this.apathy_timer--;
+                }
+                
+                if (this.sickness_timer > 0) {
+                    metabolismCost += simSettings.ENV_SICKNESS_METABOLISM_PENALTY;
+                    this.sickness_timer--;
+                }
+
+                if (this.speed_buff_timer > 0) {
+                    this.speed_buff_timer--;
                 }
 
                 if (this.vengeance_timer > 0) {
@@ -1042,12 +1203,16 @@
                         this.avenging_target_id = null;
                     }
                 }
+                // --- End Buff/Debuff Applications ---
+
 
                 this.energy -= metabolismCost;
+                
                 if (this.mate_cooldown > 0) {
                     this.mate_cooldown--;
                 }
                 
+                // --- Social Loss/Gain ---
                 let socialLossMultiplier = 1.0;
                 if (this.apathy_timer > 0) {
                     socialLossMultiplier = simSettings.APATHY_SOCIAL_LOSS_MULTIPLIER; 
@@ -1065,7 +1230,10 @@
                     }
                     this.social = clamp(this.social, 0, 100);
                 }
+                // --- End Social Loss/Gain ---
 
+
+                // --- Struggle and Love ---
                 if (this.energy < 30 || this.social < 20) {
                     this.struggle_timer++;
                     this.love = clamp(this.love - simSettings.LOVE_LOSS_STRUGGLE, 0, simSettings.STARTING_LOVE);
@@ -1074,11 +1242,13 @@
                     this.love = clamp(this.love + simSettings.PASSIVE_LOVE_GAIN, 0, simSettings.STARTING_LOVE);
                 }
 
+                // Apathy Trigger
                 if (this.love <= 0 && this.apathy_timer === 0) {
                     this.apathy_timer = simSettings.APATHY_DURATION;
                 }
+                // --- End Struggle and Love ---
                 
-                // Global Knowledge Retrieval
+                // --- Global Knowledge Retrieval (The Library Effect) ---
                 for (const skillKey in this.skills) {
                     const globalValue = this.world.globalSkillKnowledge[skillKey] || 0.0;
                     const currentSkill = this.skills[skillKey];
@@ -1086,6 +1256,7 @@
                         this.skills[skillKey] = clamp(currentSkill + simSettings.GLOBAL_KNOWLEDGE_UPTAKE_RATE, 0, SKILL_MAXES[skillKey]);
                     }
                 }
+                // --- End Global Knowledge Retrieval ---
 
                 if (this.energy <= 0) {
                     if (!this.world.agents.includes(this)) {
@@ -1101,10 +1272,13 @@
 
             decideState() {
                 const visionRadius = Math.floor(this.genes['vision']);
+                const currentPosKey = arrayToKey([this.x, this.y]);
                 
+                // --- NEW: Opportunistic Socializing (Check proximity 1.5) ---
                 const nearbyAgents = this.world.getNearestAgents(this.x, this.y, 1.5, this);
                 if (nearbyAgents.length > 0) {
-                    if (!(this.apathy_timer > 0 || this.was_attacked_by || this.avenging_target_id)) {
+                    // Don't chat if in crisis, combat, or sick
+                    if (!(this.apathy_timer > 0 || this.was_attacked_by || this.avenging_target_id || this.sickness_timer > 0)) {
                         const target = nearbyAgents[Math.floor(Math.random() * nearbyAgents.length)];
                         
                         if (!(target.was_attacked_by || target.avenging_target_id || target.state === "COMMUNICATING")) {
@@ -1118,7 +1292,7 @@
                             if (isLingering) {
                                 chance = 0.6;
                             }
-                            else if (["WANDERING", "FORAGING", "GETTING_WOOD"].includes(this.state) &&
+                            else if (["WANDERING", "FORAGING", "GETTING_WOOD", "FORAGING_FRUIT"].includes(this.state) && 
                                  this.social > 50 && this.genes['sociability'] > 0.5) {
                                 
                                 chance = 0.1;
@@ -1131,14 +1305,17 @@
                         }
                     }
                 }
+                // --- END: Opportunistic Socializing ---
 
                 const foodInSight = this.world.getNearestInSet(this.x, this.y, visionRadius, this.world.food);
+                const fruitInSight = this.world.getNearestInSet(this.x, this.y, visionRadius, this.world.fruits);
                 
                 const conserveEnergy = this.genes['metabolism'] < 0.8 && this.energy < 100;
 
                 const globalFoodCrisis = Object.keys(this.world.food).length < simSettings.CRITICAL_FOOD_COUNT;
                 const populationLow = this.world.agents.length < simSettings.MIN_POPULATION_TARGET;
                 
+                // Priority -2: Avenging (NEW)
                 if (this.avenging_target_id !== null) {
                     const target = this.world.getAgentById(this.avenging_target_id);
                     if (target) {
@@ -1150,17 +1327,22 @@
                     }
                 }
                 
+                // Priority -1: Retaliation
                 if (this.was_attacked_by !== null) {
                     this.state = "RETALIATING"; 
                     return;
                 }
 
-                if ((this.energy < 20 || this.social < 10) && foodInSight.length === 0 && this.memory.food.size === 0) {
+                // Priority 0: Hopeless/Sad
+                const totalFoodTargets = foodInSight.length + this.memory.food.size + fruitInSight.length + this.memory.fruit.size;
+                if ((this.energy < 20 || this.social < 10) && totalFoodTargets === 0) {
                     this.state = "SOCIAL_SAD"; 
                     return;
                 }
                 
-                if ((globalFoodCrisis || populationLow) && this.seeds_carried > 0) {
+                // --- CRITICAL SURVIVAL OVERRIDES ---
+                // Mandate 1: Plant if Crisis or Low Pop, AND I have seeds
+                if ((globalFoodCrisis || populationLow) && (this.seeds_carried > 0 || this.fruit_seeds_carried > 0)) { 
                     if (this.home_location) {
                         const [hx, hy] = keyToArray(this.home_location);
                         const dist = getDistance(this.x, this.y, hx, hy);
@@ -1175,30 +1357,53 @@
                     return;
                 }
 
-                if (this.energy > 100 && this.social > 50 && (this.wood_carried > 3 || this.food_carried >= 1)) {
+                // Mandate 2: Share if others are desperately needy
+                if (this.energy > 100 && this.social > 50 && (this.wood_carried > 3 || this.food_carried >= 1 || this.fruit_carried.length > 0)) { 
                     const nearbyAgents = this.world.getNearestAgents(this.x, this.y, visionRadius, this);
-                    const needyAgents = nearbyAgents.filter(a => a.energy < 40 && a.food_carried < 1); 
+                    const needyAgents = nearbyAgents.filter(a => a.energy < 40 && a.food_carried < 1 && a.fruit_carried.length === 0); 
                     if (needyAgents.length > 0) {
                         this.state = "SHARING"; 
                         return;
                     }
                 }
-                
+
+                // Mandate 3: Seek Mate if population is low
                 if (populationLow && this.age >= simSettings.ADULT_AGE &&
                     this.energy > this.genes['mating_drive'] && this.mate_cooldown === 0) {
                     
                     this.state = "SEEKING_MATE";
                     return; 
                 }
+                // --- END CRITICAL SURVIVAL OVERRIDES ---
 
+                // Priority 1: Survival (Energy)
                 let forageThreshold = 70;
                 if (this.age < simSettings.ADULT_AGE) forageThreshold = 100;
 
-                if (this.energy < forageThreshold || (this.food_carried > 0 && this.energy < simSettings.STARTING_ENERGY)) {
+                if (this.energy < forageThreshold || ((this.food_carried > 0 || this.fruit_carried.length > 0) && this.energy < 100)) { 
+                    
+                    // NEW: Opportunistic Fruit Seeking
+                    if (this.social < 40 && this.energy > 50 && this.sickness_timer === 0) {
+                        const socialFruits = this.world.getNearestFruitOfType(this.x, this.y, visionRadius, this.memory.fruit, 'social');
+                        if (socialFruits.length > 0) {
+                            this.state = "FORAGING_FRUIT";
+                            return;
+                        }
+                    }
+                    if (this.state === "WANDERING" && this.speed_buff_timer === 0 && Math.random() < 0.1 && this.sickness_timer === 0) {
+                        const speedFruits = this.world.getNearestFruitOfType(this.x, this.y, visionRadius, this.memory.fruit, 'speed');
+                        if (speedFruits.length > 0) {
+                            this.state = "FORAGING_FRUIT";
+                            return;
+                        }
+                    }
+                    // End Opportunistic Fruit Seeking
+
                     this.state = "FORAGING";
                     return;
                 }
                 
+                // Priority 1.5: Campfire Refuel
                 const nearbyCampfirePosKey = this.world.getNearest(this.x, this.y, visionRadius, this.world.campfires);
                 if (nearbyCampfirePosKey) {
                     const campfireTimer = this.world.campfires[nearbyCampfirePosKey];
@@ -1213,6 +1418,7 @@
                     }
                 }
 
+                // Priority 2: Home Repair
                 if (this.home_location) {
                     const homeData = this.world.homes[this.home_location];
                     const isOwner = homeData && homeData.owner_id === this.id;
@@ -1227,11 +1433,13 @@
                     }
                 }
                 
-                if (this.social < 60 && this.genes['sociability'] > 0.2) {
+                // Priority 3: Social Need
+                if (this.social < 60 && this.genes['sociability'] > 0.2 && this.sickness_timer === 0) {
                     this.state = "SEEKING_SOCIAL"; 
                     return;
                 }
                 
+                // Priority 4: Claim or Build Home
                 if (this.home_location === null) {
                     const emptyHomePos = this.world.getEmptyHome();
                     if (emptyHomePos) {
@@ -1289,7 +1497,8 @@
                     }
                 }
                 
-                if (this.seeds_carried > 0 && this.energy > 80 && this.genes['farming'] > Math.random()) {
+                // Priority 5: Farming (Food/Fruit Seeds)
+                if ((this.seeds_carried > 0 || this.fruit_seeds_carried > 0) && this.energy > 80 && this.genes['farming'] > Math.random()) {
                     if (this.home_location) {
                         const [hx, hy] = keyToArray(this.home_location);
                         const dist = getDistance(this.x, this.y, hx, hy);
@@ -1304,6 +1513,7 @@
                     return;
                 }
 
+                // Priority 5.5: Planting Trees
                 if (this.wood_seeds_carried > 0 && this.energy > 80 &&
                     (Object.keys(this.world.wood).length < simSettings.STARTING_WOOD) && (this.genes['builder'] > Math.random())) { 
                     
@@ -1321,7 +1531,8 @@
                     return;
                 }
                     
-                const nearbyActiveFire = this.world.getNearest(this.x, this.y, 5, this.world.campfires);
+                // Priority 6: Build Campfire
+                const nearbyActiveFire = this.world.getNearest(this.x, this.y, visionRadius + 5, this.world.campfires);
 
                 if (this.energy > 120 && this.social > 50 && 
                     this.genes['builder'] > 0.5 && 
@@ -1344,21 +1555,25 @@
                     }
                 }
                 
-                if (this.energy > 100 && this.social > 50 && (this.wood_carried > 3 || this.food_carried >= 1)) {
+                // Priority 7: Share Resources (Standard Share)
+                if (this.energy > 100 && this.social > 50 && (this.wood_carried > 3 || this.food_carried >= 1 || this.fruit_carried.length > 0)) {
                     const nearbyAgents = this.world.getNearestAgents(this.x, this.y, visionRadius, this);
-                    const needyAgents = nearbyAgents.filter(a => a.energy < 70 && a.food_carried < 1); 
+                    const needyAgents = nearbyAgents.filter(a => a.energy < 70 && a.food_carried < 1 && a.fruit_carried.length === 0); 
                     if (needyAgents.length > 0) {
                         this.state = "SHARING"; 
                         return;
                     }
                 }
                 
+                // Default State: Wandering
                 this.state = "WANDERING";
             }
 
             executeAction() {
                 const visionRadius = Math.floor(this.genes['vision']);
+                const currentPosKey = arrayToKey([this.x, this.y]);
                 
+                // Update Library Memory
                 if (this.memory.library === null) {
                     const [lx, ly] = this.world.libraryLocation;
                     if (getDistance(this.x, this.y, lx, ly) <= visionRadius) {
@@ -1368,11 +1583,14 @@
 
                 const foodInSight = this.world.getNearestInSet(this.x, this.y, visionRadius, this.world.food);
                 const woodInSight = this.world.getNearestInSet(this.x, this.y, visionRadius, this.world.wood);
+                const fruitInSight = this.world.getNearestInSet(this.x, this.y, visionRadius, this.world.fruits); 
                 const agents = this.world.getNearestAgents(this.x, this.y, visionRadius, this);
 
                 const bestFoodTarget = this.getClosestCombinedTarget('food', foodInSight);
                 const bestWoodTarget = this.getClosestCombinedTarget('wood', woodInSight);
+                const bestFruitTarget = this.getClosestCombinedTarget('fruit', fruitInSight); 
 
+                // --- Handle "Anger" (Aggression) ---
                 const agentsOnTile = this.world.agents.filter(a => a.x === this.x && a.y === this.y && a !== this);
                 if (agentsOnTile.length > 0) {
                     const target = agentsOnTile[Math.floor(Math.random() * agentsOnTile.length)];
@@ -1386,32 +1604,89 @@
                         return; 
                     }
                 }
+                // --- End Aggression ---
                 
                 switch (this.state) {
                     case "FORAGING":
-                        const currentPosKey = arrayToKey([this.x, this.y]);
-                        if (this.food_carried > 0 && this.energy < simSettings.STARTING_ENERGY) {
+                        // Prioritize eating carried food/fruit if energy < 100
+                        if ((this.food_carried > 0 || this.fruit_carried.length > 0) && this.energy < 100) {
                             
-                            const needyNeighbors = agents.filter(a => a.energy < 40 && a.food_carried < 1);
+                            const needyNeighbors = agents.filter(a => a.energy < 40 && a.food_carried < 1 && a.fruit_carried.length === 0);
                             
                             if (needyNeighbors.length === 0) {
-                                this.consumeFood();
+                                if (this.fruit_carried.length > 0) {
+                                    this.consumeFruit();
+                                } else {
+                                    this.consumeFood();
+                                }
                             } else {
                                 this.state = "SHARING";
                                 return;
                             }
                             
-                        } else if (this.world.food[currentPosKey] && this.food_carried < simSettings.MAX_FOOD_CARRY) {
+                        } 
+                        // Pick up food
+                        else if (this.world.food[currentPosKey] && this.food_carried < simSettings.MAX_FOOD_CARRY) {
                             this.pickupFood();
-                        } else if (bestFoodTarget) { 
+                        }
+                        // Pick up fruit
+                        else if (this.world.fruits[currentPosKey] && this.fruit_carried.length < simSettings.MAX_FRUIT_CARRIED) {
+                            this.pickupFruit();
+                        }
+                        // Move to nearest food (memory or sight)
+                        else if (bestFoodTarget) { 
                             this.moveTowards(bestFoodTarget[0], bestFoodTarget[1]);
                             if (getDistance(this.x, this.y, bestFoodTarget[0], bestFoodTarget[1]) < 2.0 && !this.world.food[arrayToKey(bestFoodTarget)]) {
                                 this.memory.food.delete(arrayToKey(bestFoodTarget));
                             }
-                        } else {
+                        }
+                        // Move to nearest fruit (memory or sight)
+                        else if (bestFruitTarget) {
+                            this.moveTowards(bestFruitTarget[0], bestFruitTarget[1]);
+                            if (getDistance(this.x, this.y, bestFruitTarget[0], bestFruitTarget[1]) < 2.0 && !this.world.fruits[arrayToKey(bestFruitTarget)]) {
+                                this.memory.fruit.delete(arrayToKey(bestFruitTarget));
+                            }
+                        }
+                        // Explore
+                        else {
                             this.moveExploring(); 
                         }
                         break;
+                        
+                    // --- NEW: FORAGING_FRUIT State ---
+                    case "FORAGING_FRUIT":
+                        if (this.fruit_carried.length > 0 && this.energy < 100) {
+                            this.consumeFruit();
+                        } else if (this.world.fruits[currentPosKey] && this.fruit_carried.length < simSettings.MAX_FRUIT_CARRIED) {
+                            this.pickupFruit();
+                        } else {
+                            let targetPos = null;
+
+                            const socialFruits = this.world.getNearestFruitOfType(this.x, this.y, visionRadius, this.memory.fruit, 'social');
+                            if (this.social < 40 && socialFruits.length > 0) {
+                                targetPos = socialFruits[0];
+                            }
+                            if (targetPos === null && this.speed_buff_timer === 0) {
+                                const speedFruits = this.world.getNearestFruitOfType(this.x, this.y, visionRadius, this.memory.fruit, 'speed');
+                                if (speedFruits.length > 0) {
+                                    targetPos = speedFruits[0];
+                                }
+                            }
+                            if (targetPos === null && bestFruitTarget) {
+                                targetPos = bestFruitTarget;
+                            }
+
+                            if (targetPos) {
+                                this.moveTowards(targetPos[0], targetPos[1]);
+                                if (getDistance(this.x, this.y, targetPos[0], targetPos[1]) < 2.0 && !this.world.fruits[arrayToKey(targetPos)]) {
+                                    this.memory.fruit.delete(arrayToKey(targetPos));
+                                }
+                            } else {
+                                this.state = "WANDERING"; 
+                            }
+                        }
+                        break;
+                    // --- END FORAGING_FRUIT State ---
 
                     case "GETTING_WOOD":
                         const currentWoodPosKey = arrayToKey([this.x, this.y]);
@@ -1438,7 +1713,6 @@
                     case "REPAIRING_HOME":
                         if (this.home_location) {
                             const [hx, hy] = keyToArray(this.home_location);
-                            // FIX 1: Corrected this.y typo
                             const dist = getDistance(this.x, this.y, hx, hy);
                             if (dist < 2.0) {
                                 if (this.wood_carried > 0) {
@@ -1529,7 +1803,13 @@
 
                     case "PLANTING":
                         if (this.isClearTile(this.x, this.y)) {
-                            this.plantSeed();
+                            if (this.fruit_seeds_carried > 0) {
+                                this.plantFruitSeed();
+                            } else if (this.seeds_carried > 0) {
+                                this.plantSeed();
+                            } else {
+                                this.state = "WANDERING";
+                            }
                         } else {
                             this.moveRandomly(0.5, 0.0);
                         }
@@ -1566,27 +1846,27 @@
                         break;
 
                     case "SHARING":
-                        const nearbyAgents = this.world.getNearestAgents(this.x, this.y, visionRadius, this);
-                        let needyAgents = nearbyAgents.filter(a => a.energy < 40 && a.food_carried < 1); 
-                        
-                        if (needyAgents.length === 0) {
-                             needyAgents = nearbyAgents.filter(a => a.energy < 70 && a.food_carried < 1); 
+                        const needyAgents = agents.filter(a => a.energy < 40 && a.food_carried < 1 && a.fruit_carried.length === 0); 
+                        let target = needyAgents.length > 0 ? needyAgents[0] : null;
+
+                        if (target === null) {
+                            const standardNeedyAgents = agents.filter(a => a.energy < 70 && a.food_carried < 1 && a.fruit_carried.length === 0);
+                            target = standardNeedyAgents.length > 0 ? standardNeedyAgents[0] : null;
                         }
 
-                        if (needyAgents.length > 0) {
-                            const target = needyAgents[0];
+                        if (target) {
                             if (getDistance(this.x, this.y, target.x, target.y) < 2.0) {
-                                if (this.food_carried >= 1) {
+                                if (this.fruit_carried.length > 0) {
+                                    const fruitType = this.fruit_carried.pop();
+                                    target.fruit_carried.push(fruitType);
+                                } else if (this.food_carried >= 1) {
                                     this.food_carried--;
                                     target.food_carried++;
-                                    this.state = "WANDERING"; 
                                 } else if (this.wood_carried >= 1) {
                                     this.wood_carried--;
                                     target.wood_carried++;
-                                    this.state = "WANDERING";
-                                } else {
-                                     this.state = "WANDERING";
-                                }
+                                } 
+                                this.state = "WANDERING"; 
                             } else {
                                 this.moveTowards(target.x, target.y);
                             }
@@ -1614,8 +1894,6 @@
                     case "AVENGING":
                         const targetParent = this.world.getAgentById(this.avenging_target_id);
                         if (targetParent) {
-                            
-                            const visionRadius = Math.floor(this.genes['vision']);
                             const potentialRecruits = this.world.getNearestAgents(this.x, this.y, visionRadius, this)
                                 .filter(a => a.id !== targetParent.id && a.avenging_target_id === null);
                             
@@ -1681,7 +1959,7 @@
                         break;
                     
                     case "SEEKING_SOCIAL":
-                        const nearbyCampfire = this.world.getNearest(this.x, this.y, visionRadius, this.world.campfires);
+                        const nearbyCampfire = this.world.getNearest(this.x, this.y, visionRadius + 5, this.world.campfires); 
                         
                         let targetAgent = null;
                         
@@ -1707,10 +1985,12 @@
                             } else {
                                 this.moveTowards(targetAgent.x, targetAgent.y);
                             }
-                        } else if (nearbyCampfire) {
+                        } 
+                        else if (nearbyCampfire) {
                             const [cx, cy] = keyToArray(nearbyCampfire);
                             this.moveTowards(cx, cy);
-                        } else {
+                        } 
+                        else {
                             if (this.memory.library) {
                                 const [lx, ly] = this.memory.library;
                                 this.moveTowards(lx, ly);
@@ -1724,9 +2004,14 @@
                     case "SOCIAL_HAPPY": 
                         if (this.energy > simSettings.PAUSE_ENERGY_THRESHOLD && this.social > simSettings.PAUSE_SOCIAL_THRESHOLD) {
                             
+                            const nearbyCampfireStory = this.world.getNearest(this.x, this.y, 2, this.world.campfires);
+                            if (nearbyCampfireStory && Math.random() < 0.1) {
+                                this.broadcastSkillToLibrary();
+                            }
+                            
                             if (Math.random() < 0.2 && this.memory.library) { 
                                 const [lx, ly] = this.memory.library;
-                                if (getDistance(this.x, this.y, lx, ly) > 5.0) {
+                                if (getDistance(this.x, this.y, lx, ly) > 5.0) { 
                                     this.moveTowards(lx, ly);
                                     this.state = "SEEKING_LIBRARY"; 
                                     return;
@@ -1744,7 +2029,6 @@
                         
                         if (getDistance(this.x, this.y, lx, ly) < 2.0) {
                             this.skills.social = clamp(this.skills.social + simSettings.SKILL_GAIN_SOCIAL_LIBRARY, 0, SKILL_MAXES.social);
-                            // FIX 4: Added social need fulfillment using new setting
                             this.social = clamp(this.social + simSettings.LIBRARY_SOCIAL_GAIN, 0, 100);
                             this.state = "WANDERING";
                         } else {
@@ -1756,6 +2040,8 @@
                         this.love = clamp(this.love + simSettings.LOVE_GAIN_REST, 0, simSettings.STARTING_LOVE);
                         if (this.energy < 20 && bestFoodTarget) {
                             this.moveTowards(bestFoodTarget[0], bestFoodTarget[1]);
+                        } else if (this.energy < 20 && bestFruitTarget) {
+                            this.moveTowards(bestFruitTarget[0], bestFruitTarget[1]);
                         } else if (this.social < 10) {
                             const nearestCampfireSad = this.world.getNearest(this.x, this.y, visionRadius, this.world.campfires);
                             if (agents.length > 0) {
@@ -1780,6 +2066,11 @@
                     case "WANDERING":
                         if (this.energy > simSettings.PAUSE_ENERGY_THRESHOLD && this.social > simSettings.PAUSE_SOCIAL_THRESHOLD) {
                             
+                            const nearbyCampfireStory = this.world.getNearest(this.x, this.y, 2, this.world.campfires);
+                            if (nearbyCampfireStory && Math.random() < 0.1) {
+                                this.broadcastSkillToLibrary();
+                            }
+                            
                             if (Math.random() < 0.2 && this.memory.library) { 
                                 const [lx_w, ly_w] = this.memory.library;
                                 if (getDistance(this.x, this.y, lx_w, ly_w) > 5.0) { 
@@ -1791,6 +2082,7 @@
                         } else {
                             foodInSight.forEach(posKey => this.memory.food.add(posKey));
                             woodInSight.forEach(posKey => this.memory.wood.add(posKey));
+                            fruitInSight.forEach(posKey => this.memory.fruit.add(posKey)); 
                             this.moveExploring();
                         }
                         break;
@@ -1800,7 +2092,7 @@
                         break;
                 }
             }
-
+            
             isClearTile(x, y) {
                 const posKey = arrayToKey([x, y]);
                 if (posKey === arrayToKey(this.world.libraryLocation)) {
@@ -1812,6 +2104,8 @@
                 if (this.world.growingPlants[posKey]) return false;
                 if (this.world.growingTrees[posKey]) return false;
                 if (this.world.campfires[posKey]) return false;
+                if (this.world.fruits[posKey]) return false;
+                if (this.world.growingFruitBushes[posKey]) return false;
                 return true;
             }
 
@@ -1829,6 +2123,7 @@
             moveTowards(targetX, targetY) {
                 this.exploration_vector = [0, 0];
                 let steps = Math.floor(this.genes['speed']);
+                if (this.speed_buff_timer > 0) steps += 2; 
                 if (steps < 1) steps = 1;
                 
                 for (let i = 0; i < steps; i++) {
@@ -1867,6 +2162,7 @@
 
             moveRandomly(speedFactor, persistentChance) {
                 let steps = Math.floor(this.genes['speed'] * speedFactor);
+                if (this.speed_buff_timer > 0) steps += 2;
                 if (steps < 1) steps = 1;
 
                 for (let i = 0; i < steps; i++) {
@@ -1934,6 +2230,8 @@
                 }
                 return nearestItem;
             }
+            
+            // --- RESOURCE METHODS (UPDATED for Environment/Skill/Fruit) ---
 
             consumeFood() {
                 if (this.food_carried > 0) {
@@ -1943,12 +2241,46 @@
                     this.energy += energyGain;
                     this.love = clamp(this.love + simSettings.LOVE_GAIN_EAT, 0, simSettings.STARTING_LOVE);
                     
-                    const decayAmount = simSettings.ENV_DECAY_FOOD_GATHER * (1.0 - (this.skills.foraging / 10.0));
+                    // Environmental Degradation
+                    const decayAmount = simSettings.ENV_DECAY_FOOD_GATHER * (1.0 - (this.skills.foraging / SKILL_MAXES.foraging));
                     this.world.environmentalHealth = clamp(this.world.environmentalHealth - decayAmount, 0, simSettings.ENV_HEALTH_MAX);
 
+                    // Seed Chance
                     const foragingChance = simSettings.FOOD_SEED_BASE_CHANCE + (this.skills.foraging * simSettings.SKILL_FORAGE_SEED_BONUS);
                     if (Math.random() < foragingChance) {
                         this.seeds_carried++;
+                    }
+
+                    this.state = "WANDERING";
+                }
+            }
+            
+            consumeFruit() {
+                if (this.fruit_carried.length > 0) {
+                    const fruitType = this.fruit_carried.pop();
+                    this.skills.foraging = clamp(this.skills.foraging + simSettings.SKILL_GAIN_FORAGE, 0, SKILL_MAXES.foraging);
+                    
+                    // Apply Benefits based on type
+                    if (fruitType === 'energy') {
+                        this.energy += simSettings.FRUIT_BENEFIT_ENERGY_VAL;
+                    } else if (fruitType === 'social') {
+                        this.energy += simSettings.FRUIT_BENEFIT_SOCIAL_ENERGY_VAL;
+                        this.social = clamp(this.social + simSettings.FRUIT_BENEFIT_SOCIAL_SOCIAL_VAL, 0, 100);
+                    } else if (fruitType === 'speed') {
+                        this.energy += simSettings.FRUIT_BENEFIT_SPEED_ENERGY_VAL;
+                        this.speed_buff_timer = simSettings.FRUIT_BENEFIT_SPEED_DURATION;
+                    }
+                    
+                    this.love = clamp(this.love + simSettings.LOVE_GAIN_EAT, 0, simSettings.STARTING_LOVE);
+
+                    // Environmental Degradation
+                    const decayAmount = simSettings.ENV_DECAY_FOOD_GATHER * (1.0 - (this.skills.foraging / SKILL_MAXES.foraging));
+                    this.world.environmentalHealth = clamp(this.world.environmentalHealth - decayAmount, 0, simSettings.ENV_HEALTH_MAX);
+
+                    // Fruit Seed Chance
+                    const foragingChance = simSettings.FRUIT_SEED_BASE_CHANCE + (this.skills.foraging * simSettings.SKILL_FORAGE_SEED_BONUS);
+                    if (Math.random() < foragingChance) {
+                        this.fruit_seeds_carried++;
                     }
 
                     this.state = "WANDERING";
@@ -1966,15 +2298,29 @@
                 }
             }
 
+            pickupFruit() {
+                const posKey = arrayToKey([this.x, this.y]);
+                if (this.world.fruits[posKey] && this.fruit_carried.length < simSettings.MAX_FRUIT_CARRIED) {
+                    const fruitType = this.world.fruitTypes[posKey];
+                    delete this.world.fruits[posKey];
+                    delete this.world.fruitTypes[posKey];
+                    this.fruit_carried.push(fruitType);
+                    this.memory.fruit.delete(posKey);
+                    this.state = "WANDERING";
+                }
+            }
+
             takeWood() {
                 const posKey = arrayToKey([this.x, this.y]);
                 if (this.world.wood[posKey] && this.wood_carried < simSettings.MAX_WOOD_CARRY) {
                     delete this.world.wood[posKey];
                     this.wood_carried++;
                     
-                    const decayAmount = simSettings.ENV_DECAY_WOOD_GATHER * (1.0 - (this.skills.foraging / 10.0));
+                    // Environmental Degradation
+                    const decayAmount = simSettings.ENV_DECAY_WOOD_GATHER * (1.0 - (this.skills.foraging / SKILL_MAXES.foraging));
                     this.world.environmentalHealth = clamp(this.world.environmentalHealth - decayAmount, 0, simSettings.ENV_HEALTH_MAX);
                     
+                    // Wood Seed Chance
                     if (Math.random() < simSettings.WOOD_SEED_CHANCE) {
                         this.wood_seeds_carried++;
                     }
@@ -2081,14 +2427,14 @@
                     const maxSkill = SKILL_MAXES[skill];
                     
                     if (selfSkill > partnerSkill) {
-                        partner.skills[skill] = clamp(partnerSkill + learningRate, 0, maxSkill);
+                        partner.skills[skill] = clamp(partner.skills[skill] + learningRate, 0, maxSkill);
                         if (selfSkill > 2.0) { 
-                            this.world.globalSkillKnowledge[skill] = clamp((this.world.globalSkillKnowledge[skill] || 0.0) + simSettings.GLOBAL_KNOWLEDGE_LEARN_RATE, 0, maxSkill);
+                            this.world.globalSkillKnowledge[skill] = clamp((this.world.globalSkillKnowledge[skill] || 0.0) + simSettings.GLOBAL_KNOWLEDGE_UPTAKE_RATE, 0, maxSkill);
                         }
                     } else if (partnerSkill > selfSkill) {
                         this.skills[skill] = clamp(selfSkill + learningRate, 0, maxSkill);
                         if (partnerSkill > 2.0) {
-                            this.world.globalSkillKnowledge[skill] = clamp((this.world.globalSkillKnowledge[skill] || 0.0) + simSettings.GLOBAL_KNOWLEDGE_LEARN_RATE, 0, maxSkill);
+                            this.world.globalSkillKnowledge[skill] = clamp((this.world.globalSkillKnowledge[skill] || 0.0) + simSettings.GLOBAL_KNOWLEDGE_UPTAKE_RATE, 0, maxSkill);
                         }
                     }
                 }
@@ -2097,6 +2443,28 @@
                     partner.memory.library = this.memory.library;
                 } else if (partner.memory.library && !this.memory.library) {
                     this.memory.library = partner.memory.library;
+                }
+            }
+
+            broadcastSkillToLibrary() {
+                if (!this.skills) return;
+                
+                let highestSkillName = null;
+                let highestSkillValue = 0;
+                
+                for (const skillName of SKILL_LIST) {
+                    const value = this.skills[skillName];
+                    if (value > highestSkillValue) {
+                        highestSkillValue = value;
+                        highestSkillName = skillName;
+                    }
+                }
+
+                if (highestSkillName && highestSkillValue > 1.0) {
+                    const currentGlobal = this.world.globalSkillKnowledge[highestSkillName] || 0.0;
+                    if (highestSkillValue > currentGlobal) {
+                         this.world.globalSkillKnowledge[highestSkillName] = clamp(currentGlobal + (simSettings.GLOBAL_KNOWLEDGE_UPTAKE_RATE), 0, SKILL_MAXES[highestSkillName]);
+                    }
                 }
             }
 
@@ -2136,7 +2504,7 @@
                 partner.skills.social = clamp(partner.skills.social + simSettings.SKILL_GAIN_SOCIAL_CHAT, 0, SKILL_MAXES.social); 
                 
                 const socialGain = 50 + (this.skills.social * simSettings.SKILL_SOCIAL_GAIN_BONUS);
-                const partnerSocialGain = 20 + (partner.skills.social * (simSettings.SKILL_SOCIAL_GAIN_BONUS / 2.0)); // Partner gains less
+                const partnerSocialGain = 20 + (partner.skills.social * (simSettings.SKILL_SOCIAL_GAIN_BONUS / 2.0)); 
                 
                 this.social = clamp(this.social + socialGain, 0, 100);
                 partner.social = clamp(partner.social + partnerSocialGain, 0, 100);
@@ -2219,9 +2587,28 @@
                     this.state = "WANDERING";
                 }
             }
+            
+            plantFruitSeed() {
+                 if (this.fruit_seeds_carried > 0) {
+                    this.fruit_seeds_carried--;
+                    this.energy -= 10;
+                    
+                    const posKey = arrayToKey([this.x, this.y]);
+                    this.world.growingFruitBushes[posKey] = simSettings.FRUIT_GROW_TIME;
+                    this.world.fruitTypes[posKey] = ['energy', 'social', 'speed'][Math.floor(Math.random() * 3)];
+                    
+                    this.skills.farming = clamp(this.skills.farming + simSettings.SKILL_GAIN_FARMING, 0, SKILL_MAXES.farming);
+                    
+                    const healAmount = simSettings.ENV_HEAL_PLANT_BASE * (this.skills.farming * simSettings.SKILL_FARM_HEAL_MULTIPLIER);
+                    this.world.environmentalHealth = clamp(this.world.environmentalHealth + healAmount, 0, simSettings.ENV_HEALTH_MAX);
+
+                    this.state = "WANDERING";
+                }
+            }
 
             die(reason = 'UNKNOWN') {
                 
+                // --- NEW: Vengeance System on Child Death ---
                 if (this.age < simSettings.ADULT_AGE && this.parent_ids.size > 0) {
                     const witnesses = [];
                     for (const agent of this.world.agents) {
@@ -2261,12 +2648,15 @@
                         }
                     }
                 }
+                // --- END Vengeance System ---
                 
                 
                 this.world.deathCauses[reason] = (this.world.deathCauses[reason] || 0) + 1;
                 
-                const deathLocationKey = arrayToKey([this.x, this.y]);
+                const deathLocation = [this.x, this.y];
+                const deathLocationKey = arrayToKey(deathLocation);
                 
+                // Drop all carried items
                 for (let i = 0; i < this.wood_carried; i++) {
                     this.world.wood[deathLocationKey] = true;
                 }
@@ -2275,7 +2665,21 @@
                     this.world.food[deathLocationKey] = true;
                     this.world.foodFreshness[deathLocationKey] = simSettings.FOOD_FRESHNESS;
                 }
+
+                // Drop carried fruit
+                for (const fruitType of this.fruit_carried) {
+                    this.world.addFruit(deathLocation, fruitType);
+                }
+
+                // Auto-plant seeds
+                this.world.autoPlantOnDeath(
+                    deathLocation, 
+                    this.seeds_carried, 
+                    this.wood_seeds_carried, 
+                    this.fruit_seeds_carried
+                );
                 
+                // Remove self from parent's child list
                 const dyingAgentId = this.id;
                 for (const parent_id of this.parent_ids) {
                     const parent = this.world.getAgentById(parent_id);
@@ -2286,13 +2690,13 @@
                 
                 this.world.agents = this.world.agents.filter(a => a.id !== this.id);
                 
-                if (this.home_location && this.world.homes[this.home_location]) {
+                if (this.home_location && this.world.homes[this.home_location] && this.world.homes[this.home_location].owner_id === this.id) {
                     this.world.homes[this.home_location].owner_id = null;
                 }
             }
         }
 
-        // --- WORLD CLASS ---
+        // --- WORLD CLASS (SYNCHRONIZED & DEBUGGED) ---
 
         class World {
             constructor(width, height) {
@@ -2305,10 +2709,14 @@
                 this.food = {};
                 this.wood = {};
                 
-                this.generationCount = 0;
+                this.fruits = {};
+                this.fruitTypes = {}; 
+                this.growingFruitBushes = {}; 
                 
                 this.environmentalHealth = simSettings.ENV_HEALTH_MAX;
-
+                
+                this.generationCount = 0;
+                
                 this.deathCauses = {
                     'MAX_AGE': 0, 
                     'STARVATION_ADULT': 0, 
@@ -2326,7 +2734,6 @@
                 this.foodFreshness = {};
                 this.campfires = {};
 
-                // MODIFIED: All knowledge starts at 0
                 this.globalSkillKnowledge = {
                     'foraging': 0.0, 'social': 0.0, 'building': 0.0,
                     'navigation': 0.0, 'combat': 0.0, 'farming': 0.0
@@ -2361,15 +2768,55 @@
                 this.agents.push(agent);
                 return agent;
             }
+            
+            addFruit([x, y], fruitType) {
+                const posKey = arrayToKey([x, y]);
+                this.fruits[posKey] = true;
+                this.fruitTypes[posKey] = fruitType;
+            }
+            
+            getNearestFruitOfType(x, y, radius, memory, targetType) {
+                const results = [];
+                
+                // Check visible area
+                for(const posKey in this.fruits) {
+                    if (this.fruitTypes[posKey] === targetType) {
+                        const [ix, iy] = keyToArray(posKey);
+                        if (getDistance(x, y, ix, iy) <= radius) {
+                             results.push([ix, iy]);
+                        }
+                    }
+                }
+                // Check memory (memory stores posKey strings)
+                for (const posKey of memory) {
+                    if (this.fruitTypes[posKey] === targetType) {
+                        const [ix, iy] = keyToArray(posKey);
+                         results.push([ix, iy]);
+                    }
+                }
+                
+                if (results.length === 0) return [];
+                    
+                // Sort by distance (simplification of original Python logic)
+                results.sort((a, b) => 
+                    getDistance(x, y, a[0], a[1]) - getDistance(x, y, b[0], b[1])
+                );
+                
+                return results;
+            }
 
             spawnResources() {
                 const foodYieldMultiplier = this.environmentalHealth / simSettings.ENV_HEALTH_MAX;
                 const foodSpawnCount = Math.floor(5 * foodYieldMultiplier);
                 const woodSpawnCount = Math.floor(3 * foodYieldMultiplier);
+                const fruitSpawnCount = Math.floor(2 * foodYieldMultiplier); 
+                const maxFood = this.width * this.height * 0.1;
+                const maxWood = this.width * this.height * 0.05;
+                const maxFruit = this.width * this.height * 0.05;
 
                 if (this.turn % simSettings.FOOD_SPAWN_RATE === 0) {
                     for (let i = 0; i < foodSpawnCount; i++) { 
-                        if (Object.keys(this.food).length < (this.width * this.height * 0.1)) {
+                        if (Object.keys(this.food).length < maxFood) {
                             const tile = this.getRandomEmptyTile();
                             if (tile) {
                                 const posKey = arrayToKey(tile);
@@ -2382,7 +2829,7 @@
 
                 if (this.turn % simSettings.WOOD_SPAWN_RATE === 0) {
                     for (let i = 0; i < woodSpawnCount; i++) { 
-                        if (Object.keys(this.wood).length < (this.width * this.height * 0.05)) {
+                        if (Object.keys(this.wood).length < maxWood) {
                             const tile = this.getRandomEmptyTile();
                             if (tile) {
                                 this.wood[arrayToKey(tile)] = true;
@@ -2390,32 +2837,61 @@
                         }
                     }
                 }
+
+                if (this.turn % simSettings.FRUIT_SPAWN_RATE === 0) {
+                     for (let i = 0; i < fruitSpawnCount; i++) {
+                         if (Object.keys(this.fruits).length < maxFruit) {
+                             const tile = this.getRandomEmptyTile();
+                             if (tile) {
+                                 this.addFruit(tile, ['energy', 'social', 'speed'][Math.floor(Math.random() * 3)]);
+                             }
+                         }
+                     }
+                }
             }
 
             updateWorldObjects() {
                 this.environmentalHealth = clamp(this.environmentalHealth + simSettings.ENV_PASSIVE_RECOVERY_RATE, 0, simSettings.ENV_HEALTH_MAX);
-                
+                const libraryPosKey = arrayToKey(this.libraryLocation);
+
+                // Update Growing Plants (Food)
                 for (const pos in this.growingPlants) {
                     this.growingPlants[pos]--;
                     if (this.growingPlants[pos] <= 0) {
                         delete this.growingPlants[pos];
-                        if (!this.food[pos] && !this.homes[pos] && !this.wood[pos]) {
+                        if (!this.homes[pos] && !this.wood[pos] && !this.fruits[pos] && pos !== libraryPosKey) {
                             this.food[pos] = true;
                             this.foodFreshness[pos] = simSettings.FOOD_FRESHNESS;
                         }
                     }
                 }
                 
+                // Update Growing Trees (Wood)
                 for (const pos in this.growingTrees) {
                     this.growingTrees[pos]--;
                     if (this.growingTrees[pos] <= 0) {
                         delete this.growingTrees[pos];
-                        if (!this.food[pos] && !this.homes[pos] && !this.wood[pos]) {
+                        if (!this.food[pos] && !this.homes[pos] && !this.wood[pos] && !this.fruits[pos] && pos !== libraryPosKey) {
                             this.wood[pos] = true;
                         }
                     }
                 }
+
+                // Update Growing Fruit Bushes
+                for (const pos in this.growingFruitBushes) {
+                    this.growingFruitBushes[pos]--;
+                    if (this.growingFruitBushes[pos] <= 0) {
+                        delete this.growingFruitBushes[pos];
+                        const fruitType = this.fruitTypes[pos];
+                        if (fruitType && !this.homes[pos] && !this.wood[pos] && !this.food[pos] && !this.fruits[pos] && pos !== libraryPosKey) {
+                             this.fruits[pos] = true;
+                        } else {
+                            delete this.fruitTypes[pos];
+                        }
+                    }
+                }
                 
+                // Update Food Spoilage
                 for (const posKey of Object.keys(this.foodFreshness)) {
                     this.foodFreshness[posKey]--;
                     if (this.foodFreshness[posKey] <= 0) {
@@ -2424,13 +2900,17 @@
                     }
                 }
                 
+                // Update Campfires (and Pollution)
                 for (const pos in this.campfires) {
                     this.campfires[pos]--;
                     if (this.campfires[pos] <= 0) {
                         delete this.campfires[pos];
+                    } else {
+                         this.environmentalHealth = clamp(this.environmentalHealth - simSettings.ENV_DECAY_CAMPFIRE_POLLUTION, 0, simSettings.ENV_HEALTH_MAX);
                     }
                 }
                 
+                // Update Home Decay
                 if (this.turn % simSettings.HOME_DECAY_RATE === 0) {
                     for (const pos in this.homes) {
                         this.homes[pos].durability--;
@@ -2453,6 +2933,86 @@
                 }
             }
 
+            updateEnvironmentFeedback() {
+                // 1. Check for Sickness
+                if (this.environmentalHealth < simSettings.ENV_SICKNESS_THRESHOLD) {
+                    for (const agent of this.agents) {
+                        if (agent.sickness_timer === 0 && Math.random() < simSettings.ENV_SICKNESS_CHANCE) {
+                            agent.sickness_timer = simSettings.ENV_SICKNESS_DURATION;
+                        }
+                    }
+                }
+                    
+                // 2. Check for Overpopulation Density Decay
+                for (let i = 0; i < 5; i++) { 
+                    if (this.agents.length === 0) break;
+                    const agent = this.agents[Math.floor(Math.random() * this.agents.length)];
+                    
+                    let nearbyCount = 0;
+                    for (const otherAgent of this.agents) {
+                        if (agent.id === otherAgent.id) continue;
+                        if (getDistance(agent.x, agent.y, otherAgent.x, otherAgent.y) < simSettings.ENV_OVERPOPULATION_RADIUS) {
+                            nearbyCount++;
+                        }
+                    }
+                        
+                    if (nearbyCount > simSettings.ENV_OVERPOPULATION_THRESHOLD) {
+                        this.environmentalHealth = clamp(this.environmentalHealth - simSettings.ENV_OVERPOPULATION_DECAY, 0, simSettings.ENV_HEALTH_MAX);
+                        break; 
+                    }
+                }
+            }
+
+            autoPlantOnDeath(originPos, foodSeeds, woodSeeds, fruitSeeds) {
+                const totalSeeds = foodSeeds + woodSeeds + fruitSeeds;
+                if (totalSeeds === 0) return;
+                
+                const emptyTiles = [];
+                const radius = 1;
+                const [ox, oy] = originPos;
+                const libraryPosKey = arrayToKey(this.libraryLocation);
+
+                for (let dx = -radius; dx <= radius; dx++) {
+                    for (let dy = -radius; dy <= radius; dy++) {
+                         if (emptyTiles.length >= totalSeeds) break;
+                         const x = ox + dx;
+                         const y = oy + dy;
+                         const posKey = arrayToKey([x, y]);
+                         if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
+                            if (!this.homes[posKey] && !this.food[posKey] && !this.wood[posKey] && 
+                                !this.growingPlants[posKey] && !this.growingTrees[posKey] && 
+                                !this.campfires[posKey] && !this.fruits[posKey] && !this.growingFruitBushes[posKey] && 
+                                posKey !== libraryPosKey) {
+                                emptyTiles.push([x, y]);
+                            }
+                         }
+                    }
+                    if (emptyTiles.length >= totalSeeds) break;
+                }
+                
+                let tileIndex = 0;
+                
+                for (let i = 0; i < foodSeeds; i++) {
+                    if (tileIndex < emptyTiles.length) {
+                        const posKey = arrayToKey(emptyTiles[tileIndex++]);
+                        this.growingPlants[posKey] = simSettings.GROW_TIME;
+                    } else break;
+                }
+                for (let i = 0; i < woodSeeds; i++) {
+                    if (tileIndex < emptyTiles.length) {
+                        const posKey = arrayToKey(emptyTiles[tileIndex++]);
+                        this.growingTrees[posKey] = simSettings.TREE_GROW_TIME;
+                    } else break;
+                }
+                for (let i = 0; i < fruitSeeds; i++) {
+                    if (tileIndex < emptyTiles.length) {
+                        const posKey = arrayToKey(emptyTiles[tileIndex++]);
+                        this.growingFruitBushes[posKey] = simSettings.FRUIT_GROW_TIME;
+                        this.fruitTypes[posKey] = ['energy', 'social', 'speed'][Math.floor(Math.random() * 3)];
+                    } else break;
+                }
+            }
+
 
             getRandomEmptyTile() {
                 const attempts = 10;
@@ -2468,7 +3028,8 @@
                     const occupied = this.agents.some(agent => agent.x === x && agent.y === y);
                         
                     if (!occupied && !this.food[posKey] && !this.wood[posKey] && !this.homes[posKey] && 
-                        !this.growingPlants[posKey] && !this.growingTrees[posKey] && !this.campfires[posKey]) {
+                        !this.growingPlants[posKey] && !this.growingTrees[posKey] && !this.campfires[posKey] && 
+                        !this.fruits[posKey] && !this.growingFruitBushes[posKey]) { 
                         return [x, y];
                     }
                 }
@@ -2491,10 +3052,10 @@
                 
                 this.spawnResources();
                 this.updateWorldObjects();
+                this.updateEnvironmentFeedback();
                 this.calculateStats();
             }
 
-            // MODIFIED: Uses GENE_LIST and SKILL_LIST
             calculateStats() {
                 const adultAgents = this.agents.filter(agent => agent.age >= simSettings.ADULT_AGE);
                 let agentsForStats = adultAgents.length > 0 ? adultAgents : this.agents;
@@ -2681,10 +3242,26 @@
                 const resources = [
                     { map: this.world.growingPlants, char: 'P', color: COLORS.GREEN_NORMAL, dim: false },
                     { map: this.world.growingTrees, char: 'T', color: COLORS.GREEN_DIM, dim: false },
+                    { map: this.world.growingFruitBushes, char: 'b', color: COLORS.MAGENTA_DIM, dim: true },
                     { map: this.world.food, char: 'F', color: COLORS.GREEN_BRIGHT, dim: false },
                     { map: this.world.wood, char: 'W', color: COLORS.YELLOW_BRIGHT, dim: false },
                     { map: this.world.campfires, char: 'C', color: COLORS.RED_BRIGHT, dim: false },
                 ];
+                
+                // Draw Fruit Types
+                for(const posKey in this.world.fruits) {
+                    const fruitType = this.world.fruitTypes[posKey];
+                    let char = '?';
+                    let color = COLORS.WHITE_BRIGHT;
+                    if (fruitType === 'energy') { char = 'R'; color = COLORS.RED_NORMAL; }
+                    else if (fruitType === 'social') { char = 'P'; color = COLORS.MAGENTA_BRIGHT; }
+                    else if (fruitType === 'speed') { char = 'B'; color = COLORS.BLUE_NORMAL; }
+                    
+                    if (!agentPositions[posKey]) {
+                        const [x, y] = keyToArray(posKey);
+                        this.drawCell(x, y, char, color, false);
+                    }
+                }
 
                 resources.forEach(res => {
                     for (const posKey in res.map) {
@@ -2726,8 +3303,18 @@
                         char = 's';
                         isDim = true;
                     }
-                    else if (agent.social_buff_timer > 0) {
+                    else if (agent.sickness_timer > 0) {
+                        color = COLORS.GREEN_NORMAL;
+                        isDim = false;
+                    }
+                    
+                    if (agent.social_buff_timer > 0) {
                         color = COLORS.WHITE_BRIGHT; 
+                        isDim = false;
+                    }
+                    
+                    if (agent.speed_buff_timer > 0) {
+                        color = COLORS.BLUE_BRIGHT;
                         isDim = false;
                     }
                     
@@ -2749,10 +3336,21 @@
                         char = 's';
                         isDim = true;
                     }
-                    else if (agent.social_buff_timer > 0) {
+                    else if (agent.sickness_timer > 0) {
+                         color = COLORS.GREEN_NORMAL;
+                         isDim = false;
+                    }
+                    
+                    if (agent.social_buff_timer > 0) {
                         color = COLORS.WHITE_BRIGHT; 
                         isDim = false;
                     }
+                    
+                    if (agent.speed_buff_timer > 0) {
+                        color = COLORS.BLUE_BRIGHT;
+                        isDim = false;
+                    }
+
 
                     ctx.font = `${this.cellSize * 0.4}px Consolas, monospace`; 
                     ctx.textAlign = 'center';
@@ -2772,7 +3370,7 @@
             }
         }
 
-        // --- STATS RENDERING (MODIFIED: Uses GENE_LIST and SKILL_LIST) ---
+        // --- STATS RENDERING (MODIFIED: Uses new stats) ---
         function updateStatsDisplay(world) {
             document.getElementById('turnCounter').textContent = world.turn;
             document.getElementById('generationCounter').textContent = world.generationCount;
@@ -2792,9 +3390,9 @@
                 const avg = world.stats[`avg_${gene}`] || 0;
                 let color = 'text-cyan-400';
                 if (gene === 'aggression') color = 'text-red-400';
-                if (gene === 'metabolism') color = 'text-red-400'; // Lower is better, but it's a "cost"
+                if (gene === 'metabolism') color = 'text-red-400'; 
                 if (gene === 'builder') color = 'text-blue-400';
-                if (gene === 'mating_drive') color = 'text-magenta-400';
+                if (gene === 'mating_drive') color = 'text-pink-400';
                 if (gene === 'sociability') color = 'text-white';
                 if (gene === 'farming') color = 'text-green-400';
                 if (gene === 'personality') color = 'text-magenta-400';
@@ -2832,7 +3430,6 @@
                     reason !== 'UNKNOWN' && reason !== 'TOTAL_DEATHS' && count > 0
                 );
                 
-                // Sort to show most common deaths first
                 filteredDeaths.sort((a, b) => b[1] - a[1]);
 
                 for (const [reason, count] of filteredDeaths) {
@@ -2852,7 +3449,7 @@
                     title: 'Status & Interaction',
                     items: [
                         { char: 'A', color: COLORS.CYAN_BRIGHT, desc: 'Wander (Default)' },
-                        { char: 'f', color: COLORS.CYAN_NORMAL, desc: 'Forage/Eat' },
+                        { char: 'f', color: COLORS.CYAN_NORMAL, desc: 'Forage/Eat (Food/Fruit)' }, 
                         { char: 's', color: COLORS.MAGENTA_DIM, desc: 'Sad/Crisis/Apathy' },
                         { char: 'o', color: COLORS.MAGENTA_BRIGHT, desc: 'Happy/Linger' },
                         { char: 'L', color: COLORS.MAGENTA_BRIGHT, desc: 'Seek Library' },
@@ -2863,6 +3460,8 @@
                         { char: 'X/r', color: COLORS.RED_BRIGHT, desc: 'Attack/Retaliate' },
                         { char: 'V', color: COLORS.RED_BRIGHT, desc: 'Avenge Child Death' },
                         { char: 'g', color: COLORS.WHITE_BRIGHT, desc: 'Share Resources' },
+                        { char: 'Any', color: COLORS.GREEN_NORMAL, desc: 'Agent is Sick' },
+                        { char: 'Any', color: COLORS.BLUE_BRIGHT, desc: 'Agent has Speed Buff' },
                     ]
                 },
                 {
@@ -2879,12 +3478,16 @@
                 {
                     title: 'Farming & Resources',
                     items: [
-                        { char: 'p', color: COLORS.GREEN_NORMAL, desc: 'Plant Food/Tree' },
+                        { char: 'p', color: COLORS.GREEN_NORMAL, desc: 'Plant (Food/Tree/Fruit)' }, 
                         { char: 'G', color: COLORS.GREEN_BRIGHT, desc: 'Go Home to Plant' },
                         { char: 'F', color: COLORS.GREEN_BRIGHT, desc: 'Food (Ready to Eat)' },
                         { char: 'P', color: COLORS.GREEN_NORMAL, desc: 'Plant (Growing Food)' },
                         { char: 'W', color: COLORS.YELLOW_BRIGHT, desc: 'Wood (Lumber)' },
                         { char: 'T', color: COLORS.GREEN_DIM, desc: 'Tree (Growing Wood)' },
+                        { char: 'R', color: COLORS.RED_NORMAL, desc: 'Energy Fruit' }, 
+                        { char: 'P', color: COLORS.MAGENTA_BRIGHT, desc: 'Social Fruit' }, 
+                        { char: 'B', color: COLORS.BLUE_NORMAL, desc: 'Speed Fruit' }, 
+                        { char: 'b', color: COLORS.MAGENTA_DIM, desc: 'Growing Bush' }, 
                     ]
                 },
                 {
@@ -2910,14 +3513,13 @@
             legendDiv.innerHTML = html;
         }
 
-        // --- NEW: Settings Management Functions ---
+        // --- Settings Management Functions ---
 
         function loadSettings() {
             try {
                 const storedSettings = localStorage.getItem(SETTINGS_STORAGE_KEY);
                 if (storedSettings) {
                     const parsedSettings = JSON.parse(storedSettings);
-                    // Merge stored settings with defaults to ensure new defaults are applied
                     return { ...defaultSimSettings, ...parsedSettings };
                 }
             } catch (e) {
@@ -2943,17 +3545,15 @@
         }
 
         function populateSettingsForm(settings) {
-            // Populate all settings that exist in the provided 'settings' object
             for (const key in settings) {
                 const input = document.getElementById(key);
                 if (input) {
                     input.value = settings[key];
                 }
             }
-            // Ensure any new default settings (not in saved settings) are populated
             for (const key in defaultSimSettings) {
                  const input = document.getElementById(key);
-                 if (input && input.value === "") { // Only fill if empty
+                 if (input && input.value === "") { 
                      input.value = defaultSimSettings[key];
                  }
             }
@@ -2970,12 +3570,10 @@
                     if (!isNaN(value)) {
                         newSettings[input.id] = value;
                     } else {
-                        // Fallback to default if input is invalid
                         newSettings[input.id] = defaultSimSettings[input.id];
                     }
                 }
             });
-            // Ensure all default keys are present even if not in form
             return { ...defaultSimSettings, ...newSettings };
         }
         
@@ -2986,7 +3584,10 @@
             const saveBtn = document.getElementById('saveSettingsBtn');
             const resetBtn = document.getElementById('resetSettingsBtn');
             
-            openBtn.onclick = () => modal.classList.remove('hidden');
+            openBtn.onclick = () => {
+                populateSettingsForm(simSettings);
+                modal.classList.remove('hidden');
+            }
             closeBtn.onclick = () => modal.classList.add('hidden');
             
             modal.onclick = (e) => {
@@ -3011,7 +3612,6 @@
             };
         }
         
-        // --- NEW: Helper function to build skill max map ---
         function initializeSkillMaxes() {
             SKILL_MAXES = {
                 'foraging': simSettings.SKILL_FORAGE_MAX,
@@ -3022,9 +3622,8 @@
                 'farming': simSettings.SKILL_FARM_MAX,
             };
             
-            // Also update global knowledge maxes
             for (const skill in SKILL_MAXES) {
-                if (!world.globalSkillKnowledge[skill]) {
+                if (!world.globalSkillKnowledge.hasOwnProperty(skill)) {
                      world.globalSkillKnowledge[skill] = 0.0;
                 }
             }
@@ -3039,7 +3638,6 @@
             
             world = new World(simSettings.WORLD_WIDTH, simSettings.WORLD_HEIGHT);
             
-            // --- NEW: Initialize skill map ---
             initializeSkillMaxes();
             
             for (let i = 0; i < simSettings.STARTING_AGENTS; i++) {
@@ -3057,6 +3655,12 @@
                 const tile = world.getRandomEmptyTile();
                 if (tile) {
                     world.wood[arrayToKey(tile)] = true;
+                }
+            }
+            for (let i = 0; i < simSettings.STARTING_FRUIT_BUSHES; i++) {
+                const tile = world.getRandomEmptyTile();
+                if (tile) {
+                    world.addFruit(tile, ['energy', 'social', 'speed'][Math.floor(Math.random() * 3)]);
                 }
             }
             
