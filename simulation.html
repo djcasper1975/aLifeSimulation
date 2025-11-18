@@ -612,6 +612,11 @@
                             <input type="number" id="GENE_PERSONALITY_MIN" name="GENE_PERSONALITY_MIN" step="0.1">
                             <input type="number" id="GENE_PERSONALITY_MAX" name="GENE_PERSONALITY_MAX" step="0.1">
                             <input type="number" id="GENE_PERSONALITY_MUTATE_RATE" name="GENE_PERSONALITY_MUTATE_RATE" step="0.01">
+                            
+                            <label for="GENE_NAVIGATION_MIN" class="self-center col-span-2 sm:col-span-1">Navigation</label>
+                            <input type="number" id="GENE_NAVIGATION_MIN" name="GENE_NAVIGATION_MIN" step="0.1">
+                            <input type="number" id="GENE_NAVIGATION_MAX" name="GENE_NAVIGATION_MAX" step="0.1">
+                            <input type="number" id="GENE_NAVIGATION_MUTATE_RATE" name="GENE_NAVIGATION_MUTATE_RATE" step="0.01">
                         </div>
                     </fieldset>
 
@@ -806,7 +811,7 @@
         const SETTINGS_STORAGE_KEY = 'aLifeSimSettings';
         
         // --- Lists of genes and skills for iteration (SYNCHRONIZED) ---
-        const GENE_LIST = ['vision', 'speed', 'metabolism', 'aggression', 'builder', 'mating_drive', 'sociability', 'farming', 'personality', 'navigation']; // Navigation added here
+        const GENE_LIST = ['vision', 'speed', 'metabolism', 'aggression', 'builder', 'mating_drive', 'sociability', 'farming', 'personality', 'navigation']; 
         const SKILL_LIST = ['foraging', 'social', 'building', 'navigation', 'combat', 'farming'];
         
         // --- PERSONALITY CONSTANTS (SYNCHRONIZED) ---
@@ -953,7 +958,7 @@
             GENE_SOCIABILITY_MIN: 0.0, GENE_SOCIABILITY_MAX: 1.0, GENE_SOCIABILITY_MUTATE_RATE: 0.1,
             GENE_FARMING_MIN: 0.0, GENE_FARMING_MAX: 1.0, GENE_FARMING_MUTATE_RATE: 0.1,
             GENE_PERSONALITY_MIN: 1.0, GENE_PERSONALITY_MAX: 4.0, GENE_PERSONALITY_MUTATE_RATE: 0.5,
-            GENE_NAVIGATION_MIN: 0.0, GENE_NAVIGATION_MAX: 3.0, GENE_NAVIGATION_MUTATE_RATE: 0.1, // ADDED HERE
+            GENE_NAVIGATION_MIN: 0.0, GENE_NAVIGATION_MAX: 3.0, GENE_NAVIGATION_MUTATE_RATE: 0.1, // ADDED GENE DEFAULTS
 
             // --- SKILL MAXES (SYNCHRONIZED) ---
             SKILL_FORAGE_MAX: 10.0,
@@ -1174,7 +1179,7 @@
                                 genes[gene] = Math.floor(Math.random() * (PERSONALITY_AGGRESSIVE_COOPERATOR - PERSONALITY_JUDGMENTAL + 1)) + PERSONALITY_JUDGMENTAL;
                             }
                         } else {
-                            // Handle navigation gene specifically if it's missing the explicit min/max in the form but is in GENE_LIST
+                            // Handle navigation gene specifically
                             if (gene === 'navigation') {
                                 // Uses Python's default of (0.0, 3.0) from the updated list
                                 genes[gene] = Math.random() * (3.0 - 0.0) + 0.0;
@@ -4139,4 +4144,3 @@
     </script>
 </body>
 </html>
-}
