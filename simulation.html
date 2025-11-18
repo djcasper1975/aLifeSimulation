@@ -2392,10 +2392,16 @@
                             moved = true;
                         }
                         
-                        // --- FIX: Deadlock Guard ---
-                        if (!moved) {
-                            // Stuck or blocked by multiple things: Stop movement for this step and force a re-evaluation
-                            this.exploration_vector = [Math.floor(Math.random() * 3) - 1, Math.floor(Math.random() * 3) - 1];
+                     // --- FIX: Deadlock Guard ---
+                    if (!moved) {
+                        // Stuck or blocked by multiple things: Stop movement for this step and force a re-evaluation
+                        this.exploration_vector = [Math.floor(Math.random() * 3) - 1, Math.floor(Math.random() * 3) - 1];
+                        
+                        // --- NEW FREEZE PREVENTION: Revert to a safe, lowest priority state ---
+                        if (this.state !== "WANDERING") {
+                            this.state = "WANDERING"; 
+                        }
+                        // --- END NEW FREEZE PREVENTION ---
                             break; 
                         }
                     }
