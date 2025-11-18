@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>A-Life Simulation (Enhanced AI)</title>
+    <title>A-Life Simulation</title>
 	<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -57,7 +57,6 @@
             /* Ensure the canvas size defined by JS is respected and centered */
             display: block; 
             margin: 0 auto; 
-            cursor: pointer; /* Indicate it's clickable */
         }
 
         #statsPanel {
@@ -169,43 +168,10 @@
             margin-top: 0.25rem; /* mt-1 */
         }
         
-        /* Agent Detail Panel Styles */
-        #agentDetailPanel {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 60;
-            background-color: #1f2937;
-            border: 2px solid #60a5fa;
-            border-radius: 0.75rem;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
-            max-width: 400px;
-            width: 90%;
-            padding: 1rem;
-            font-size: 0.875rem;
-        }
-        
     </style>
 </head>
 <body class="p-4 sm:p-8 bg-gray-800 text-white min-h-screen">
 
-    <div id="agentDetailPanel" class="hidden">
-        <div class="flex justify-between items-center border-b border-gray-700 pb-2 mb-2">
-            <h3 class="text-xl font-bold text-cyan-400">Agent #<span id="detailAgentId"></span></h3>
-            <button id="closeDetailBtn" class="text-gray-400 hover:text-white font-bold">&times;</button>
-        </div>
-        <div id="detailContent" class="space-y-2 font-mono text-sm">
-            <p>Age: <span id="detailAge"></span> | State: <span id="detailState"></span></p>
-            <p>Energy: <span id="detailEnergy"></span> | Social: <span id="detailSocial"></span> | Love: <span id="detailLove"></span></p>
-            <h4 class="font-semibold text-yellow-400 mt-3">Genes (Traits)</h4>
-            <div id="detailGenes" class="grid grid-cols-2 gap-x-2"></div>
-            <h4 class="font-semibold text-green-400 mt-3">Skills (Learned)</h4>
-            <div id="detailSkills" class="grid grid-cols-2 gap-x-2"></div>
-            <h4 class="font-semibold text-red-400 mt-3">Status</h4>
-            <div id="detailStatus"></div>
-        </div>
-    </div>
     <div id="settingsModal" class="modal hidden fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="modal-content bg-gray-800 border border-gray-700 rounded-lg shadow-2xl w-full max-w-3xl flex flex-col">
             <div class="flex justify-between items-center p-4 border-b border-gray-700">
@@ -218,15 +184,9 @@
                     
                     <fieldset>
                         <legend>Display</legend>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div class="flex items-center space-x-4 sm:col-span-2">
-                                <label for="DISPLAY_WORLD_LIGHT_MODE" class="flex-1 !mb-0">Toggle World Light Mode</label>
-                                <input type="checkbox" id="DISPLAY_WORLD_LIGHT_MODE" name="DISPLAY_WORLD_LIGHT_MODE" class="h-6 w-6 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                            </div>
-                            <div class="flex items-center space-x-4 sm:col-span-2">
-                                <label for="DISPLAY_EMOJI_MODE" class="flex-1 !mb-0">Toggle AI Thought Bubbles (Emojis)</label>
-                                <input type="checkbox" id="DISPLAY_EMOJI_MODE" name="DISPLAY_EMOJI_MODE" class="h-6 w-6 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                            </div>
+                        <div class="flex items-center space-x-4">
+                            <label for="DISPLAY_WORLD_LIGHT_MODE" class="flex-1 !mb-0">Toggle World Light Mode</label>
+                            <input type="checkbox" id="DISPLAY_WORLD_LIGHT_MODE" name="DISPLAY_WORLD_LIGHT_MODE" class="h-6 w-6 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                         </div>
                     </fieldset>
 
@@ -753,47 +713,24 @@
     <div class="w-full">
         <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4">
             <div>
-                <h1 class="text-4xl font-bold text-cyan-400">A-Life: Web Simulation (Enhanced)</h1>
+                <h1 class="text-4xl font-bold text-cyan-400">A-Life: Web Simulation</h1>
                 <p class="text-gray-400 mb-6">A JavaScript implementation of the Python Life Simulation. See evolution in action!</p>
             </div>
             
-            <div class="flex flex-col sm:flex-row space-x-4">
-                <div class="flex space-x-4 mb-4 sm:mb-0">
-                    <button id="openSettingsBtn" class="px-5 py-2.5 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-lg shadow-md">
-                        Settings
-                    </button>
-                    
-                    <button id="interventionDropFood" class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg shadow-md">
-                        Drop Supplies 🍎
-                    </button>
-                    
-                    <button id="interventionCrisis" class="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg shadow-md">
-                        Trigger Crisis ⚠️
-                    </button>
-                </div>
+            <div class="flex space-x-4">
+                <button id="openSettingsBtn" class="mb-4 sm:mb-0 px-5 py-2.5 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-lg shadow-md">
+                    Settings
+                </button>
                 
-                <a href="agent_mechanics_guide.html" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-md hidden sm:block">
+                <a href="agent_mechanics_guide.html" class="mb-4 sm:mb-0 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-md">
                     How it Works
                 </a>
             </div>
         </div>
 
-        <div class="flex space-x-4 mb-4 items-center">
-            <button id="pauseBtn" class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold rounded-lg shadow-md">
-                ⏸️ Pause
-            </button>
-            <button id="speedNormalBtn" class="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg">
-                1x
-            </button>
-            <button id="speedFastBtn" class="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg">
-                5x
-            </button>
-            <span id="currentSpeedDisplay" class="text-sm text-gray-400">Speed: 150ms</span>
-        </div>
-
         <div class="flex flex-col lg:grid lg:grid-cols-3 lg:gap-6">
 
-            <div class="order-1 lg:col-span-2 min-w-0 relative"> 
+            <div class="order-1 lg:col-span-2 min-w-0"> 
                 <div id="canvasWrapper" class="bg-gray-900 p-2 rounded-lg shadow-2xl">
                     <canvas id="worldCanvas"></canvas>
                 </div>
@@ -821,10 +758,6 @@
 
                     <h2 class="text-base font-semibold text-cyan-400">Death Analysis</h2>
                     <div id="deathStats"></div>
-                    
-                    <h2 class="text-base font-semibold text-red-400">Recent Events (Death Log)</h2>
-                    <div id="deathLogDisplay" class="h-24 overflow-y-auto border-t border-gray-700 pt-2 text-gray-400 text-xs">
-                        </div>
                 </div>
             </div>
 
@@ -857,45 +790,11 @@
             [PERSONALITY_AGGRESSIVE_COOPERATOR]: [PERSONALITY_JUDGMENTAL]
         };
         // --- END PERSONALITY ---
-        
-        // --- EMOJI MAPPING (NEW: for Thought Bubbles) ---
-        const EMOJI_MAP = {
-            'WANDERING': '😌', 
-            'FORAGING': '🍎',
-            'FORAGING_FRUIT': '🍇',
-            'BUILDING': '🔨',
-            'WANDERING_TO_BUILD': '➡️',
-            'SEEKING_COMMUNITY': '🏘️',
-            'SEEKING_REMOTE_SPOT': '🏕️',
-            'GETTING_WOOD': '🌳',
-            'PLANTING': '🌱',
-            'PLANTING_WOOD': '🌲',
-            'GOING_HOME_TO_FARM': '🏠🌱',
-            'GOING_HOME_TO_PLANT_WOOD': '🏠🌲',
-            'SHARING': '🤝',
-            'BUILDING_CAMPFIRE': '🔥',
-            'REPAIRING_HOME': '🔧',
-            'CLAIMING_HOME': '🔑',
-            'REFUELING_CAMPFIRE': '🪵',
-            'MATING': '❤️',
-            'SEEKING_MATE': '👀❤️', 
-            'ATTACKING': '💥',
-            'RETALIATING': '💢',
-            'AVENGING': '💀', 
-            'SEEKING_SOCIAL': '💬',
-            'COMMUNICATING': '🗣️',
-            'SEEKING_LIBRARY': '📚',
-            'SOCIAL_SAD': '😔',
-            'SOCIAL_HAPPY': '😊',
-            'SICK': '🤢',
-            'APATHY': '😴',
-        };
 
         // These are the hard-coded defaults (SYNCHRONIZED WITH PYTHON life_simulation.py)
         const defaultSimSettings = {
             // NEW DISPLAY SETTING
             DISPLAY_WORLD_LIGHT_MODE: false, 
-            DISPLAY_EMOJI_MODE: true, // NEW: Default ON
             DEVELOPER_MODE_TOGGLE: false, // Default: Developer Mode Off
             
             // --- SIMULATION LIFE STAGE CONSTANTS ---
@@ -1182,74 +1081,6 @@
         function keyToArray(key) {
             return key.split(',').map(Number);
         }
-        
-        // --- NEW: Simple A* Pathfinding (for Agent.moveTowards) ---
-        function findPath(world, start, end) {
-            const width = world.width;
-            const height = world.height;
-            const startKey = arrayToKey(start);
-            const endKey = arrayToKey(end);
-
-            const openSet = [startKey];
-            const cameFrom = {};
-            const gScore = { [startKey]: 0 };
-            const fScore = { [startKey]: getDistance(start[0], start[1], end[0], end[1]) };
-
-            while (openSet.length > 0) {
-                // Find the node with the lowest fScore
-                let currentKey = openSet[0];
-                for (const key of openSet) {
-                    if ((fScore[key] || Infinity) < (fScore[currentKey] || Infinity)) {
-                        currentKey = key;
-                    }
-                }
-
-                const current = keyToArray(currentKey);
-
-                if (currentKey === endKey) {
-                    const path = [];
-                    let temp = currentKey;
-                    while (temp !== startKey) {
-                        path.push(temp);
-                        temp = cameFrom[temp];
-                    }
-                    path.reverse();
-                    // Return only the next step
-                    return path[0] ? keyToArray(path[0]) : end; 
-                }
-
-                openSet.splice(openSet.indexOf(currentKey), 1);
-
-                for (let dx = -1; dx <= 1; dx++) {
-                    for (let dy = -1; dy <= 1; dy++) {
-                        if (dx === 0 && dy === 0) continue;
-
-                        const neighbor = [current[0] + dx, current[1] + dy];
-                        const neighborKey = arrayToKey(neighbor);
-
-                        if (neighbor[0] < 0 || neighbor[0] >= width || neighbor[1] < 0 || neighbor[1] >= height) continue;
-
-                        // Check if the tile is a hard obstacle (agents still need to check soft obstacles like resources)
-                        if (world.isHardObstacle(neighbor[0], neighbor[1])) continue;
-
-                        const tentativeGScore = gScore[currentKey] + getDistance(current[0], current[1], neighbor[0], neighbor[1]);
-
-                        if (tentativeGScore < (gScore[neighborKey] || Infinity)) {
-                            cameFrom[neighborKey] = currentKey;
-                            gScore[neighborKey] = tentativeGScore;
-                            fScore[neighborKey] = tentativeGScore + getDistance(neighbor[0], neighbor[1], end[0], end[1]);
-
-                            if (!openSet.includes(neighborKey)) {
-                                openSet.push(neighborKey);
-                            }
-                        }
-                    }
-                }
-            }
-
-            return null; // No path found
-        }
-        // --- END Simple A* Pathfinding ---
 
         // --- AGENT CLASS (SYNCHRONIZED & DEBUGGED) ---
 
@@ -1355,21 +1186,6 @@
             getPersonality() {
                 return Math.floor(clamp(this.genes.personality || 1, 1, 4));
             }
-            
-            // --- NEW: Helper to get current status icons ---
-            getStatusIcons() {
-                let icons = [];
-                if (this.sickness_timer > 0) icons.push("🤢");
-                if (this.apathy_timer > 0) icons.push("😴");
-                if (this.speed_buff_timer > 0) icons.push("💨");
-                if (this.energy < 40) icons.push(" exhaustion");
-                if (this.social < 30) icons.push(" loneliness");
-                if (this.was_attacked_by) icons.push(" injured");
-                if (this.avenging_target_id) icons.push(" vengeance");
-                return icons.join(', ');
-            }
-            // --- END NEW: Helper ---
-
 
             update() {
                 this.age += 1;
@@ -1511,7 +1327,7 @@
                     const isIsolated = (nearbyAgents.length === 0 && (!nearbyCampfirePosKey || nearbyCampfirePosKey === currentPosKey)); 
                     
                     if (isIsolated) { 
-                        this.social -= this.genes['sociability'] * simSettings.ISOLATION_SOCIAL_LOSS_RATE * socialLossMultiplier;
+                        this.social -= this.genes['sociability'] * simSettings.SOCIAL_LOSS_MULTIPLIER * socialLossMultiplier;
                     } else {
                         this.social += 0.1;
                     }
@@ -2525,7 +2341,6 @@
                 
                 // 1. Structures and Resources
                 if (this.world.campfires[posKey]) return true; // Cannot stand ON the fire
-                if (posKey === arrayToKey(this.world.libraryLocation)) return true; // Library is a hard obstacle
                 
                 // 2. Homes/Building (only other agents' homes are obstacles)
                 if (this.world.homes[posKey]) {
@@ -2535,11 +2350,13 @@
                     }
                 }
                 
-                // 3. Other Agents (Agents are only obstacles if not at home/library)
+                // 3. Other Agents
                 for (const agent of this.world.agents) {
                     if (agent !== this && agent.x === x && agent.y === y) {
+                        // EXCEPTION 1: Library
+                        if (posKey === arrayToKey(this.world.libraryLocation)) continue;
                         
-                        // EXCEPTION: Shared Home
+                        // EXCEPTION 2: Shared Home
                         if (this.home_location === posKey) {
                             const homeData = this.world.homes[posKey];
                             if (homeData) {
@@ -2565,19 +2382,45 @@
                 if (steps < 1) steps = 1;
                 
                 for (let i = 0; i < steps; i++) {
-                    const nextStep = findPath(this.world, [this.x, this.y], [targetX, targetY]);
+                    let dx = 0, dy = 0;
+                    if (this.x < targetX) dx = 1;
+                    else if (this.x > targetX) dx = -1;
+                    if (this.y < targetY) dy = 1;
+                    else if (this.y > targetY) dy = -1;
                     
-                    if (nextStep) {
-                        const [nextX, nextY] = nextStep;
+                    const newX = clamp(this.x + dx, 0, this.world.width - 1);
+                    const newY = clamp(this.y + dy, 0, this.world.height - 1);
+                    
+                    let moved = false;
+                    
+                    if (!this.isObstacle(newX, newY)) {
+                        this.x = newX;
+                        this.y = newY;
+                        moved = true;
+                    } else {
+                        // Sliding logic to bypass obstacles
+                        const slideX = clamp(this.x + dx, 0, this.world.width - 1);
+                        const slideY = clamp(this.y + dy, 0, this.world.height - 1);
                         
-                        // Check for dynamic obstacles (e.g., other agents, non-permanent resources)
-                        if (!this.isObstacle(nextX, nextY)) {
-                            this.x = nextX;
-                            this.y = nextY;
-                        } else {
-                            // Obstacle encountered, set stuck timer and break to force re-evaluation
-                            this.stuck_timer = simSettings.STUCK_TIMER_DURATION;
+                        // Try to slide in X only
+                        if (dx !== 0 && !this.isObstacle(slideX, this.y)) {
+                            this.x = slideX;
+                            moved = true;
+                        }
+                        // Try to slide in Y only
+                        else if (dy !== 0 && !this.isObstacle(this.x, slideY)) {
+                            this.y = slideY;
+                            moved = true;
+                        }
+                        
+                        // --- FIX: Deadlock Guard / FREEZE PREVENTION ---
+                        if (!moved) {
+                            // Stuck or blocked by multiple things: Stop movement for this step and force a re-evaluation
+                            this.exploration_vector = [Math.floor(Math.random() * 3) - 1, Math.floor(Math.random() * 3) - 1];
                             
+                            // NEW: Set a short timer to force genuine random exploration next turn
+                            this.stuck_timer = simSettings.STUCK_TIMER_DURATION;
+
                             // CRITICAL FIX: Forget the blocked target so a new path is chosen
                             const targetKey = arrayToKey([targetX, targetY]);
                             if (["FORAGING", "FORAGING_FRUIT"].includes(this.state)) {
@@ -2586,13 +2429,9 @@
                             } else if (this.state === "GETTING_WOOD") {
                                 this.memory.wood.delete(targetKey);
                             }
-                            break;
+                            
+                            break; 
                         }
-
-                    } else {
-                        // No path found (A* returned null) - revert to random movement or break
-                        this.stuck_timer = simSettings.STUCK_TIMER_DURATION;
-                        break;
                     }
                     
                     this.skills.navigation = clamp(this.skills.navigation + simSettings.SKILL_GAIN_NAVIGATION, 0, SKILL_MAXES.navigation); 
@@ -2687,7 +2526,7 @@
                     this.food_carried--;
                     this.skills.foraging = clamp(this.skills.foraging + simSettings.SKILL_GAIN_FORAGE, 0, SKILL_MAXES.foraging); 
                     // Use developer setting for energy bonus
-                    const energyGain = simSettings.FOOD_ENERGY_GAIN_BASE + (this.skills.foraging * simSettings.SKILL_FORAGE_ENERGY_BONUS_BASE); // FIXED: Using correct constant
+                    const energyGain = simSettings.FOOD_ENERGY_GAIN_BASE + (this.skills.foraging * simSettings.SKILL_FORAGE_ENERGY_BONUS); 
                     this.energy += energyGain;
                     this.love = clamp(this.love + simSettings.LOVE_GAIN_EAT, 0, simSettings.STARTING_LOVE);
                     
@@ -2814,7 +2653,7 @@
             attack(target, attack_type = 'COMBAT_AGGRESSION') {
                 // Use developer settings for combat physics
                 let energyCost = Math.max(2, simSettings.ATTACK_COST_BASE - (this.skills.combat * simSettings.SKILL_COMBAT_COST_REDUCTION));
-                let damage = simSettings.ATTACK_DAMAGE_BASE + (this.skills.combat * simSettings.SKILL_COMBAT_DAMAGE_BONUS_BASE); // FIXED: Using correct constant
+                let damage = simSettings.ATTACK_DAMAGE_BASE + (this.skills.combat * simSettings.SKILL_COMBAT_DAMAGE_BONUS); 
                 
                 this.state = "ATTACKING";
                 this.energy -= energyCost;
@@ -2828,7 +2667,7 @@
                 target.was_attacked_by = this.id;
                 
                 if (target.energy <= 0) {
-                    target.die(attack_type, this.id); // Pass attacker ID for log
+                    target.die(attack_type); 
                 }
             }
             
@@ -2868,8 +2707,6 @@
                         
                         this.children_ids.add(newAgent.id);
                         partner.children_ids.add(newAgent.id);
-                        
-                        this.world.logDeath(this.world.turn, 'BIRTH', newAgent.id, this.id, partner.id); // Log birth event
                     }
                 }
                 
@@ -3112,10 +2949,10 @@
                 }
             }
 
-            die(reason = 'UNKNOWN', attackerId = null) {
+            die(reason = 'UNKNOWN') {
                 
                 // --- NEW: Vengeance System on Child Death (SYNCHRONIZED) ---
-                if (this.age < simSettings.ADULT_AGE && this.parent_ids.size > 0 && reason.startsWith('COMBAT')) {
+                if (this.age < simSettings.ADULT_AGE && this.parent_ids.size > 0) {
                     const witnesses = [];
                     for (const agent of this.world.agents) {
                         if (agent.id === this.id || this.parent_ids.has(agent.id)) {
@@ -3131,11 +2968,24 @@
                     }
                     
                     if (witnesses.length > 0) {
-                        const attacker = this.world.getAgentById(attackerId);
-                        if (attacker) {
+                        let closestParentAgent = null;
+                        let minDistToParent = Infinity;
+                        
+                        for (const p_id of this.parent_ids) {
+                            const parent = this.world.getAgentById(p_id);
+                            if (parent) {
+                                const dist = getDistance(this.x, this.y, parent.x, parent.y);
+                                if (dist < minDistToParent) {
+                                    minDistToParent = dist;
+                                    closestParentAgent = parent;
+                                }
+                            }
+                        }
+                        
+                        if (closestParentAgent) {
                             for (const witness of witnesses) {
                                 witness.state = "AVENGING";
-                                witness.avenging_target_id = attacker.id;
+                                witness.avenging_target_id = closestParentAgent.id;
                                 witness.vengeance_timer = simSettings.VENGEANCE_DURATION;
                             }
                         }
@@ -3143,7 +2993,6 @@
                 }
                 // --- END Vengeance System ---
                 
-                this.world.logDeath(this.world.turn, reason, this.id, null, null, attackerId); // Log death event
                 
                 this.world.deathCauses[reason] = (this.world.deathCauses[reason] || 0) + 1;
                 
@@ -3211,10 +3060,6 @@
                 
                 this.generationCount = 0;
                 
-                // NEW: Death Log for Narrative Feedback
-                this.deathLog = [];
-                this.MAX_DEATH_LOG = 10; 
-                
                 this.deathCauses = {
                     'MAX_AGE': 0, 
                     'STARVATION_ADULT': 0, 
@@ -3240,39 +3085,6 @@
                 this.libraryLocation = [Math.floor(this.width / 2), Math.floor(this.height / 2)];
 
                 this.stats = {};
-            }
-            
-            // --- NEW: Logging Function ---
-            logDeath(turn, reason, agentId, parent1Id, parent2Id, attackerId) {
-                let message = `Turn ${turn}: `;
-                
-                if (reason === 'BIRTH') {
-                    message += `👶 Agent #${agentId} was born. (Parents #${parent1Id}, #${parent2Id})`;
-                } else {
-                    const attackerText = attackerId ? ` by Agent #${attackerId}` : '';
-                    message += `☠️ Agent #${agentId} died of ${reason.replace('_', ' ')}${attackerText}.`;
-                }
-
-                this.deathLog.unshift(message);
-                if (this.deathLog.length > this.MAX_DEATH_LOG) {
-                    this.deathLog.pop();
-                }
-            }
-            
-            isHardObstacle(x, y) {
-                const posKey = arrayToKey([x, y]);
-                
-                if (posKey === arrayToKey(this.libraryLocation)) return true;
-                if (this.campfires[posKey]) return true;
-                
-                // Other agents' homes are hard obstacles
-                if (this.homes[posKey]) {
-                    if (this.homes[posKey].owner_id !== null) {
-                        return true;
-                    }
-                }
-
-                return false;
             }
 
             getNextAgentId() {
@@ -3731,7 +3543,6 @@
                 this.world = world;
                 this.canvas = document.getElementById(canvasId);
                 this.ctx = this.canvas.getContext('2d');
-                this.selectedAgentId = null; // NEW: For detail panel
 
                 this.cellSize = 20;
                 
@@ -3741,8 +3552,6 @@
                     clearTimeout(resizeTimer);
                     resizeTimer = setTimeout(() => this.resizeCanvas(), 100);
                 });
-                
-                this.canvas.addEventListener('click', this.handleCanvasClick.bind(this));
 
 
                 this.font = `${this.cellSize * 0.75}px Consolas, monospace`;
@@ -3763,26 +3572,6 @@
                 this.font = `${this.cellSize * 0.75}px Consolas, monospace`;
                 this.render(); 
             }
-            
-            handleCanvasClick(event) {
-                const rect = this.canvas.getBoundingClientRect();
-                const clickX = event.clientX - rect.left;
-                const clickY = event.clientY - rect.top;
-                
-                const gridX = Math.floor(clickX / this.cellSize);
-                const gridY = Math.floor(clickY / this.cellSize);
-                
-                const agent = this.world.agents.find(a => a.x === gridX && a.y === gridY);
-                
-                if (agent) {
-                    this.selectedAgentId = agent.id;
-                    updateAgentDetailPanel(agent);
-                } else {
-                    this.selectedAgentId = null;
-                    document.getElementById('agentDetailPanel').classList.add('hidden');
-                }
-                this.render();
-            }
 
             drawCell(x, y, char, colorKey, isDim) {
                 const ctx = this.ctx;
@@ -3800,6 +3589,7 @@
                 ctx.fillText(char, px, py);
             }
             
+            // NEW: Separate function for dim background chars to use the inverted text color
             drawDimBackgroundChar(x, y) {
                 const ctx = this.ctx;
                 const size = this.cellSize;
@@ -3807,77 +3597,23 @@
                 const py = y * size + size / 2;
                 
                 let colorKey = 'WHITE_NORMAL';
+                // Use BLACK if world light mode is active for contrast
+                if (simSettings.DISPLAY_WORLD_LIGHT_MODE) {
+                    colorKey = 'WHITE_NORMAL'; // This will be mapped to a dark color in INVERTED_COLORS
+                }
                 
                 ctx.fillStyle = COLORS[colorKey];
                 ctx.globalAlpha = 0.5;
                 ctx.fillText('.', px, py);
             }
-            
-            // --- NEW: Heatmap Rendering ---
-            drawHeatmap() {
-                const ctx = this.ctx;
-                const size = this.cellSize;
-                const health = this.world.environmentalHealth;
-                const maxHealth = simSettings.ENV_HEALTH_MAX;
 
-                // Color gradient from Green (Healthy) to Red (Sick/Low)
-                let r, g, b;
-
-                // Simple linear interpolation for demonstration:
-                // health: maxHealth -> 0
-                // factor: 1.0 -> 0.0
-                const factor = health / maxHealth; 
-                
-                // Color Transition: Green (100%) -> Yellow (50%) -> Red (0%)
-                
-                if (factor > 0.5) {
-                    // Green to Yellow transition (factor 1.0 to 0.5)
-                    r = Math.floor(255 * (1 - factor) * 2); 
-                    g = 255;
-                    b = 0;
-                } else {
-                    // Yellow to Red transition (factor 0.5 to 0.0)
-                    r = 255;
-                    g = Math.floor(255 * factor * 2);
-                    b = 0;
-                }
-
-                ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.2)`; 
-                ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-            }
-            
-            // --- NEW: Thought Bubble Rendering ---
-            drawThoughtBubble(x, y, agent) {
-                if (!simSettings.DISPLAY_EMOJI_MODE) return;
-                
-                const ctx = this.ctx;
-                const size = this.cellSize;
-                const px = x * size + size * 0.9;
-                const py = y * size + size * 0.15;
-                
-                let emoji = EMOJI_MAP[agent.state] || '❓';
-                
-                // Override with Buff/Debuff Emojis
-                if (agent.sickness_timer > 0) emoji = EMOJI_MAP['SICK'];
-                else if (agent.apathy_timer > 0) emoji = EMOJI_MAP['APATHY'];
-                
-                ctx.font = `${this.cellSize * 0.45}px sans-serif`; 
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.globalAlpha = 1.0;
-                
-                ctx.fillText(emoji, px, py);
-            }
-            // --- END NEW: Thought Bubble Rendering ---
 
             render() {
                 const ctx = this.ctx;
                 const size = this.cellSize;
 
                 ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-                
-                // NEW: Draw Heatmap
-                this.drawHeatmap(); 
+                // The canvas background color is set via CSS now
                 
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
@@ -3940,14 +3676,6 @@
                     const char = durability < 2 ? 'h' : 'H';
                     const colorKey = durability < 2 ? 'BLUE_NORMAL' : 'BLUE_BRIGHT';
                     this.drawCell(x, y, char, colorKey, false);
-                    
-                    // NEW: Highlight selected agent's home
-                    if (this.world.homes[posKey].owner_id === this.selectedAgentId) {
-                        ctx.strokeStyle = '#fcd34d'; // Yellow
-                        ctx.lineWidth = 2;
-                        ctx.globalAlpha = 1.0;
-                        ctx.strokeRect(x * size + 1, y * size + 1, size - 2, size - 2);
-                    }
                 }
                 
                 const [lx, ly] = this.world.libraryLocation;
@@ -3986,17 +3714,6 @@
                     }
                     
                     this.drawCell(agent.x, agent.y, char, colorKey, isDim);
-                    
-                    // NEW: Thought Bubble
-                    this.drawThoughtBubble(agent.x, agent.y, agent);
-                    
-                    // NEW: Highlight Selected Agent
-                    if (agent.id === this.selectedAgentId) {
-                        ctx.strokeStyle = '#fcd34d'; // Yellow
-                        ctx.lineWidth = 2;
-                        ctx.globalAlpha = 1.0;
-                        ctx.strokeRect(agent.x * size + 1, agent.y * size + 1, size - 2, size - 2);
-                    }
                 });
 
                 agentsAtHome.forEach(agent => {
@@ -4036,25 +3753,6 @@
                     }
 
                     ctx.fillText(char, px, py);
-                    
-                    // NEW: Thought Bubble (shifted inside home)
-                    if (simSettings.DISPLAY_EMOJI_MODE) {
-                        const emoji = EMOJI_MAP[agent.state] || '❓';
-                        ctx.font = `${this.cellSize * 0.4}px sans-serif`; 
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
-                        ctx.globalAlpha = 1.0;
-                        ctx.fillText(emoji, agent.x * size + size * 0.85, agent.y * size + size * 0.85);
-                    }
-                    
-                    // NEW: Highlight Selected Agent
-                    if (agent.id === this.selectedAgentId) {
-                        ctx.strokeStyle = '#fcd34d'; // Yellow
-                        ctx.lineWidth = 2;
-                        ctx.globalAlpha = 1.0;
-                        ctx.strokeRect(agent.x * size + 1, agent.y * size + 1, size - 2, size - 2);
-                    }
-                    
                     ctx.font = this.font;
                 });
 
@@ -4063,45 +3761,6 @@
         }
 
         // --- STATS RENDERING (MODIFIED: Uses new stats) ---
-        function updateAgentDetailPanel(agent) {
-            const panel = document.getElementById('agentDetailPanel');
-            if (agent) {
-                document.getElementById('detailAgentId').textContent = agent.id;
-                document.getElementById('detailAge').textContent = agent.age;
-                document.getElementById('detailState').textContent = agent.state;
-                document.getElementById('detailEnergy').textContent = agent.energy.toFixed(1);
-                document.getElementById('detailSocial').textContent = agent.social.toFixed(1);
-                document.getElementById('detailLove').textContent = agent.love.toFixed(1);
-                
-                const statusDiv = document.getElementById('detailStatus');
-                let statusHTML = `
-                    <p>Children: ${agent.children_ids.size} | Seeds: ${agent.seeds_carried} | Wood: ${agent.wood_carried}</p>
-                    <p>Home: ${agent.home_location ? 'Set' : 'None'} | Fire: ${agent.campfire_location ? 'Set' : 'None'}</p>
-                    <p>Status: ${agent.getStatusIcons()}</p>
-                `;
-                statusDiv.innerHTML = statusHTML;
-
-                const geneDiv = document.getElementById('detailGenes');
-                let geneHTML = '';
-                for (const gene of GENE_LIST) {
-                    geneHTML += `<p><span class="text-cyan-300">${gene}</span>: ${agent.genes[gene].toFixed(2)}</p>`;
-                }
-                geneDiv.innerHTML = geneHTML;
-
-                const skillDiv = document.getElementById('detailSkills');
-                let skillHTML = '';
-                for (const skill of SKILL_LIST) {
-                    skillHTML += `<p><span class="text-green-300">${skill}</span>: ${agent.skills[skill].toFixed(2)}</p>`;
-                }
-                skillDiv.innerHTML = skillHTML;
-
-
-                panel.classList.remove('hidden');
-            } else {
-                panel.classList.add('hidden');
-            }
-        }
-        
         function updateStatsDisplay(world) {
             document.getElementById('turnCounter').textContent = world.turn;
             document.getElementById('generationCounter').textContent = world.generationCount;
@@ -4114,25 +3773,13 @@
             if (envHealth <= 70) envColor = 'text-yellow-400';
             if (envHealth <= 30) envColor = 'text-red-400';
             
+            // NEW: Invert stat panel colors if light mode is on (though it wasn't requested, it's a good fail-safe/alignment)
+            // Note: Since we are keeping the outer page dark, we don't need to invert the text colors here.
+
             document.getElementById('statEnvHealth').innerHTML = `<span class="${envColor}">${envHealth.toFixed(1)}%</span>`;
 
             const geneStatsDiv = document.getElementById('geneStats');
             geneStatsDiv.innerHTML = '';
-            
-            let maxGeneVal = -Infinity;
-            let minGeneVal = Infinity;
-            let maxGeneName = null;
-            let minGeneName = null;
-            
-            for (const gene of GENE_LIST) {
-                const avg = world.stats[`avg_${gene}`] || 0;
-                // Exclude personality and mating_drive from min/max tracking as they are discrete/high values
-                if (!['personality', 'mating_drive'].includes(gene)) {
-                    if (avg > maxGeneVal) { maxGeneVal = avg; maxGeneName = gene; }
-                    if (avg < minGeneVal) { minGeneVal = avg; minGeneName = gene; }
-                }
-            }
-            
             for (const gene of GENE_LIST) {
                 const avg = world.stats[`avg_${gene}`] || 0;
                 let color = 'text-cyan-400';
@@ -4142,16 +3789,12 @@
                 if (gene === 'mating_drive') color = 'text-pink-400';
                 if (gene === 'sociability') color = 'text-white';
                 if (gene === 'farming') color = 'text-green-400';
-                if (gene === 'personality') color = 'text-purple-400'; 
-                if (gene === 'navigation') color = 'text-cyan-400'; 
-                
-                let highlight = '';
-                if (gene === maxGeneName) highlight = 'bg-green-700/50 rounded-sm px-1'; // Favored
-                if (gene === minGeneName) highlight = 'bg-red-700/50 rounded-sm px-1'; // Unfavored (usually)
+                if (gene === 'personality') color = 'text-purple-400'; // Using purple-400 for magenta
+                if (gene === 'navigation') color = 'text-cyan-400'; // Added color for navigation gene
 
                 const displayValue = gene === 'mating_drive' ? avg.toFixed(0) : avg.toFixed(2);
                 
-                geneStatsDiv.innerHTML += `<p class="${highlight}"><span class="${color}">${gene.padEnd(12, ' ')}</span>: ${displayValue}</p>`;
+                geneStatsDiv.innerHTML += `<p><span class="${color}">${gene.padEnd(12, ' ')}</span>: ${displayValue}</p>`;
             }
 
             const skillStatsDiv = document.getElementById('skillStats');
@@ -4191,28 +3834,13 @@
             } else {
                 deathStatsDiv.innerHTML = '<p>No deaths recorded yet.</p>';
             }
-            
-            // NEW: Update Death Log Display
-            const deathLogDiv = document.getElementById('deathLogDisplay');
-            deathLogDiv.innerHTML = world.deathLog.map(log => `<p>${log}</p>`).join('');
-            
-            // NEW: Update Detail Panel if an agent is selected
-            if (renderer.selectedAgentId) {
-                const selectedAgent = world.getAgentById(renderer.selectedAgentId);
-                if (selectedAgent) {
-                     updateAgentDetailPanel(selectedAgent);
-                } else {
-                     renderer.selectedAgentId = null;
-                     document.getElementById('agentDetailPanel').classList.add('hidden');
-                }
-            }
         }
 
-        // --- LEGEND (UPDATED) ---
         function populateLegend() {
             const legendDiv = document.getElementById('legend');
             
             const getDisplayColor = (colorKey) => {
+                // Returns the actual hex color for the legend
                 return COLORS[colorKey] || BASE_COLORS[colorKey];
             };
 
@@ -4224,35 +3852,51 @@
                         { char: 'f', color: 'CYAN_NORMAL', desc: 'Forage/Eat (Food/Fruit)' }, 
                         { char: 's', color: 'MAGENTA_DIM', desc: 'Sad/Crisis/Apathy' },
                         { char: 'o', color: 'MAGENTA_BRIGHT', desc: 'Happy/Linger' },
+                        { char: 'L', color: 'MAGENTA_BRIGHT', desc: 'Seek Library' },
+                        { char: 't', color: 'WHITE_NORMAL', desc: 'Seek Social' },
                         { char: 'T', color: 'WHITE_BRIGHT', desc: 'Communicate/Share Knowledge' },
-                        { char: 'm/M', color: 'MAGENTA_BRIGHT', desc: 'Mate/Seek Mate' },
-                        { char: 'X/r/V', color: 'RED_BRIGHT', desc: 'Attack/Retaliate/Avenge' },
-                        { char: 'g/B', color: 'WHITE_BRIGHT', desc: 'Share Resources/Wander to Build' },
-                        { char: 'Any', color: 'GREEN_NORMAL', desc: 'Agent is Sick (🤢)' },
-                        { char: 'Any', color: 'BLUE_BRIGHT', desc: 'Agent has Speed Buff (💨)' },
-                        { char: 'Any', color: 'MAGENTA_DIM', desc: 'Agent is Apathetic (😴)' },
+                        { char: 'm', color: 'MAGENTA_BRIGHT', desc: 'Mate' },
+                        { char: 'M', color: 'MAGENTA_BRIGHT', desc: 'Seek Mate' },
+                        { char: 'X/r', color: 'RED_BRIGHT', desc: 'Attack/Retaliate' },
+                        { char: 'V', color: 'RED_BRIGHT', desc: 'Avenge Child Death' },
+                        { char: 'g', color: 'WHITE_BRIGHT', desc: 'Share Resources' },
+                        { char: 'Any', color: 'GREEN_NORMAL', desc: 'Agent is Sick' },
+                        { char: 'Any', color: 'BLUE_BRIGHT', desc: 'Agent has Speed Buff' },
                     ]
                 },
                 {
-                    title: 'Building & Farming',
+                    title: 'Building & Wood',
                     items: [
-                        { char: 'w/E', color: 'YELLOW_NORMAL', desc: 'Get Wood/Repair Home' },
-                        { char: 'b/k', color: 'YELLOW_BRIGHT', desc: 'Build/Claim Home' },
-                        { char: 'c/R', color: 'RED_NORMAL', desc: 'Build/Refuel Campfire' },
-                        { char: 'p/G', color: 'GREEN_NORMAL', desc: 'Plant Seed/Go Home to Plant' }, 
-                        { char: 'F/P', color: 'GREEN_BRIGHT', desc: 'Food/Growing Food' },
-                        { char: 'W/T', color: 'YELLOW_BRIGHT', desc: 'Wood/Growing Tree' },
+                        { char: 'w', color: 'YELLOW_NORMAL', desc: 'Get Wood' },
+                        { char: 'b', color: 'YELLOW_BRIGHT', desc: 'Build Home' },
+                        { char: 'k', color: 'BLUE_BRIGHT', desc: 'Claim Home' },
+                        { char: 'E', color: 'YELLOW_NORMAL', desc: 'Repair Home' },
+                        { char: 'c', color: 'RED_NORMAL', desc: 'Build Fire' },
+                        { char: 'R', color: 'RED_BRIGHT', desc: 'Refuel Fire' },
                     ]
                 },
                 {
-                    title: 'Resources & Structures',
+                    title: 'Farming & Resources',
                     items: [
-                        { char: 'R/P/B', color: 'RED_NORMAL', desc: 'Energy/Social/Speed Fruit' }, 
-                        { char: 'b', color: 'MAGENTA_DIM', desc: 'Growing Fruit Bush' }, 
+                        { char: 'p', color: 'GREEN_NORMAL', desc: 'Plant (Food/Tree/Fruit)' }, 
+                        { char: 'G', color: 'GREEN_BRIGHT', desc: 'Go Home to Plant' },
+                        { char: 'F', color: 'GREEN_BRIGHT', desc: 'Food (Ready to Eat)' },
+                        { char: 'P', color: 'GREEN_NORMAL', desc: 'Plant (Growing Food)' },
+                        { char: 'W', color: 'YELLOW_BRIGHT', desc: 'Wood (Lumber)' },
+                        { char: 'T', color: 'GREEN_DIM', desc: 'Tree (Growing Wood)' },
+                        { char: 'R', color: 'RED_NORMAL', desc: 'Energy Fruit' }, 
+                        { char: 'P', color: 'MAGENTA_BRIGHT', desc: 'Social Fruit' }, 
+                        { char: 'B', color: 'BLUE_NORMAL', desc: 'Speed Fruit' }, 
+                        { char: 'b', color: 'MAGENTA_DIM', desc: 'Growing Bush' }, 
+                    ]
+                },
+                {
+                    title: 'Permanent Structures',
+                    items: [
                         { char: 'H/h', color: 'BLUE_BRIGHT', desc: 'Home (Healthy/Damaged)' },
                         { char: 'C', color: 'RED_BRIGHT', desc: 'Active Campfire' },
-                        { char: 'L', color: 'LIBRARY', desc: 'Library Location (Knowledge)' },
-                        { char: 'Map', color: 'RED_NORMAL', desc: 'Environmental Health Heatmap' },
+                        { char: 'L', color: 'LIBRARY', desc: 'Library Location' },
+                        { char: 'Any', color: 'WHITE_BRIGHT', desc: 'Agent with Wellbeing Buff (Defaulting to primary state color)' },
                     ]
                 }
             ];
@@ -4262,7 +3906,7 @@
             groups.forEach(group => {
                 html += `<div class="w-full mt-2 mb-1 border-t border-gray-700 pt-2"><h3 class="font-semibold text-sm text-cyan-300">${group.title}</h3></div>`;
                 group.items.forEach(item => {
-                    html += `<p class="flex items-center min-w-[200px] lg:min-w-[250px]"><span style="color: ${getDisplayColor(item.color)}; font-weight: bold; width: 40px;">${item.char}</span> ${item.desc}</p>`;
+                    html += `<p class="flex items-center min-w-[200px] lg:min-w-[250px]"><span style="color: ${getDisplayColor(item.color)}; font-weight: bold; width: 30px;">${item.char}</span> ${item.desc}</p>`;
                 });
             });
 
@@ -4400,12 +4044,6 @@
                 modal.classList.add('hidden');
                 location.reload(); 
             };
-            
-            document.getElementById('closeDetailBtn').onclick = () => {
-                 renderer.selectedAgentId = null;
-                 document.getElementById('agentDetailPanel').classList.add('hidden');
-                 renderer.render();
-            }
         }
         
         function initializeSkillMaxes() {
@@ -4448,62 +4086,6 @@
         }
         // --- END NEW: Display Settings Handler ---
 
-        // --- NEW: Game Loop and Speed Controls ---
-        let isPaused = false;
-        let currentSpeed = 150;
-
-        function setSpeed(ms) {
-            currentSpeed = ms;
-            if (interval) clearInterval(interval);
-            interval = setInterval(gameLoop, currentSpeed);
-            document.getElementById('currentSpeedDisplay').textContent = `Speed: ${currentSpeed}ms`;
-        }
-
-        function setupGameControls() {
-            const pauseBtn = document.getElementById('pauseBtn');
-            const speedNormalBtn = document.getElementById('speedNormalBtn');
-            const speedFastBtn = document.getElementById('speedFastBtn');
-            const dropFoodBtn = document.getElementById('interventionDropFood');
-            const crisisBtn = document.getElementById('interventionCrisis');
-            
-            pauseBtn.onclick = () => {
-                isPaused = !isPaused;
-                if (isPaused) {
-                    clearInterval(interval);
-                    pauseBtn.textContent = '▶️ Resume';
-                    pauseBtn.classList.replace('bg-yellow-500', 'bg-green-500');
-                    pauseBtn.classList.replace('hover:bg-yellow-600', 'hover:bg-green-600');
-                } else {
-                    interval = setInterval(gameLoop, currentSpeed);
-                    pauseBtn.textContent = '⏸️ Pause';
-                    pauseBtn.classList.replace('bg-green-500', 'bg-yellow-500');
-                    pauseBtn.classList.replace('hover:bg-green-600', 'hover:bg-yellow-600');
-                }
-            };
-
-            speedNormalBtn.onclick = () => setSpeed(simSettings.SIM_SPEED);
-            speedFastBtn.onclick = () => setSpeed(simSettings.SIM_SPEED / 5);
-            
-            dropFoodBtn.onclick = () => {
-                for (let i = 0; i < 50; i++) {
-                    const tile = world.getRandomEmptyTile();
-                    if (tile) {
-                        const posKey = arrayToKey(tile);
-                        world.food[posKey] = true;
-                        world.foodFreshness[posKey] = simSettings.FOOD_FRESHNESS;
-                    }
-                }
-            };
-            
-            crisisBtn.onclick = () => {
-                world.environmentalHealth = simSettings.ENV_HEALTH_MAX * 0.1;
-                alert('Environmental crisis triggered! Health is now 10%.');
-            };
-            
-            setSpeed(simSettings.SIM_SPEED); // Initialize speed display
-        }
-        // --- END Game Loop and Speed Controls ---
-
 
         // --- MAIN INITIALIZATION ---
         let world, renderer, interval;
@@ -4520,8 +4102,7 @@
             initializeSkillMaxes();
             
             for (let i = 0; i < simSettings.STARTING_AGENTS; i++) {
-                const newAgent = world.addAgent(); 
-                world.logDeath(0, 'BIRTH', newAgent.id, null, null); // Log initial agents
+                world.addAgent(); 
             }
             for (let i = 0; i < simSettings.STARTING_FOOD; i++) {
                 const tile = world.getRandomEmptyTile();
@@ -4548,13 +4129,13 @@
             
             world.calculateStats();
             updateStatsDisplay(world);
-            setupGameControls(); // Set up controls and interval after initialization
 
+            interval = setInterval(gameLoop, simSettings.SIM_SPEED);
+            
             console.log("Simulation initialized. Starting loop.");
         }
 
         function gameLoop() {
-            if (isPaused) return;
             try {
                 world.update();
                 renderer.render();
