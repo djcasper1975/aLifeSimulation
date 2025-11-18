@@ -612,6 +612,11 @@
                             <input type="number" id="GENE_PERSONALITY_MIN" name="GENE_PERSONALITY_MIN" step="0.1">
                             <input type="number" id="GENE_PERSONALITY_MAX" name="GENE_PERSONALITY_MAX" step="0.1">
                             <input type="number" id="GENE_PERSONALITY_MUTATE_RATE" name="GENE_PERSONALITY_MUTATE_RATE" step="0.01">
+
+                            <label for="GENE_NAVIGATION_MIN" class="self-center col-span-2 sm:col-span-1">Navigation</label>
+                            <input type="number" id="GENE_NAVIGATION_MIN" name="GENE_NAVIGATION_MIN" step="0.1">
+                            <input type="number" id="GENE_NAVIGATION_MAX" name="GENE_NAVIGATION_MAX" step="0.1">
+                            <input type="number" id="GENE_NAVIGATION_MUTATE_RATE" name="GENE_NAVIGATION_MUTATE_RATE" step="0.01">
                         </div>
                     </fieldset>
 
@@ -806,7 +811,8 @@
         const SETTINGS_STORAGE_KEY = 'aLifeSimSettings';
         
         // --- Lists of genes and skills for iteration (SYNCHRONIZED) ---
-        const GENE_LIST = ['vision', 'speed', 'metabolism', 'aggression', 'builder', 'mating_drive', 'sociability', 'farming', 'personality'];
+        // Note: 'navigation' is added to GENE_LIST here to align with the Python file logic.
+        const GENE_LIST = ['vision', 'speed', 'metabolism', 'aggression', 'builder', 'mating_drive', 'sociability', 'farming', 'personality', 'navigation'];
         const SKILL_LIST = ['foraging', 'social', 'building', 'navigation', 'combat', 'farming'];
         
         // --- PERSONALITY CONSTANTS (SYNCHRONIZED) ---
@@ -953,12 +959,13 @@
             GENE_SOCIABILITY_MIN: 0.0, GENE_SOCIABILITY_MAX: 1.0, GENE_SOCIABILITY_MUTATE_RATE: 0.1,
             GENE_FARMING_MIN: 0.0, GENE_FARMING_MAX: 1.0, GENE_FARMING_MUTATE_RATE: 0.1,
             GENE_PERSONALITY_MIN: 1.0, GENE_PERSONALITY_MAX: 4.0, GENE_PERSONALITY_MUTATE_RATE: 0.5,
-            
+            GENE_NAVIGATION_MIN: 0.0, GENE_NAVIGATION_MAX: 3.0, GENE_NAVIGATION_MUTATE_RATE: 0.1, // <--- SYNCHRONIZED
+
             // --- SKILL MAXES (SYNCHRONIZED) ---
             SKILL_FORAGE_MAX: 10.0,
             SKILL_SOCIAL_MAX: 10.0,
             SKILL_BUILD_MAX: 4.0, 
-            SKILL_NAV_MAX: 5.0,
+            SKILL_NAV_MAX: 3.0, // <--- SYNCHRONIZED from 5.0 to 3.0
             SKILL_COMBAT_MAX: 10.0,
             SKILL_FARM_MAX: 10.0,
 
@@ -2979,7 +2986,7 @@
                 // Remove self from parent's child list
                 const dyingAgentId = this.id;
                 for (const parent_id of this.parent_ids) {
-                    const parent = this.world.getAgentById(parent_id);
+                    const parent = this.world.getAgentById(p_id);
                     if (parent && parent.children_ids.has(dyingAgentId)) {
                         parent.children_ids.delete(dyingAgentId);
                     }
@@ -3423,7 +3430,7 @@
                 
                 for (const gene of GENE_LIST) {
                     const avgKey = `avg_${gene}`;
-                    const total = agentsForStats.reduce((sum, agent) => sum + agent.genes[gene], 0);
+                    const total = agentsForStats.reduce((sum, agent) => sum + (agent.genes[gene] || 0), 0);
                     this.stats[avgKey] = total / numAgents;
                 }
                     
@@ -3551,10 +3558,7 @@
                 const py = y * size + size / 2;
                 
                 let colorKey = 'WHITE_NORMAL';
-                // Use BLACK if world light mode is active for contrast
-                if (simSettings.DISPLAY_WORLD_LIGHT_MODE) {
-                    colorKey = 'WHITE_NORMAL'; // This will be mapped to a dark color in INVERTED_COLORS
-                }
+                // Use the correct inverted/base color based on the current COLORS map
                 
                 ctx.fillStyle = COLORS[colorKey];
                 ctx.globalAlpha = 0.5;
@@ -3744,7 +3748,8 @@
                 if (gene === 'sociability') color = 'text-white';
                 if (gene === 'farming') color = 'text-green-400';
                 if (gene === 'personality') color = 'text-purple-400'; // Using purple-400 for magenta
-                
+                if (gene === 'navigation') color = 'text-cyan-400'; // Navigation gene stat color
+
                 const displayValue = gene === 'mating_drive' ? avg.toFixed(0) : avg.toFixed(2);
                 
                 geneStatsDiv.innerHTML += `<p><span class="${color}">${gene.padEnd(12, ' ')}</span>: ${displayValue}</p>`;

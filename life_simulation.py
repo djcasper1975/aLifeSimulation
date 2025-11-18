@@ -171,7 +171,8 @@ GENE_RANGES = {
     'mating_drive': (123, 160, 5.0), 
     'sociability': (0.0, 1.0, 0.1),
     'farming': (0.0, 1.0, 0.1),
-    'personality': (1.0, 4.0, 0.5) 
+    'personality': (1.0, 4.0, 0.5),
+    'navigation': (0.0, 3.0, 0.1)  # <--- NEW/MODIFIED: Added Gene entry and capped max at 3.0
 }
 
 # --- HELPER FUNCTIONS ---
@@ -1307,7 +1308,7 @@ class Agent:
         elif self.state == "SEEKING_LIBRARY": 
             lx, ly = self.memory['library']
             
-            self.skills['navigation'] = clamp(self.skills['navigation'] + 0.001, 0, 5.0) 
+            self.skills['navigation'] = clamp(self.skills['navigation'] + 0.001, 0, 3.0) # <--- MODIFIED: Capped at 3.0
             
             if get_distance(self.x, self.y, lx, ly) < 2.0:
                 self.skills['social'] = clamp(self.skills['social'] + 0.01, 0, 10.0)
@@ -1445,7 +1446,7 @@ class Agent:
                     self.exploration_vector = (random.randint(-1, 1), random.randint(-1, 1))
                     break 
             
-            self.skills['navigation'] = clamp(self.skills['navigation'] + 0.001, 0, 5.0) 
+            self.skills['navigation'] = clamp(self.skills['navigation'] + 0.001, 0, 3.0) # <--- MODIFIED: Capped at 3.0
             cost_multiplier = 1.0 - (self.skills['navigation'] * 0.15) 
             if cost_multiplier < 0.25: cost_multiplier = 0.25
             
@@ -1489,7 +1490,7 @@ class Agent:
                 self.exploration_vector = (0, 0)
                 break 
             
-            self.skills['navigation'] = clamp(self.skills['navigation'] + 0.001, 0, 5.0) 
+            self.skills['navigation'] = clamp(self.skills['navigation'] + 0.001, 0, 3.0) # <--- MODIFIED: Capped at 3.0
             cost_multiplier = 1.0 - (self.skills['navigation'] * 0.15) 
             if cost_multiplier < 0.25: cost_multiplier = 0.25
             
@@ -1716,12 +1717,20 @@ class Agent:
             self_skill = self.skills[skill]
             partner_skill = partner.skills[skill]
             
+            # Use the actual max skill for clamping, which for navigation is now 3.0
+            max_skill = 10.0
+            if skill == 'building':
+                max_skill = 4.0
+            elif skill == 'navigation':
+                max_skill = 3.0 # <-- Match the new gene cap
+            
             if self_skill > partner_skill:
-                partner.skills[skill] = clamp(partner_skill + learning_rate, 0, 10.0)
+                partner.skills[skill] = clamp(partner_skill + learning_rate, 0, max_skill)
                 if self_skill > 2.0: 
+                    # Global knowledge update is capped at 10.0 for all
                     self.world.global_skill_knowledge[skill] = clamp(self.world.global_skill_knowledge.get(skill, 0.0) + 0.001, 0, 10.0)
             elif partner_skill > self_skill:
-                self.skills[skill] = clamp(self_skill + learning_rate, 0, 10.0)
+                self.skills[skill] = clamp(self_skill + learning_rate, 0, max_skill)
                 if partner_skill > 2.0:
                     self.world.global_skill_knowledge[skill] = clamp(self.world.global_skill_knowledge.get(skill, 0.0) + 0.001, 0, 10.0)
 
@@ -2655,6 +2664,7 @@ class World:
         output_buffer.append(Fore.WHITE + "  Sociability:" + Style.RESET_ALL + "{:>5.2f} (Need to be social)".format(self.stats.get('avg_sociability', 0)))
         output_buffer.append(Fore.GREEN + "  Farming:    " + Style.RESET_ALL + "{:>5.2f} (Tendency to plant seeds)".format(self.stats.get('avg_farming', 0)))
         output_buffer.append(Fore.MAGENTA + "  Personality:" + Style.RESET_ALL + "{:>5.2f} (Average of the 4 types)".format(self.stats.get('avg_personality', 0))) 
+        output_buffer.append(Fore.CYAN + "  Navigation: " + Style.RESET_ALL + "{:>5.2f} (Tendency to learn efficient movement)".format(self.stats.get('avg_navigation', 0))) # Added missing navigation gene stat
 
         output_buffer.append(Style.BRIGHT + "--- AVERAGE SKILLS (This is 'Learning'!) ---" + Style.RESET_ALL)
         output_buffer.append(Fore.GREEN + "  Foraging Skill: " + Style.RESET_ALL + "{:>5.2f} (Get more energy/seeds from food)".format(self.stats.get('avg_foraging_skill', 0)))
