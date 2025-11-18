@@ -172,7 +172,7 @@ GENE_RANGES = {
     'sociability': (0.0, 1.0, 0.1),
     'farming': (0.0, 1.0, 0.1),
     'personality': (1.0, 4.0, 0.5),
-    'navigation': (0.0, 3.0, 0.1)  # <--- NEW/MODIFIED: Added Gene entry and capped max at 3.0
+    'navigation': (0.0, 3.0, 0.1)
 }
 
 # --- HELPER FUNCTIONS ---
@@ -237,6 +237,9 @@ class Agent:
         self.state = "WANDERING" 
         
         self.exploration_vector = (0, 0) 
+        # --- FREEZE FIX: Stuck Timer ---
+        self.stuck_timer = 0 # New property to manage deadlock
+        # --- END FREEZE FIX ---
         
         # Agent Memory
         self.memory = {
@@ -410,6 +413,11 @@ class Agent:
         if self.speed_buff_timer > 0:
             self.speed_buff_timer -= 1
         # --- END NEW ---
+
+        # --- FREEZE FIX: Update Stuck Timer ---
+        if self.stuck_timer > 0:
+            self.stuck_timer -= 1
+        # --- END FREEZE FIX ---
             
         self.energy -= metabolism_cost
         if self.mate_cooldown > 0:
@@ -499,6 +507,12 @@ class Agent:
         """The main "think" loop for the agent."""
         vision_radius = int(self.genes['vision'])
         
+        # --- FREEZE FIX: Stuck Check Override (New Priority -3) ---
+        if self.stuck_timer > 0:
+            self.state = "WANDERING" # Force genuine random exploration
+            return
+        # --- END FREEZE FIX ---
+
         # --- NEW: Opportunistic Socializing ---
         # Check for agents right next to self (radius 1.5)
         # Use a smaller radius than vision to mean "right next to"
@@ -1441,9 +1455,22 @@ class Agent:
                     moved = True
                 
                 if not moved:
-                    # --- FIX: Deadlock Guard ---
+                    # --- FIX: Deadlock Guard / FREEZE PREVENTION ---
                     # Stuck or blocked by multiple things, stop movement for this step and force a re-evaluation
                     self.exploration_vector = (random.randint(-1, 1), random.randint(-1, 1))
+                    
+                    # NEW: Set a short timer (5 turns) to force genuine random exploration next turn
+                    self.stuck_timer = 5
+                    
+                    # *** NEW CRITICAL FIX: Forget the target that caused the problem ***
+                    target_tuple = (target_x, target_y)
+                    if self.state in ["FORAGING", "FORAGING_FRUIT"]:
+                        self.memory['food'].discard(target_tuple)
+                        self.memory['fruit'].discard(target_tuple)
+                    elif self.state == "GETTING_WOOD":
+                        self.memory['wood'].discard(target_tuple)
+                    # ************************************************
+                    
                     break 
             
             self.skills['navigation'] = clamp(self.skills['navigation'] + 0.001, 0, 3.0) # <--- MODIFIED: Capped at 3.0

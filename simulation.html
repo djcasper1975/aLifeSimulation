@@ -612,11 +612,6 @@
                             <input type="number" id="GENE_PERSONALITY_MIN" name="GENE_PERSONALITY_MIN" step="0.1">
                             <input type="number" id="GENE_PERSONALITY_MAX" name="GENE_PERSONALITY_MAX" step="0.1">
                             <input type="number" id="GENE_PERSONALITY_MUTATE_RATE" name="GENE_PERSONALITY_MUTATE_RATE" step="0.01">
-
-                            <label for="GENE_NAVIGATION_MIN" class="self-center col-span-2 sm:col-span-1">Navigation</label>
-                            <input type="number" id="GENE_NAVIGATION_MIN" name="GENE_NAVIGATION_MIN" step="0.1">
-                            <input type="number" id="GENE_NAVIGATION_MAX" name="GENE_NAVIGATION_MAX" step="0.1">
-                            <input type="number" id="GENE_NAVIGATION_MUTATE_RATE" name="GENE_NAVIGATION_MUTATE_RATE" step="0.01">
                         </div>
                     </fieldset>
 
@@ -811,8 +806,7 @@
         const SETTINGS_STORAGE_KEY = 'aLifeSimSettings';
         
         // --- Lists of genes and skills for iteration (SYNCHRONIZED) ---
-        // Note: 'navigation' is added to GENE_LIST here to align with the Python file logic.
-        const GENE_LIST = ['vision', 'speed', 'metabolism', 'aggression', 'builder', 'mating_drive', 'sociability', 'farming', 'personality', 'navigation'];
+        const GENE_LIST = ['vision', 'speed', 'metabolism', 'aggression', 'builder', 'mating_drive', 'sociability', 'farming', 'personality', 'navigation']; // Navigation added here
         const SKILL_LIST = ['foraging', 'social', 'building', 'navigation', 'combat', 'farming'];
         
         // --- PERSONALITY CONSTANTS (SYNCHRONIZED) ---
@@ -959,13 +953,13 @@
             GENE_SOCIABILITY_MIN: 0.0, GENE_SOCIABILITY_MAX: 1.0, GENE_SOCIABILITY_MUTATE_RATE: 0.1,
             GENE_FARMING_MIN: 0.0, GENE_FARMING_MAX: 1.0, GENE_FARMING_MUTATE_RATE: 0.1,
             GENE_PERSONALITY_MIN: 1.0, GENE_PERSONALITY_MAX: 4.0, GENE_PERSONALITY_MUTATE_RATE: 0.5,
-            GENE_NAVIGATION_MIN: 0.0, GENE_NAVIGATION_MAX: 3.0, GENE_NAVIGATION_MUTATE_RATE: 0.1, // <--- SYNCHRONIZED
+            GENE_NAVIGATION_MIN: 0.0, GENE_NAVIGATION_MAX: 3.0, GENE_NAVIGATION_MUTATE_RATE: 0.1, // ADDED HERE
 
             // --- SKILL MAXES (SYNCHRONIZED) ---
             SKILL_FORAGE_MAX: 10.0,
             SKILL_SOCIAL_MAX: 10.0,
             SKILL_BUILD_MAX: 4.0, 
-            SKILL_NAV_MAX: 3.0, // <--- SYNCHRONIZED from 5.0 to 3.0
+            SKILL_NAV_MAX: 3.0, // SYNCHRONIZED
             SKILL_COMBAT_MAX: 10.0,
             SKILL_FARM_MAX: 10.0,
 
@@ -1124,6 +1118,7 @@
                 
                 this.state = "WANDERING"; 
                 this.exploration_vector = [0, 0]; 
+                this.stuck_timer = 0; // <<< FREEZE FIX: Added Stuck Timer
                 
                 // Agent Memory
                 this.memory = {
@@ -1179,7 +1174,13 @@
                                 genes[gene] = Math.floor(Math.random() * (PERSONALITY_AGGRESSIVE_COOPERATOR - PERSONALITY_JUDGMENTAL + 1)) + PERSONALITY_JUDGMENTAL;
                             }
                         } else {
-                            genes[gene] = Math.random() * (maxVal - minVal) + minVal;
+                            // Handle navigation gene specifically if it's missing the explicit min/max in the form but is in GENE_LIST
+                            if (gene === 'navigation') {
+                                // Uses Python's default of (0.0, 3.0) from the updated list
+                                genes[gene] = Math.random() * (3.0 - 0.0) + 0.0;
+                            } else {
+                                genes[gene] = Math.random() * (maxVal - minVal) + minVal;
+                            }
                         }
                     } else {
                         genes[gene] = Math.random() * (maxVal - minVal) + minVal;
@@ -1297,6 +1298,13 @@
                         this.avenging_target_id = null;
                     }
                 }
+                
+                // --- FREEZE FIX: Update Stuck Timer ---
+                if (this.stuck_timer > 0) {
+                    this.stuck_timer--;
+                }
+                // --- END FREEZE FIX ---
+
                 // --- End Buff/Debuff Applications ---
 
 
@@ -1378,6 +1386,13 @@
                 const visionRadius = Math.floor(this.genes['vision']);
                 const currentPosKey = arrayToKey([this.x, this.y]);
                 
+                // --- FREEZE FIX: Stuck Check Override (New Priority -3) ---
+                if (this.stuck_timer > 0) {
+                    this.state = "WANDERING"; // Force genuine random exploration
+                    return;
+                }
+                // --- END FREEZE FIX ---
+
                 // --- NEW: Opportunistic Socializing (Check proximity 1.5) ---
                 const nearbyAgents = this.world.getNearestAgents(this.x, this.y, 1.5, this);
                 if (nearbyAgents.length > 0) {
@@ -2392,16 +2407,23 @@
                             moved = true;
                         }
                         
-                     // --- FIX: Deadlock Guard ---
-                    if (!moved) {
-                        // Stuck or blocked by multiple things: Stop movement for this step and force a re-evaluation
-                        this.exploration_vector = [Math.floor(Math.random() * 3) - 1, Math.floor(Math.random() * 3) - 1];
-                        
-                        // --- NEW FREEZE PREVENTION: Revert to a safe, lowest priority state ---
-                        if (this.state !== "WANDERING") {
-                            this.state = "WANDERING"; 
-                        }
-                        // --- END NEW FREEZE PREVENTION ---
+                        // --- FIX: Deadlock Guard / FREEZE PREVENTION ---
+                        if (!moved) {
+                            // Stuck or blocked by multiple things: Stop movement for this step and force a re-evaluation
+                            this.exploration_vector = [Math.floor(Math.random() * 3) - 1, Math.floor(Math.random() * 3) - 1];
+                            
+                            // NEW: Set a short timer (5 turns) to force genuine random exploration next turn
+                            this.stuck_timer = 5;
+
+                            // CRITICAL FIX: Forget the blocked target so a new path is chosen
+                            const targetKey = arrayToKey([targetX, targetY]);
+                            if (["FORAGING", "FORAGING_FRUIT"].includes(this.state)) {
+                                this.memory.food.delete(targetKey);
+                                this.memory.fruit.delete(targetKey);
+                            } else if (this.state === "GETTING_WOOD") {
+                                this.memory.wood.delete(targetKey);
+                            }
+                            
                             break; 
                         }
                     }
@@ -2992,7 +3014,7 @@
                 // Remove self from parent's child list
                 const dyingAgentId = this.id;
                 for (const parent_id of this.parent_ids) {
-                    const parent = this.world.getAgentById(p_id);
+                    const parent = this.world.getAgentById(parent_id);
                     if (parent && parent.children_ids.has(dyingAgentId)) {
                         parent.children_ids.delete(dyingAgentId);
                     }
@@ -3436,7 +3458,7 @@
                 
                 for (const gene of GENE_LIST) {
                     const avgKey = `avg_${gene}`;
-                    const total = agentsForStats.reduce((sum, agent) => sum + (agent.genes[gene] || 0), 0);
+                    const total = agentsForStats.reduce((sum, agent) => sum + agent.genes[gene], 0);
                     this.stats[avgKey] = total / numAgents;
                 }
                     
@@ -3564,7 +3586,10 @@
                 const py = y * size + size / 2;
                 
                 let colorKey = 'WHITE_NORMAL';
-                // Use the correct inverted/base color based on the current COLORS map
+                // Use BLACK if world light mode is active for contrast
+                if (simSettings.DISPLAY_WORLD_LIGHT_MODE) {
+                    colorKey = 'WHITE_NORMAL'; // This will be mapped to a dark color in INVERTED_COLORS
+                }
                 
                 ctx.fillStyle = COLORS[colorKey];
                 ctx.globalAlpha = 0.5;
@@ -3754,7 +3779,7 @@
                 if (gene === 'sociability') color = 'text-white';
                 if (gene === 'farming') color = 'text-green-400';
                 if (gene === 'personality') color = 'text-purple-400'; // Using purple-400 for magenta
-                if (gene === 'navigation') color = 'text-cyan-400'; // Navigation gene stat color
+                if (gene === 'navigation') color = 'text-cyan-400'; // Added color for navigation gene
 
                 const displayValue = gene === 'mating_drive' ? avg.toFixed(0) : avg.toFixed(2);
                 
@@ -4114,3 +4139,4 @@
     </script>
 </body>
 </html>
+}
