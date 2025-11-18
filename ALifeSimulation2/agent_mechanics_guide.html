@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A-Life: The Evolution of Behavior</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        .section-header {
+            border-left: 4px solid #3b82f6; /* blue-500 */
+            padding-left: 1rem;
+        }
+        .code-block {
+            background-color: #e5e7eb; /* gray-200 */
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem;
+            font-family: monospace;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+        }
+    </style>
+</head>
+<body class="p-6 sm:p-10 text-gray-800">
+
+    <div class="max-w-4xl mx-auto">
+        
+<a href="simulation.html" class="inline-block mb-4 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-md">
+    &larr; Back to Simulation
+</a>
+        <header class="mb-8">
+            <h1 class="text-4xl font-bold text-gray-900">A-Life: The Evolution of Behavior</h1>
+            <p class="text-lg text-gray-500 mt-2">Discover the complex rules, emergent psychology, and evolving culture of your digital agents.</p>
+        </header>
+
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-4 section-header">1. Nature vs. Nurture: Evolve or Learn?</h2>
+            <p class="mb-4">Agents are defined by two distinct systems that shape their identity: **Genes (Nature)**, which are inherited at birth, and **Skills (Nurture)**, which are learned through action and communication.</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-purple-500">
+                    <h3 class="font-semibold text-lg mb-1">Evolution (Genes)</h3>
+                    <p class="text-sm mb-2">Inherited traits that define an agent's potential. They only change through generations and mutation.</p>
+                    <ul class="list-disc ml-5 text-sm space-y-1">
+                        <li>**Vision/Speed/Metabolism:** Core physical traits.</li>
+                        <li>**Aggression:** Base chance to attack. (Only possible if **Love is 0**).</li>
+                        <li>**Builder:** Tendency to build/repair Homes and Campfires.</li>
+                        <li>**Mating Drive:** Energy threshold needed to seek a partner.</li>
+                        <li>**Sociability:** How much they *need* social contact.</li>
+                        <li>**Farming:** Tendency to plant seeds.</li>
+                        <li>**Navigation:** Improves pathfinding efficiency and reduces energy cost for movement.</li>
+                        <li>**Personality:** (See Section 2) Their core social archetype.</li>
+                    </ul>
+                </div>
+
+                <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-green-500">
+                    <h3 class="font-semibold text-lg mb-1">Learning (Skills)</h3>
+                    <p class="text-sm mb-2">Acquired traits that improve efficiency. These are learned by individuals and *shared* with the community via chat ('T') and the Library ('L').</p>
+                    <ul class="list-disc ml-5 text-sm space-y-1">
+                        <li>**Building Skill:** Reduces wood cost and is gained by building/repairing.</li>
+                        <li>**Navigation Skill:** Reduces energy cost of moving, gained by travel.</li>
+                        <li>**Foraging Skill:** Increases energy gain from food/fruit and improves seed discovery chance.</li>
+                        <li>**Combat Skill:** Increases damage dealt and reduces energy cost in a fight.</li>
+                        <li>**Social Skill:** Increases social gain from chatting and is gained by social interactions.</li>
+                        <li>**Farming Skill:** Increases the **environmental healing effect** of planting.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+        
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-4 section-header">2. The Agent's Mind: Psychology & Society</h2>
+            <p class="mb-4">Agents are driven by a complex psychological model that defines their well-being, social group, and capacity for conflict. A new 'Pause' state allows content agents to linger and share knowledge.</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-red-500">
+                    <h3 class="font-semibold text-lg mb-1">Core Needs, Sadness, and Sickness</h3>
+                    <p class="text-sm mb-2">Agents constantly balance **Energy** (from food) and **Social** (from friends/campfires).</p>
+                    <ul class="list-disc ml-5 text-sm space-y-1">
+                        <li>**Pause Thresholds:** If Energy (><code class="code-block inline-block p-1">PAUSE_ENERGY_THRESHOLD</code>) and Social (><code class="code-block inline-block p-1">PAUSE_SOCIAL_THRESHOLD</code>) are high, the agent enters a contented 'Pause' state ('A' or 'o') where they passively share knowledge and seek the Library.</li>
+                        <li>**Sad/Crisis ('s', Magenta):** If Energy or Social is below critical thresholds, the agent enters a crisis state to prioritize survival.</li>
+                        <li>**Sickness ('Any', Green):** Agents contract Sickness if the Environmental Health is low (<<code class="code-block inline-block p-1">ENV_SICKNESS_THRESHOLD</code>). This incurs a heavy metabolism penalty.</li>
+                    </ul>
+                </div>
+                
+                <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-pink-500">
+                    <h3 class="font-semibold text-lg mb-1">Love & Apathy (The Morality Engine)</h3>
+                    <p class="text-sm mb-2">**Love** is the master stat for well-being. It is gained from positive actions (eating, socializing) and lost during 'Struggle' (low energy/social).</p>
+                    <ul class="list-disc ml-5 text-sm space-y-1">
+                        <li>**The "Love Lock":** An agent **cannot be aggressive** if their Love score is above 0.</li>
+                        <li>**Apathy:** If Love hits 0, the agent's compass breaks. They become **Apathetic** ('s' in magenta) for <code class="code-block inline-block p-1">APATHY_DURATION</code> turns, suffering a heavy metabolism penalty and social loss. This is one of the states where aggression is possible.</li>
+                    </ul>
+                </div>
+                
+                <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-blue-500 md:col-span-2">
+                    <h3 class="font-semibold text-lg mb-1">Personalities (The Social Fabric)</h3>
+                    <p class="text-sm mb-2">Each agent's inherited personality dictates their social interactions and conflict potential:</p>
+                    <ul class="list-disc ml-5 text-sm space-y-1">
+                        <li>**Cooperative (1):** The standard, social agent.</li>
+                        <li>**Isolated (2):** A-social. Prefers a <code class="code-block inline-block p-1">SEEKING_REMOTE_SPOT</code> ('S').</li>
+                        <li>**Judgmental (3):** Prone to clashes with Isolated agents.</li>
+                        <li>**Aggressive Cooperator (4):** A social agent, but highly likely to join a Vengeance posse and clashes with Judgmental agents.</li>
+                        <li>**Clashes:** When conflicting personalities meet, they may refuse to socialize or even trigger <code class="code-block inline-block p-1">COMBAT_CONFLICT</code>.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-4 section-header">3. From Survival to Culture: Building a Society</h2>
+            <p class="mb-4">Agents build permanent structures, share knowledge, and collaborate to overcome disaster.</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-yellow-700">
+                    <h3 class="font-semibold text-lg mb-1">Communal Hubs (Homes & Campfires)</h3>
+                    <p class="text-sm mb-2">Structures grant powerful buffs but require maintenance and resource investment.</p>
+                    <ul class="list-disc ml-5 text-sm space-y-1">
+                        <li>**Homes (H/h):** Grants major energy and social gain buffs to the owner and their children, while multiplying their metabolism cost by <code class="code-block inline-block p-1">HOME_METABOLISM_MULTIPLIER</code> (0.5 by default).</li>
+                        <li>**Campfires (C):** Grants a communal social gain buff and multiplies metabolism by <code class="code-block inline-block p-1">CAMPFIRE_METABOLISM_MULTIPLIER</code> (0.9 by default) to nearby agents. Also provides a **passive Love gain**.</li>
+                        <li>**Maintenance:** Homes must be repaired ('E') with wood. Campfires must be refueled ('R') with wood before their <code class="code-block inline-block p-1">CAMPFIRE_REFUEL_THRESHOLD</code> is reached.</li>
+                    </ul>
+                </div>
+
+                <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-yellow-500">
+                    <h3 class="font-semibold text-lg mb-1">Peer-to-Peer Skill Sharing</h3>
+                    <p class="text-sm mb-2">When agents **Communicate ('T')**, they share skills, knowledge, and critical news.</p>
+                    <ul class="list-disc ml-5 text-sm space-y-1">
+                        <li>**Skill Transfer:** The agent with the higher skill transfers a fraction to the less-skilled partner.</li>
+                        <li>**Global Contribution:** Highly skilled agents contribute to the Global Knowledge Library and their current skills determine the social gain bonus.</li>
+                        <li>**Resource Sharing:** Agents may share carried Food/Wood/Fruit ('g') if a nearby partner is starving.</li>
+                        <li>**Critical News:** Agents propagate news of **Food Crisis** (if world food < <code class="code-block inline-block p-1">CRITICAL_FOOD_COUNT</code>) and **Low Population** (if world pop < <code class="code-block inline-block p-1">MIN_POPULATION_TARGET</code>).</li>
+                    </ul>
+                </div>
+                
+                <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-purple-500 md:col-span-2">
+                    <h3 class="font-semibold text-lg mb-1">The Global Knowledge Library ('L') and Skill Focus</h3>
+                    <p class="text-sm mb-2">The Library acts as a global 'tech tree' and is boosted by the community.</p>
+                    <ul class="list-disc ml-5 text-sm space-y-1">
+                        <li>**Passive Uptake:** All agents passively "download" knowledge from this global pool every turn, allowing new generations to be more skilled.</li>
+                        <li>**Boosters:** Lingerers near a Campfire and Communicating agents contribute to the Library.</li>
+                        <li>**Global Skill Focus:** A special setting allows a chosen skill (e.g., 'farming') to receive a small, continuous boost (<<code class="code-block inline-block p-1">GLOBAL_SKILL_BOOST</code>) across all agents, shaping the direction of the culture.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-4 section-header">4. The Dark Side: Conflict, Crime & Vengeance</h2>
+            <p class="mb-4">Violence emerges from desperation, personality, and tragedy. Combat involves a reduction to the agent's **Combat Skill** and a deduction of the <code class="code-block inline-block p-1">ATTACK_COST_BASE</code> energy.</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-red-500">
+                    <h3 class="font-semibold text-lg mb-1">Aggression & Retaliation ('X', 'r')</h3>
+                    <ul class="list-disc ml-5 text-sm space-y-1">
+                        <li>**Trigger:** An agent can initiate an attack ('X') if their **Love is 0** (Apathetic) and they roll a low enough chance against their **Aggression gene**.</li>
+                        <li>**Conflict Attack:** Clashing personalities (e.g., Judgmental and Isolated) may force an attack.</li>
+                        <li>**Retaliation:** The victim will **immediately** stop all other tasks to hunt down their attacker ('r').</li>
+                    </ul>
+                </div>
+                
+                <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-red-800">
+                    <h3 class="font-semibold text-lg mb-1">The Vengeance System ('V')</h3>
+                    <p class="text-sm mb-2">A system of vigilante justice triggered by child mortality.</p>
+                    <ul class="list-disc ml-5 text-sm space-y-1">
+                        <li>**Trigger:** If a **child (age &lt; ADULT_AGE) dies**, nearby agent-witnesses will blame the child's closest living parent and enter the **Avenging ('V')** state for <code class="code-block inline-block p-1">VENGEANCE_DURATION</code> turns.</li>
+                        <li>**The Posse:** An avenging agent actively attempts to **recruit other nearby agents** into a "posse" to hunt down the "negligent" parent.</li>
+                        <li>**Consequence:** A successful hunt results in a <code class="code-block inline-block p-1">COMBAT_VENDETTA</code> death.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-4 section-header">5. A Living, Breathing World</h2>
+            <p class="mb-4">The world has a key attribute—Environmental Health—which provides negative feedback to over-harvesting populations.</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-green-700">
+                    <h3 class="font-semibold text-lg mb-1">Environmental Impact & Sickness</h3>
+                    <p class="text-sm mb-2">The world's **Environmental Health** score is influenced by all agent actions.</p>
+                    <ul class="list-disc ml-5 text-sm space-y-1">
+                        <li>**Degradation:** Gathering food/wood, running active campfires (Pollution: <<code class="code-block inline-block p-1">ENV_DECAY_CAMPFIRE_POLLUTION</code>), and high local agent density (Overpopulation: <<code class="code-block inline-block p-1">ENV_OVERPOPULATION_DECAY</code>) all damage the environment.</li>
+                        <li>**Healing:** Planting seeds ('p') *heals* the environment, scaled by the agent's **Farming Skill**.</li>
+                        <li>**Sickness Feedback:** If Environmental Health drops below a critical threshold (<<code class="code-block inline-block p-1">ENV_SICKNESS_THRESHOLD</code>), agents will have a chance to contract **Sickness** ('s' in green), leading to high metabolism penalties and death by <code class="code-block inline-block p-1">STARVATION_SICKNESS</code>.</li>
+                    </ul>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow-md border-t-4 border-orange-500">
+                    <h3 class="font-semibold text-lg mb-1">Resource Specialization (The Fruit System)</h3>
+                    <p class="text-sm mb-2">Three different types of fruit spawn, offering specialized, tactical buffs. Agents prioritize fruit seeking based on their needs.</p>
+                    <ul class="list-disc ml-5 text-sm space-y-1">
+                        <li>**Energy Fruit ('R'):** Standard high-energy food.</li>
+                        <li>**Social Fruit ('P'):** Provides a large boost to the agent's Social need. Agents may seek this if Social is low.</li>
+                        <li>**Speed Fruit ('B'):** Provides a powerful movement speed buff for a short duration. Agents may seek this opportunistically.</li>
+                        <li>**Planting Mandate:** Agents carry Food Seeds, Wood Seeds, and Fruit Seeds. They are **mandated** to plant them during critical global crises (low food/pop).</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-4 section-header">6. An Agent's "AI": The Priority List</h2>
+            <p class="mb-4">An agent's decision is based on the first condition met in a strict priority list. This hierarchy defines their behavior and state ('A', 'f', 'b', etc.).</p>
+
+            <ol class="list-decimal ml-5 text-md space-y-2 font-mono bg-gray-100 p-4 rounded-lg">
+                <li class="font-bold text-red-800">Conflict / Retaliation:</li>
+                <p class="font-normal text-gray-700 ml-4">Retaliation ('r') or Avenging ('V') a child's death.</p>
+                
+                <li class="font-bold text-purple-600">Crisis State (Apathy/Sad):</li>
+                <p class="font-normal text-gray-700 ml-4">If Energy/Social is critical, enter 'Sad' ('s') to find help/resources/library.</p>
+
+                <li class="font-bold text-orange-600">Global Crisis Response:</li>
+                <p class="font-normal text-gray-700 ml-4">If **Food Crisis News** is active, **must** plant seeds ('p'). If nearby agent is starving, **must** share resources ('g'). If **Low Pop News** is active, seek mate ('M').</p>
+
+                <li class="font-bold text-orange-500">Energy & Survival:</li>
+                <p class="font-normal text-gray-700 ml-4">If Energy is low, eat carried food/fruit, or find food/fruit ('f').</p>
+
+                <li class="font-bold text-yellow-600">Campfire Refueling:</li>
+                <p class="font-normal text-gray-700 ml-4">If a nearby Campfire is dying, get wood ('w') or refuel it ('R').</p>
+                
+                <li class="font-bold text-blue-600">Home Repair:</li>
+                <p class="font-normal text-gray-700 ml-4">If Home is damaged and agent is owner, get wood ('w') or repair it ('E').</p>
+                
+                <li class="font-bold text-blue-500">Social Needs:</li>
+                <p class="font-normal text-gray-700 ml-4">If Social is low, seek happy agents, Campfires, or the Library ('t'/'L').</p>
+
+                <li class="font-bold text-blue-700">Home Building/Claiming:</li>
+                <p class="font-normal text-gray-700 ml-4">If homeless, claim empty Home ('k') or build new one ('b').</p>
+                
+                <li class="font-bold text-green-600">Farming (Normal):</li>
+                <p class="font-normal text-gray-700 ml-4">If all needs are met and they have seeds, plant them ('p').</p>
+                
+                <li class="font-bold text-gray-500">Wandering & Contentment:</li>
+                <p class="font-normal text-gray-700 ml-4">If all needs are met, wander ('A') and explore. Agents may 'Pause' to share knowledge if content.</p>
+            </ol>
+        </section>
+        
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-4 section-header">7. Settings Expert Guide: Shaping the World</h2>
+            <p class="mb-4">The 'Settings' panel allows you to modify the core constants that govern evolution, behavior, and survival. Use these to become an expert simulation designer!</p>
+            
+            <h3 class="font-semibold text-xl mt-6 mb-2 text-purple-600">Simulation & World Parameters</h3>
+            <div class="code-block">
+                <p><span class="font-bold">SIM_SPEED (ms):</span> The time interval between turns. Lower values speed up the simulation.</p>
+                <p><span class="font-bold">STARTING_AGENTS/FOOD/WOOD:</span> Initial population and resource counts. High starting food/wood encourages immediate building/socializing.</p>
+                <p><span class="font-bold">WORLD_WIDTH/HEIGHT:</span> Size of the map. Larger maps necessitate stronger Navigation genes/skills.</p>
+                <p><span class="font-bold">MIN_POPULATION_TARGET:</span> The threshold for **Low Population News**. Below this, agents prioritize mating/sharing news.</p>
+                <p><span class="font-bold">CRITICAL_FOOD_COUNT:</span> The threshold for **Food Crisis News**. Below this, agents prioritize planting seeds.</p>
+                <p><span class="font-bold">GLOBAL_SKILL_FOCUS:</span> A small, continuous learning boost (<<code class="code-block inline-block p-1">GLOBAL_SKILL_BOOST</code>) applied to this skill for all agents. Useful for forcing a cultural direction (e.g., 'farming').</p>
+            </div>
+            
+            <h3 class="font-semibold text-xl mt-6 mb-2 text-green-700">Resources, Farming & Fruit</h3>
+            <div class="code-block">
+                <p><span class="font-bold">FOOD/WOOD_SPAWN_RATE:</span> How often new resources spawn. Controlled by `Environmental Health`.</p>
+                <p><span class="font-bold">FOOD_FRESHNESS:</span> How long food lasts before spoiling.</p>
+                <p><span class="font-bold">GROW_TIME (Food/Tree/Fruit):</span> Turns required for a planted seed to yield a resource. Lower values favor Farming agents.</p>
+                <p><span class="font-bold">WOOD/FOOD/FRUIT_SEED_CHANCE:</span> Base chance to find a seed when gathering/eating. This is boosted by **Foraging Skill**.</p>
+                <p><span class="font-bold">FRUIT_BENEFIT_ENERGY_VAL:</span> Energy gain from an Energy Fruit ('R').</p>
+                <p><span class="font-bold">FRUIT_BENEFIT_SOCIAL_SOCIAL_VAL:</span> Social gain from a Social Fruit ('P').</p>
+                <p><span class="font-bold">FRUIT_BENEFIT_SPEED_DURATION:</span> The length of the speed buff from a Speed Fruit ('B').</p>
+            </div>
+            
+            <h3 class="font-semibold text-xl mt-6 mb-2 text-yellow-700">Structures, Age & Social</h3>
+            <div class="code-block">
+                <p><span class="font-bold">CAMPFIRE_BURN_TIME/WOOD_COST:</span> The total lifespan and initial cost of a Campfire.</p>
+                <p><span class="font-bold">CAMPFIRE_REFUEL_THRESHOLD:</span> The timer threshold below which agents will prioritize refueling the fire ('R').</p>
+                <p><span class="font-bold">HOME_DECAY_RATE:</span> How often a Home loses 1 durability. Higher numbers mean slower decay.</p>
+                <p><span class="font-bold">ADULT/OLD/MAX_AGE:</span> Defines the agent's life stages.</p>
+                <p><span class="font-bold">PAUSE_ENERGY/SOCIAL_THRESHOLD:</span> The minimum required Energy/Social for an agent to enter the content 'Pause' state.</p>
+                <p><span class="font-bold">STARTING_LOVE / LOVE_GAIN:</span> Base Love score and how much is gained from positive actions (Eat, Social, Rest). Low Love enables aggression.</p>
+                <p><span class="font-bold">APATHY/VENGEANCE_DURATION:</span> How long agents remain in the Apathy ('s') or Avenging ('V') state.</p>
+            </div>
+            
+            <h3 class="font-semibold text-xl mt-6 mb-2 text-blue-600">Developer Overrides (Core Physics)</h3>
+            <p class="text-sm italic mb-2">These settings control the most fundamental constants and are best left alone unless you want to radically alter the 'physics' of the simulation.</p>
+            <div class="code-block">
+                <p><span class="font-bold">MOVE_BASE_ENERGY_COST:</span> The base energy drain per movement step.</p>
+                <p><span class="font-bold">NAV_MIN_COST_MULTIPLIER:</span> The lowest possible energy cost for movement, even with max Navigation Skill.</p>
+                <p><span class="font-bold">CHILD_METABOLISM_CAP:</span> The maximum metabolism cost a non-adult agent can incur, preventing child agents from immediately starving due to high parental costs.</p>
+                <p><span class="font-bold">MATE_ENERGY_COST:</span> The energy penalty for mating.</p>
+                <p><span class="font-bold">GENE_..._MIN/MAX/MUTATE_RATE:</span> Hard constraints for the evolution process. These directly control the possible range and mutation volatility of inherited genes.</p>
+            </div>
+        </section>
+
+<a href="simulation.html" class="inline-block mb-4 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-md">
+    &larr; Back to Simulation
+</a>
+        </div>
+</body>
+</html>
