@@ -1,0 +1,2815 @@
+# -*- coding: utf-8 -*-
+import time
+import os
+import random
+import math
+
+# --- SIMULATION LIFE STAGE CONSTANTS ---
+ADULT_AGE = 300
+OLD_AGE = 1500
+MAX_AGE = 2000
+# ---------------------------------------
+
+# Love Parameters (MODIFIED)
+STARTING_LOVE = 10 
+LOVE_GAIN_EAT = 2.0
+LOVE_GAIN_SOCIAL = 2.0 
+LOVE_GAIN_REST = 0.5 
+LOVE_LOSS_STRUGGLE = 5 
+PASSIVE_LOVE_GAIN = 0.0 
+
+# PAUSE THRESHOLDS (MODIFIED)
+PAUSE_ENERGY_THRESHOLD = 100
+PAUSE_SOCIAL_THRESHOLD = 80 
+
+# --- PERSONALITY CONSTANTS (New Feature) ---
+PERSONALITY_COOPERATIVE = 1
+PERSONALITY_ISOLATED = 2
+PERSONALITY_JUDGMENTAL = 3 
+PERSONALITY_AGGRESSIVE_COOPERATOR = 4
+
+PERSONALITY_CONFLICTS = {
+    PERSONALITY_JUDGMENTAL: [PERSONALITY_ISOLATED],
+    PERSONALITY_AGGRESSIVE_COOPERATOR: [PERSONALITY_JUDGMENTAL]
+}
+# --- END PERSONALITY ---
+
+# --- ENVIRONMENTAL DEGRADATION CONSTANTS (NEW) ---
+ENV_HEALTH_MAX = 100.0
+ENV_PASSIVE_RECOVERY_RATE = 0.10
+# SOFTENED DEGRADATION: Reduced decay rates by 80% to aid early survival
+ENV_DECAY_FOOD_GATHER = 0.05   
+ENV_DECAY_WOOD_GATHER = 0.05   
+ENV_HEAL_PLANT_BASE = 2.0    
+
+# --- NEW: More Environmental Mechanics ---
+# 1. Pollution from built objects
+ENV_DECAY_CAMPFIRE_POLLUTION = 0.02 # Passive drain per active campfire, per turn
+
+# 2. Overpopulation density strain
+ENV_OVERPOPULATION_RADIUS = 5      # Radius to check for other agents
+ENV_OVERPOPULATION_THRESHOLD = 10   # More than this many agents in radius triggers decay
+ENV_OVERPOPULATION_DECAY = 0.05     # Env health hit when overpopulation is detected
+
+# 3. Environmental Sickness (Feedback)
+ENV_SICKNESS_THRESHOLD = 30.0      # Health % below which sickness can occur
+ENV_SICKNESS_CHANCE = 0.001        # Chance per agent, per turn, to get sick
+ENV_SICKNESS_DURATION = 50        # How long sickness lasts in turns
+ENV_SICKNESS_METABOLISM_PENALTY = 0.4 # Extra metabolism cost when sick
+# --- END ENVIRONMENTAL ---
+
+# --- APATHY SYSTEM CONSTANTS (NEW) ---
+APATHY_DURATION = 50 
+APATHY_METABOLISM_PENALTY = 0.5
+APATHY_SOCIAL_LOSS_MULTIPLIER = 2.0
+# --- END APATHY ---
+
+# --- VENGEANCE SYSTEM (NEW) ---
+VENGEANCE_DURATION = 50
+# --- END VENGEANCE ---
+
+# --- CRITICAL SURVIVAL THRESHOLDS (NEW) ---
+MIN_POPULATION_TARGET = 16 
+CRITICAL_FOOD_COUNT = 70 
+# NEW: Max population cap to prevent over-mating/overpopulation from the agent's perspective
+MAX_POPULATION_TARGET = 300 
+# --- END CRITICAL ---
+
+# --- FOOD DURATION CONSTANTS (New) ---
+FOOD_BASE_ENERGY_VALUE = 120 # The base energy unit gained from one food item. (Duration is then E/Metabolism)
+# --- END FOOD DURATION ---
+
+# --- AGENT SEED CARRYING CONSTANTS (New) ---
+# Standard Food Seeds
+MAX_FOOD_SEEDS_CARRIED = 5
+STARTING_FOOD_SEEDS_MAX = 2
+# Wood Seeds
+MAX_WOOD_SEEDS_CARRIED = 3
+STARTING_WOOD_SEEDS_MAX = 1
+# Fruit Seeds (Existing)
+MAX_FRUIT_CARRIED = 2           
+STARTING_FRUIT_SEEDS_MAX = 0
+# --- END AGENT SEED CARRYING ---
+
+# --- STEP 1: Handle Colorama Import ---
+try:
+    import colorama
+    # --- We are NOT using init(), to send raw codes ---
+    Fore = colorama.Fore
+    Back = colorama.Back 
+    Style = colorama.Style
+    COLOR_ENABLED = True
+except ImportError:
+    print("Colorama library not found. Running in black and white.")
+    print("To enable colors, run: py -m pip install colorama")
+    class DummyStyle:
+        def __getattr__(self, name):
+            return ""
+    Fore = DummyStyle()
+    Back = DummyStyle()
+    Style = DummyStyle()
+    COLOR_ENABLED = False
+
+
+# --- SIMULATION PARAMETERS (User's "Hardcore" settings) ---
+WORLD_WIDTH = 70
+WORLD_HEIGHT = 30
+STARTING_AGENTS = 15
+# --- FINAL BALANCE FIX: Increase starting food to reduce early competition ---
+STARTING_FOOD = 120  
+STARTING_WOOD = 80  
+
+# Resources spawn every N turns
+FOOD_SPAWN_RATE = 20 
+WOOD_SPAWN_RATE = 50 
+
+# --- NEW: Fruit Parameters (MODIFIED) ---
+# Spawning & Growth
+STARTING_FRUIT_BUSHES = 5      # How many bushes spawn at the start
+FRUIT_SPAWN_RATE = 200           # How often new fruit bushes spawn naturally
+FRUIT_GROW_TIME = 15            # Turns for a *newly planted* seed to mature
+FRUIT_SEED_BASE_CHANCE = 0.5    # Base chance to get a seed when eating
+
+# Fruit Benefits
+FRUIT_BENEFIT_ENERGY_VAL = 100        # (Red Fruit)
+FRUIT_BENEFIT_SOCIAL_ENERGY_VAL = 60  # (Pink Fruit)
+FRUIT_BENEFIT_SOCIAL_SOCIAL_VAL = 80  # (Pink Fruit)
+FRUIT_BENEFIT_SPEED_ENERGY_VAL = 20   # (Blue Fruit)
+FRUIT_BENEFIT_SPEED_DURATION = 20     # (Blue Fruit)
+# --- END NEW ---
+
+# Farming Parameters (Standard Food)
+FOOD_FRESHNESS = 200 
+GROW_TIME = 10 
+
+# Tree Parameters
+TREE_GROW_TIME = 10 
+WOOD_SEED_CHANCE = 0.5
+FOOD_SEED_BASE_CHANCE = 1.0 
+
+# Campfire Parameters
+CAMPFIRE_BURN_TIME = 300 
+CAMPFIRE_WOOD_COST = 3 
+CAMPFIRE_REFUEL_THRESHOLD = 100 
+
+# --- NEW: Home Durability (MODIFIED) ---
+HOME_DURABILITY_START = 3
+# FIX: Drastically lowered decay rate (from 1500) so homes require maintenance
+HOME_DECAY_RATE = 400 
+# --- END NEW ---
+
+# How fast the simulation runs
+SIM_SPEED = 0.15  
+
+# --- GENE PARAMETERS (Min, Max, Mutation Rate) ---
+GENE_RANGES = {
+    'vision': (3, 10, 0.1),
+    'speed': (1, 3, 0.1), 
+    'metabolism': (0.5, 2.0, 0.1),
+    'aggression': (0.0, 1.0, 0.1),
+    'builder': (0.0, 1.0, 0.1),
+    'mating_drive': (123, 160, 5.0), 
+    'sociability': (0.0, 1.0, 0.1),
+    'farming': (0.0, 1.0, 0.1),
+    'personality': (1.0, 4.0, 0.5),
+    'navigation': (0.0, 3.0, 0.1)
+}
+
+# --- HELPER FUNCTIONS ---
+
+def clear_screen():
+    """
+    Prints the raw "jump to top-left" ANSI code.
+    """
+    print("\033[H")
+
+def clamp(value, min_val, max_val):
+    """Clamps a value between a min and max."""
+    return max(min_val, min(value, max_val))
+
+def get_distance(x1, y1, x2, y2):
+    """
+    Calculates Euclidean distance.
+    """
+    return math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
+
+# --- AGENT CLASS ---
+
+class Agent:
+    def __init__(self, x, y, world, genes=None):
+        self.world = world
+        self.x = x
+        self.y = y
+        self.char = 'A'
+        self.id = self.world.get_next_agent_id() 
+        
+        # Physical Needs
+        self.energy = 150 
+        self.wood_carried = 0
+        self.food_carried = 0 
+        # --- NEW: Fruit Inventory ---
+        self.fruit_carried = [] # A list of fruit type strings
+        # --- END NEW ---
+        self.mate_cooldown = 0
+        
+        # --- MODIFIED: Seed Inventory now uses new constants ---
+        self.seeds_carried = random.randint(0, STARTING_FOOD_SEEDS_MAX) 
+        self.wood_seeds_carried = random.randint(0, STARTING_WOOD_SEEDS_MAX) 
+        self.fruit_seeds_carried = random.randint(0, STARTING_FRUIT_SEEDS_MAX) 
+        # --- END MODIFIED ---
+        
+        self.social = random.uniform(30.0, 80.0) 
+        
+        self.home_location = None 
+        self.campfire_location = None 
+        
+        # Buffs
+        self.social_buff_timer = 0 
+        self.contentment_buff_timer = 0 
+        self.apathy_timer = 0 
+        # --- NEW: Sickness ---
+        self.sickness_timer = 0
+        # --- END NEW ---
+        # --- NEW: Speed Buff ---
+        self.speed_buff_timer = 0 
+        # --- END NEW ---
+        
+        self.state = "WANDERING" 
+        
+        self.exploration_vector = (0, 0) 
+        # --- FREEZE FIX: Stuck Timer ---
+        self.stuck_timer = 0 # New property to manage deadlock
+        # --- END FREEZE FIX ---
+        
+        # Agent Memory
+        self.memory = {
+            'food': set(),
+            'wood': set(),
+            'fruit': set(), # NEW: Memory for fruit
+            'library': None, # NEW: Agents must learn the library location
+            'global_news': {} # MODIFIED: Memory for propagating crisis news
+        }
+        
+        # Struggle & Retaliation
+        self.struggle_timer = 0 
+        self.was_attacked_by = None 
+        
+        # --- NEW: Vengeance System ---
+        self.avenging_target_id = None 
+        self.vengeance_timer = 0 
+        # --- END NEW ---
+        
+        # Age Tracking and Parental Tracking
+        self.age = 0 
+        self.children_ids = set() 
+        self.parent_ids = set() # NEW: Track parents
+        
+        # Love System
+        self.love = STARTING_LOVE
+        
+        self.skills = {
+            'foraging': 0.0,
+            'social': 0.0,
+            'building': 0.0,
+            'navigation': 0.0,
+            'combat': 0.0,
+            'farming': 0.0 
+        }
+        
+        if genes:
+            self.genes = genes
+        else:
+            self.genes = self.create_random_genes(stabilize=True)
+            
+    def create_random_genes(self, stabilize=False):
+        genes = {}
+        for gene, (min_val, max_val, _) in GENE_RANGES.items():
+            if stabilize:
+                if gene == 'metabolism':
+                    genes[gene] = random.uniform(0.5, 0.8) 
+                elif gene == 'speed':
+                    genes[gene] = random.uniform(1.0, 3.0) 
+                elif gene == 'personality':
+                    # Ensure personality starts mostly as Cooperative (1) or Isolated (2)
+                    if random.random() < 0.8:
+                        genes[gene] = random.randint(PERSONALITY_COOPERATIVE, PERSONALITY_ISOLATED)
+                    else:
+                        genes[gene] = random.randint(PERSONALITY_JUDGMENTAL, PERSONALITY_AGGRESSIVE_COOPERATOR)
+                else:
+                    genes[gene] = random.uniform(min_val, max_val)
+            else:
+                genes[gene] = random.uniform(min_val, max_val)
+        return genes
+
+    def get_personality(self):
+        """Returns the current clamped integer personality type."""
+        # The gene value is clamped to an integer between 1 and 4
+        return int(clamp(self.genes.get('personality', 1), 1, 4))
+
+
+    def update(self):
+        """The main "think" loop for the agent."""
+        
+        # 1. Update Age and Check for Death
+        self.age += 1
+        
+        if self.age >= MAX_AGE:
+            self.die('MAX_AGE')
+            return
+            
+        if self.age >= OLD_AGE and self.energy < 100: 
+            self.die('NATURAL_DEATH_OLD')
+            return
+            
+        # 2. Update basic needs
+        metabolism_cost = self.genes['metabolism']
+        
+        # --- Parental Care Cost ---
+        living_children_under_age = 0
+        
+        for child_id in list(self.children_ids):
+            child = self.world.get_agent_by_id(child_id)
+            if child and child.age < ADULT_AGE:
+                living_children_under_age += 1
+            elif child:
+                self.children_ids.discard(child_id) 
+            else:
+                self.children_ids.discard(child_id)
+
+        parental_cost = living_children_under_age * 0.2 
+        
+        if self.age < ADULT_AGE:
+            # FIX 2: Cap the child's effective metabolism rate to a low, stable value (0.25)
+            metabolism_cost = min(parental_cost, 0.25) 
+            
+            # FIX 1: Lower the critical death threshold from 50 to 10
+            if self.energy < 10: 
+                self.die('STARVATION_CHILD')
+                return
+        else:
+            metabolism_cost += parental_cost
+        # --- END FIX ---
+
+        # Home buff (Family/Owner only)
+        current_pos = (self.x, self.y)
+        if current_pos in self.world.homes:
+            home_data = self.world.homes[current_pos]
+            owner_id = home_data.get('owner_id')
+            
+            is_owner = (self.id == owner_id)
+            is_family = False
+            
+            if owner_id is not None:
+                owner_agent = self.world.get_agent_by_id(owner_id)
+                if owner_agent and self.id in owner_agent.children_ids:
+                    is_family = True
+            
+            if is_owner or is_family:
+                metabolism_cost *= 0.5 
+                if self.energy < 150:
+                    self.energy = clamp(self.energy + 2.0, 0, 150) 
+                self.social = clamp(self.social + 0.5, 0, 100) 
+        # --- END Home buff ---
+            
+        # Social buff (Campfire is communal)
+        if self.social_buff_timer > 0:
+            metabolism_cost *= 0.8 
+            self.social_buff_timer -= 1
+            
+        # Check if the agent's OWNED campfire is still active
+        if self.campfire_location and self.campfire_location not in self.world.campfires:
+             self.campfire_location = None 
+            
+        # Check for "Cozy" buff from a nearby campfire
+        # MODIFIED: Check radius 2, but ensure agent is NOT standing ON the campfire tile
+        nearby_campfire = self.world.get_nearest(self.x, self.y, 2, self.world.campfires.keys())
+        if nearby_campfire and (self.x, self.y) != nearby_campfire:
+            metabolism_cost *= 0.9 
+            self.social = clamp(self.social + 0.5, 0, 100) 
+            # --- NEW: Campfire Warmth/Comfort passive Love gain ---
+            self.love = clamp(self.love + 0.1, 0, STARTING_LOVE)
+            # --- END NEW ---
+            
+        # --- NEW: APATHY SYSTEM UPDATE ---
+        if self.apathy_timer > 0:
+            metabolism_cost += APATHY_METABOLISM_PENALTY 
+            self.apathy_timer -= 1
+        # --- END APATHY SYSTEM UPDATE ---
+            
+        # --- NEW: Sickness System Update ---
+        if self.sickness_timer > 0:
+            metabolism_cost += ENV_SICKNESS_METABOLISM_PENALTY
+            self.sickness_timer -= 1
+        # --- END NEW ---
+            
+        # --- NEW: VENGEANCE TIMER UPDATE ---
+        if self.vengeance_timer > 0:
+            self.vengeance_timer -= 1
+            if self.vengeance_timer == 0:
+                self.avenging_target_id = None # Timer ran out, stop avenging
+        # --- END NEW ---
+        
+        # --- NEW: SPEED BUFF TIMER UPDATE ---
+        if self.speed_buff_timer > 0:
+            self.speed_buff_timer -= 1
+        # --- END NEW ---
+
+        # --- FREEZE FIX: Update Stuck Timer ---
+        if self.stuck_timer > 0:
+            self.stuck_timer -= 1
+        # --- END FREEZE FIX ---
+            
+        self.energy -= metabolism_cost
+        if self.mate_cooldown > 0:
+            self.mate_cooldown -= 1
+            
+        # Update Social Need
+        social_loss_multiplier = 1.0
+        if self.apathy_timer > 0:
+            social_loss_multiplier = APATHY_SOCIAL_LOSS_MULTIPLIER 
+
+        if self.contentment_buff_timer > 0:
+            self.contentment_buff_timer -= 1
+        else:
+            vision_radius = int(self.genes['vision'])
+            nearby_agents = self.world.get_nearest_agents(self.x, self.y, vision_radius, self)
+            if not nearby_agents and (not nearby_campfire or (self.x, self.y) == nearby_campfire): # Added check to ignore campfire if standing on it
+                self.social -= self.genes['sociability'] * 0.5 * social_loss_multiplier
+            else:
+                self.social += 0.1
+            self.social = clamp(self.social, 0, 100)
+            
+        # --- NEW: Update Struggle Timer (Love Loss happens here) ---
+        if self.energy < 30 or self.social < 20:
+            self.struggle_timer += 1
+            # Love Loss when struggling (Increased loss for combat chance)
+            self.love = clamp(self.love - LOVE_LOSS_STRUGGLE, 0, STARTING_LOVE)
+        else:
+            self.struggle_timer = 0
+            
+        # --- NEW: Check for Apathy Trigger ---
+        if self.love <= 0 and self.apathy_timer == 0:
+            self.apathy_timer = APATHY_DURATION
+        # --- END APATHY TRIGGER ---
+            
+        # --- NEW: Global Knowledge Retrieval (The Library Effect) ---
+        for skill_key in self.skills:
+            global_value = self.world.global_skill_knowledge.get(skill_key, 0.0)
+            current_skill = self.skills[skill_key]
+            if current_skill < global_value:
+                self.skills[skill_key] = clamp(current_skill + 0.0001, 0, 10.0) 
+        # --- END NEW ---
+
+        # 3. Check for death
+        if self.energy <= 0:
+            # --- MODIFIED: Safeguard against double-death logging ---
+            # If agent is already removed (e.g. by combat), just return
+            if self not in self.world.agents:
+                return
+            # --- END MODIFIED ---
+            
+            self.die('STARVATION_ADULT')
+            return
+
+        # 4. Decide what to do
+        self.decide_state() 
+        
+        # 5. Execute the action
+        self.execute_action()
+
+    def get_personality(self):
+        """Returns the current clamped integer personality type."""
+        # The gene value is clamped to an integer between 1 and 4
+        return int(clamp(self.genes.get('personality', 1), 1, 4))
+
+
+    def create_random_genes(self, stabilize=False):
+        genes = {}
+        for gene, (min_val, max_val, _) in GENE_RANGES.items():
+            if stabilize:
+                if gene == 'metabolism':
+                    genes[gene] = random.uniform(0.5, 0.8) 
+                elif gene == 'speed':
+                    genes[gene] = random.uniform(1.0, 3.0) 
+                elif gene == 'personality':
+                    # Ensure personality starts mostly as Cooperative (1) or Isolated (2)
+                    if random.random() < 0.8:
+                        genes[gene] = random.randint(PERSONALITY_COOPERATIVE, PERSONALITY_ISOLATED)
+                    else:
+                        genes[gene] = random.randint(PERSONALITY_JUDGMENTAL, PERSONALITY_AGGRESSIVE_COOPERATOR)
+                else:
+                    genes[gene] = random.uniform(min_val, max_val)
+            else:
+                genes[gene] = random.uniform(min_val, max_val)
+        return genes
+
+    def decide_state(self):
+        """The main "think" loop for the agent."""
+        vision_radius = int(self.genes['vision'])
+        
+        # --- FREEZE FIX: Stuck Check Override (New Priority -3) ---
+        if self.stuck_timer > 0:
+            self.state = "WANDERING" # Force genuine random exploration
+            return
+        # --- END FREEZE FIX ---
+
+        # --- NEW: Opportunistic Socializing ---
+        # Check for agents right next to self (radius 1.5)
+        # Use a smaller radius than vision to mean "right next to"
+        nearby_agents = self.world.get_nearest_agents(self.x, self.y, 1.5, self)
+        
+        if nearby_agents:
+            # Avoid chatting if in crisis or combat
+            if not (self.apathy_timer > 0 or self.was_attacked_by or self.avenging_target_id or self.sickness_timer > 0): # NEW: Don't chat if sick
+                target = random.choice(nearby_agents)
+                
+                # Don't chat with someone in combat or already chatting
+                if not (target.was_attacked_by or target.avenging_target_id or target.state == "COMMUNICATING"):
+                    
+                    chance = 0.0
+                    
+                    # Check if self is lingering/happy
+                    is_lingering = (self.state == "WANDERING" or self.state == "SOCIAL_HAPPY") and \
+                                   self.energy > PAUSE_ENERGY_THRESHOLD and \
+                                   self.social > PAUSE_SOCIAL_THRESHOLD
+                    
+                    if is_lingering:
+                        chance = 0.6 # High chance to chat if lingering
+                    
+                    # If I'm just wandering or working, smaller chance
+                    elif self.state in ["WANDERING", "FORAGING", "GETTING_WOOD"] and \
+                         self.social > 50 and self.genes['sociability'] > 0.5:
+                        
+                        chance = 0.1 # Small chance to pause and chat
+                    
+                    if random.random() < chance:
+                        self.communicate(target) # This sets both states
+                        return # This is our action for the turn
+        # --- END: Opportunistic Socializing ---
+
+        food_in_sight = self.world.get_nearest_in_set(self.x, self.y, vision_radius, self.world.food)
+        # --- NEW: Check for fruit ---
+        fruit_in_sight = self.world.get_nearest_in_set(self.x, self.y, vision_radius, self.world.fruits)
+        # --- END NEW ---
+        
+        conserve_energy = self.genes['metabolism'] < 0.8 and self.energy < 100
+        
+        # --- NEW: CRITICAL SURVIVAL OVERRIDES NOW USE LOCAL/REMEMBERED NEWS (Fix for Swarming) ---
+        
+        has_news_of_food_crisis = self.memory.get('global_news', {}).get('food_crisis', False)
+        has_news_of_low_pop = self.memory.get('global_news', {}).get('low_population', False)
+
+        # Priority -2: Avenging (NEW)
+        if self.avenging_target_id is not None: # Timer logic is handled in update()
+            # Check if target still exists
+            target = self.world.get_agent_by_id(self.avenging_target_id)
+            if target:
+                self.state = "AVENGING"
+                return
+            else:
+                # Target is dead, vengeance is over
+                self.avenging_target_id = None
+                self.vengeance_timer = 0 # Clear timer just in case
+        # --- END NEW ---
+
+        # Priority -1: Retaliation
+        if self.was_attacked_by is not None:
+            self.state = "RETALIATING" 
+            return
+        
+        # Priority 0: Hopeless/Sad
+        if (self.energy < 20 or self.social < 10) and not food_in_sight and not self.memory['food']:
+            self.state = "SOCIAL_SAD" 
+            return
+            
+        # Mandate 1: Plant if Food Crisis or Low Population News, AND I have seeds
+        if (has_news_of_food_crisis or has_news_of_low_pop) and (self.seeds_carried > 0 or self.fruit_seeds_carried > 0):
+            if self.home_location:
+                dist = get_distance(self.x, self.y, self.home_location[0], self.home_location[1])
+                if dist > 5: 
+                    self.state = "GOING_HOME_TO_FARM" 
+                else:
+                    self.state = "PLANTING" # This state will handle both seed types
+            else:
+                self.state = "PLANTING" 
+            return
+
+        # Mandate 2: Share if others are desperately needy
+        if self.energy > 100 and self.social > 50 and (self.wood_carried > 3 or self.food_carried >= 1 or len(self.fruit_carried) > 0):
+            vision_radius = int(self.genes['vision'])
+            needy_agents = [a for a in self.world.get_nearest_agents(self.x, self.y, vision_radius, self) if a.energy < 40 and a.food_carried < 1 and len(a.fruit_carried) == 0] 
+            if needy_agents:
+                self.state = "SHARING" 
+                return
+            
+        # Mandate 3: Seek a mate if population news is active and population is below the max target 
+        if has_news_of_low_pop and len(self.world.agents) < MAX_POPULATION_TARGET and \
+           self.age >= ADULT_AGE and \
+           self.energy > self.genes['mating_drive'] and self.mate_cooldown == 0:
+            
+            self.state = "SEEKING_MATE"
+            return 
+
+        # Environmental Crisis Priority (Intelligent Learning)
+        env_low_threshold = ENV_SICKNESS_THRESHOLD
+        if self.world.environmental_health < env_low_threshold:
+            # If the environment is sick, stop polluting activities and prioritize healing
+            
+            # Agents only react if they are currently sick, making the effect local/delayed
+            if self.sickness_timer > 0: 
+            
+                # 1. Prioritize Planting (Healing) if I have seeds
+                if self.seeds_carried > 0 or self.fruit_seeds_carried > 0 or self.wood_seeds_carried > 0:
+                    self.state = "PLANTING" 
+                    return
+                
+                # 2. Halt Wood/Food Gathering (Polluting actions) if not critically starving
+                elif self.state in ["GETTING_WOOD", "FORAGING"] and self.energy > 50:
+                    self.state = "WANDERING" # Wander to explore/reduce impact
+                    return
+            
+        # --- END MODIFIED: CRITICAL SURVIVAL OVERRIDES ---
+        
+        # Priority 1: Survival (Energy)
+        forage_threshold = 70 
+        if self.age < ADULT_AGE: 
+            # FIX 3: Increase child foraging threshold to 120
+            forage_threshold = 120 
+            
+        # --- MODIFIED: Prioritize seeking standard Food if energy is low ---
+        if self.energy < forage_threshold or \
+           (self.food_carried > 0 and self.energy < 150): # Anti-greed (eat if below 150)
+            self.state = "FORAGING" 
+            return
+            
+        # --- NEW: Priority 1.2: Opportunistic Fruit (Only seek fruit for buffs/if healthy) ---
+        # If I need social, seek social fruit. (But only if healthy > 120 and not sick)
+        if self.social < 40 and self.energy > 120 and self.sickness_timer == 0: 
+             # Check for known social fruits
+            social_fruits = [pos for pos, type in self.world.fruit_types.items() if type == 'social' and (pos in fruit_in_sight or pos in self.memory['fruit'])]
+            if social_fruits:
+                self.state = "FORAGING_FRUIT"
+                return
+        # If I'm wandering, chance to seek speed fruit. (But not if sick)
+        if self.state == "WANDERING" and self.speed_buff_timer == 0 and random.random() < 0.1 and self.sickness_timer == 0:
+            speed_fruits = [pos for pos, type in self.world.fruit_types.items() if type == 'speed' and (pos in fruit_in_sight or pos in self.memory['fruit'])]
+            if speed_fruits:
+                self.state = "FORAGING_FRUIT"
+                return
+        # --- END NEW ---
+            
+        # Priority 1.5: Campfire Refuel
+        nearby_campfire_pos = self.world.get_nearest(self.x, self.y, vision_radius, self.world.campfires.keys())
+        if nearby_campfire_pos:
+            campfire_timer = self.world.campfires.get(nearby_campfire_pos)
+            if campfire_timer and campfire_timer < CAMPFIRE_REFUEL_THRESHOLD:
+                if self.wood_carried < 1:
+                    self.state = "GETTING_WOOD" 
+                    return
+                else:
+                    self.state = "REFUELING_CAMPFIRE" 
+                    return
+
+        # Priority 2: Home Repair
+        if self.home_location:
+            home_data = self.world.homes.get(self.home_location)
+            is_owner = home_data.get('owner_id') == self.id
+            if home_data and home_data['durability'] < HOME_DURABILITY_START and is_owner: 
+                if self.wood_carried < 1:
+                    self.state = "GETTING_WOOD" 
+                    return
+                else:
+                    self.state = "REPAIRING_HOME" 
+                    return
+
+        # Priority 3: Social Need (MODIFIED: Priority Campfire)
+        if self.social < 60 and self.genes['sociability'] > 0.2 and self.sickness_timer == 0:
+            self.state = "SEEKING_SOCIAL" 
+            return
+            
+        # Priority 4: Claim or Build Home 
+        if self.home_location is None:
+            empty_home = self.world.get_empty_home()
+            if empty_home:
+                self.state = "CLAIMING_HOME" 
+                return
+            
+            elif (len(self.world.homes) < len(self.world.agents)) and (self.genes['builder'] > random.random()):
+                
+                if conserve_energy:
+                    self.state = "FORAGING" 
+                    return
+                
+                wood_cost_needed = 3 - int(self.skills['building'] * 0.5)
+                if wood_cost_needed < 1: wood_cost_needed = 1
+                
+                if self.wood_carried < wood_cost_needed:
+                    self.state = "GETTING_WOOD" 
+                    return
+                
+                community_radius = vision_radius + 5 
+                nearby_homes = self.world.get_nearest(self.x, self.y, community_radius, self.world.homes.keys())
+                is_social = self.genes['sociability'] > 0.5
+
+                if self.is_clear_tile(self.x, self.y):
+                    if is_social:
+                        if nearby_homes or not self.world.homes:
+                            self.state = "BUILDING" 
+                        else:
+                            self.state = "SEEKING_COMMUNITY" 
+                    else:
+                        if not nearby_homes:
+                            self.state = "BUILDING" 
+                        else:
+                            self.state = "SEEKING_REMOTE_SPOT" 
+                else:
+                    if is_social:
+                        if nearby_homes or not self.world.homes:
+                            self.state = "WANDERING_TO_BUILD" 
+                        else:
+                            self.state = "SEEKING_COMMUNITY" 
+                    else:
+                        if not nearby_homes:
+                            self.state = "WANDERING_TO_BUILD" 
+                        else:
+                            self.state = "SEEKING_REMOTE_SPOT" 
+                return
+        
+        # Priority 5: Farming (Food Seeds) - Normal Planting (if no crisis)
+        if (self.seeds_carried > 0 or self.fruit_seeds_carried > 0) and self.energy > 80 and self.genes['farming'] > random.random():
+            if self.home_location:
+                dist = get_distance(self.x, self.y, self.home_location[0], self.home_location[1])
+                if dist > 5: 
+                    self.state = "GOING_HOME_TO_FARM" 
+                else:
+                    self.state = "PLANTING" 
+            else:
+                self.state = "PLANTING" 
+            return
+
+        # Priority 5.5: Planting Trees (if wood is scarce)
+        if self.wood_seeds_carried > 0 and self.energy > 80 and \
+           (len(self.world.wood) < STARTING_WOOD) and (self.genes['builder'] > random.random()): 
+            if self.home_location:
+                dist = get_distance(self.x, self.y, self.home_location[0], self.home_location[1])
+                if dist > 5:
+                    self.state = "GOING_HOME_TO_PLANT_WOOD" 
+                else:
+                    self.state = "PLANTING_WOOD"
+            else:
+                self.state = "PLANTING_WOOD" 
+            return
+            
+        # Priority 6: Build Campfire 
+        nearby_active_fire = self.world.get_nearest(self.x, self.y, vision_radius + 5, self.world.campfires.keys())
+
+        if self.energy > 120 and self.social > 50 and \
+           self.genes['builder'] > 0.5 and \
+           nearby_active_fire is None and \
+           self.campfire_location is None:
+           
+            if conserve_energy:
+                self.state = "FORAGING" 
+                return
+            
+            wood_cost_needed = CAMPFIRE_WOOD_COST - int(self.skills['building'] * 0.5)
+            if wood_cost_needed < 1: wood_cost_needed = 1
+            
+            if self.wood_carried >= wood_cost_needed:
+                 self.state = "BUILDING_CAMPFIRE" 
+                 return
+            elif self.wood_carried < wood_cost_needed:
+                 self.state = "GETTING_WOOD"
+                 return
+            
+        # Priority 7: Share Resources (Standard Share, if energy > 70)
+        if self.energy > 100 and self.social > 50 and (self.wood_carried > 3 or self.food_carried >= 1 or len(self.fruit_carried) > 0):
+            vision_radius = int(self.genes['vision'])
+            needy_agents = [a for a in self.world.get_nearest_agents(self.x, self.y, vision_radius, self) if a.energy < 70 and a.food_carried < 1 and len(a.fruit_carried) == 0] 
+            if needy_agents:
+                self.state = "SHARING" 
+                return
+            
+        # Default State: Wandering
+        # Priority 8: Happy/Content
+        self.state = "WANDERING"
+
+    def execute_action(self):
+        """Performs the action associated with the current state."""
+        vision_radius = int(self.genes['vision'])
+        
+        # FIX: Initialize potential targets to prevent UnboundLocalError
+        target = None 
+        
+        # 1. Check ALL visible resources
+        food_in_sight = self.world.get_nearest_in_set(self.x, self.y, vision_radius, self.world.food)
+        wood_in_sight = self.world.get_nearest_in_set(self.x, self.y, vision_radius, self.world.wood)
+        fruit_in_sight = self.world.get_nearest_in_set(self.x, self.y, vision_radius, self.world.fruits)
+        agents = self.world.get_nearest_agents(self.x, self.y, vision_radius, exclude_self=self)
+        
+        # --- NEW: Check for Library in sight ---
+        if self.memory['library'] is None:
+            lx, ly = self.world.library_location
+            if get_distance(self.x, self.y, lx, ly) <= vision_radius:
+                self.memory['library'] = (lx, ly)
+        # --- END NEW ---
+
+        # 2. Get nearest target from combined vision and memory
+        best_food_target = self.get_closest_combined_target('food', food_in_sight)
+        best_wood_target = self.get_closest_combined_target('wood', wood_in_sight)
+        best_fruit_target = self.get_closest_combined_target('fruit', fruit_in_sight)
+        
+        # --- Handle "Anger" (Aggression) ---
+        # Note: Agents on the same tile is now extremely rare due to is_obstacle/movement changes
+        agents_on_tile = [a for a in self.world.agents if a.x == self.x and a.y == self.y and a != self]
+        if agents_on_tile:
+            target = random.choice(agents_on_tile)
+            
+            # Dynamic Aggression based on struggle
+            base_aggression = self.genes['aggression']
+            struggle_bonus = min(self.struggle_timer * 0.0005, 0.5) 
+            dynamic_aggression = base_aggression + struggle_bonus
+            
+            # --- COMBAT LOCK CHECK: Love is ZERO and Energy is high enough ---
+            if self.love <= 0 and self.energy > 80 and random.random() < dynamic_aggression:
+                self.attack(target, attack_type='COMBAT_AGGRESSION') 
+                return 
+        
+        # --- Execute State ---
+        
+        if self.state == "FORAGING":
+            # --- MODIFIED: Agents should eat if they have resources and are NOT full (Energy < 150) ---
+            if (self.food_carried > 0 or len(self.fruit_carried) > 0) and self.energy < 150: 
+                
+                needy_neighbors = [a for a in agents if a.energy < 40 and a.food_carried < 1 and len(a.fruit_carried) == 0]
+                
+                # Only consume if no neighbor is critically starving
+                if not needy_neighbors:
+                    # --- MODIFIED: Prioritize eating carried food first, then fruit ---
+                    if self.food_carried > 0:
+                        self.consume_food()
+                    elif len(self.fruit_carried) > 0:
+                        self.consume_fruit()
+                    # --- END MODIFIED ---
+                else:
+                    # If neighbors are starving, switch to sharing mode
+                    self.state = "SHARING"
+                    return
+            # --- END MODIFIED ---
+                
+            elif (self.x, self.y) in self.world.food and self.food_carried < 2: 
+                self.pickup_food()
+            # If hungry and on a fruit tile, pick up (only if food isn't on the tile)
+            elif (self.x, self.y) in self.world.fruits and len(self.fruit_carried) < MAX_FRUIT_CARRIED and (self.x, self.y) not in self.world.food:
+                self.pickup_fruit()
+            
+            elif best_food_target: 
+                self.move_towards(best_food_target[0], best_food_target[1])
+                if get_distance(self.x, self.y, best_food_target[0], best_food_target[1]) < 2.0:
+                    if (self.x, self.y) not in self.world.food:
+                        self.memory['food'].discard(best_food_target)
+                # --- FIX: Stale memory guard ---
+                if get_distance(self.x, self.y, best_food_target[0], best_food_target[1]) < 5.0 and self.struggle_timer > 5:
+                    if (self.x, self.y) not in self.world.food:
+                        self.memory['food'].discard(best_food_target)
+                # --- END FIX ---
+            # --- Fallback to fruit if no food target ---
+            elif best_fruit_target:
+                self.move_towards(best_fruit_target[0], best_fruit_target[1])
+                if get_distance(self.x, self.y, best_fruit_target[0], best_fruit_target[1]) < 2.0:
+                    if (self.x, self.y) not in self.world.fruits:
+                        self.memory['fruit'].discard(best_fruit_target)
+                # --- FIX: Stale memory guard ---
+                if get_distance(self.x, self.y, best_fruit_target[0], best_fruit_target[1]) < 5.0 and self.struggle_timer > 5:
+                    if (self.x, self.y) not in self.world.fruits:
+                        self.memory['fruit'].discard(best_fruit_target)
+                # --- END FIX ---
+            # --- END Fallback ---
+            else:
+                self.move_exploring()
+        
+        # --- NEW: Foraging Fruit State ---
+        elif self.state == "FORAGING_FRUIT":
+            # 1. Eat carried fruit if needed
+            if len(self.fruit_carried) > 0 and self.energy < 100:
+                self.consume_fruit()
+                return
+            
+            # 2. Pick up fruit if on tile (MODIFIED)
+            if (self.x, self.y) in self.world.fruits and len(self.fruit_carried) < MAX_FRUIT_CARRIED:
+                self.pickup_fruit()
+                return
+                
+            # 3. Find specific fruit type
+            target_fruit_pos = None
+            
+            # Find social fruit if social is low
+            if self.social < 40:
+                social_fruits = [pos for pos, type in self.world.fruit_types.items() if type == 'social' and (pos in fruit_in_sight or pos in self.memory['fruit'])]
+                if social_fruits:
+                    social_fruits.sort(key=lambda p: get_distance(self.x, self.y, p[0], p[1]))
+                    target_fruit_pos = social_fruits[0]
+            
+            # Find speed fruit if no social target and buff is 0
+            if target_fruit_pos is None and self.speed_buff_timer == 0:
+                speed_fruits = [pos for pos, type in self.world.fruit_types.items() if type == 'speed' and (pos in fruit_in_sight or pos in self.memory['fruit'])]
+                if speed_fruits:
+                    speed_fruits.sort(key=lambda p: get_distance(self.x, self.y, p[0], p[1]))
+                    target_fruit_pos = speed_fruits[0]
+            
+            # If no specific target, just get the nearest fruit
+            if target_fruit_pos is None and best_fruit_target:
+                target_fruit_pos = best_fruit_target
+                
+            # 4. Move to target
+            if target_fruit_pos:
+                self.move_towards(target_fruit_pos[0], target_fruit_pos[1])
+                if get_distance(self.x, self.y, target_fruit_pos[0], target_fruit_pos[1]) < 2.0:
+                    if (self.x, self.y) not in self.world.fruits:
+                        self.memory['fruit'].discard(target_fruit_pos)
+                # --- FIX: Stale memory guard ---
+                if get_distance(self.x, self.y, target_fruit_pos[0], target_fruit_pos[1]) < 5.0 and self.struggle_timer > 5:
+                    if (self.x, self.y) not in self.world.fruits:
+                        self.memory['fruit'].discard(target_fruit_pos)
+                # --- END FIX ---
+            else:
+                self.move_exploring()
+        # --- END NEW ---
+
+        elif self.state == "GETTING_WOOD":
+            if self.wood_carried >= 3: 
+                self.state = "WANDERING"
+                return
+            
+            if (self.x, self.y) in self.world.wood and self.wood_carried < 3:
+                self.take_wood()
+            
+            elif best_wood_target: 
+                self.move_towards(best_wood_target[0], best_wood_target[1])
+                if get_distance(self.x, self.y, best_wood_target[0], best_wood_target[1]) < 2.0:
+                    if (self.x, self.y) not in self.world.wood:
+                        self.memory['wood'].discard(best_wood_target)
+                # --- FIX: Stale memory guard ---
+                if get_distance(self.x, self.y, best_wood_target[0], best_wood_target[1]) < 5.0 and self.struggle_timer > 5:
+                    if (self.x, self.y) not in self.world.wood:
+                        self.memory['wood'].discard(best_wood_target)
+                # --- END FIX ---
+            else:
+                self.move_exploring()
+
+        elif self.state == "BUILDING":
+            if self.is_clear_tile(self.x, self.y): # Ensure the tile is clear of resources AND other agents
+                self.build_home()
+            else:
+                # --- FIX: Use move_exploring instead of wiggling to find a clear spot ---
+                self.move_exploring()
+                
+
+        elif self.state == "REPAIRING_HOME":
+            if self.home_location:
+                dist = get_distance(self.x, self.y, self.home_location[0], self.home_location[1])
+                if dist < 2.0: 
+                    if self.wood_carried > 0:
+                        self.world.homes[self.home_location]['durability'] = HOME_DURABILITY_START
+                        self.wood_carried -= 1
+                        self.skills['building'] = clamp(self.skills['building'] + 0.2, 0, 4.0)
+                        self.state = "WANDERING"
+                    else:
+                        self.state = "GETTING_WOOD" 
+                else:
+                    self.move_towards(self.home_location[0], self.home_location[1])
+            else:
+                self.state = "WANDERING" 
+                
+        elif self.state == "REFUELING_CAMPFIRE":
+            # MODIFIED: Refuel at any nearby campfire (radius 2)
+            nearby_campfire_pos = self.world.get_nearest(self.x, self.y, 2, self.world.campfires.keys())
+            if nearby_campfire_pos:
+                dist = get_distance(self.x, self.y, nearby_campfire_pos[0], nearby_campfire_pos[1])
+                # Refueling doesn't require standing ON the fire, but adjacent (dist < 2.0)
+                if dist < 2.0: 
+                    if self.wood_carried > 0:
+                        self.world.campfires[nearby_campfire_pos] = CAMPFIRE_BURN_TIME
+                        self.wood_carried -= 1
+                        self.state = "WANDERING"
+                    else:
+                        self.state = "GETTING_WOOD"
+                else:
+                    self.move_towards(nearby_campfire_pos[0], nearby_campfire_pos[1])
+            else:
+                self.state = "WANDERING"
+
+        elif self.state == "CLAIMING_HOME":
+            empty_home = self.world.get_empty_home()
+            if empty_home:
+                dist = get_distance(self.x, self.y, empty_home[0], empty_home[1])
+                if dist < 2.0: 
+                    self.world.homes[empty_home]['owner_id'] = self.id
+                    self.home_location = empty_home
+                    self.state = "WANDERING"
+                else:
+                    self.move_towards(empty_home[0], empty_home[1])
+            else:
+                self.state = "WANDERING" 
+
+        elif self.state == "WANDERING_TO_BUILD":
+            self.move_randomly(speed_factor=0.5, persistent_chance=0.0)
+
+        elif self.state == "SEEKING_COMMUNITY":
+            all_homes = self.world.get_nearest(self.x, self.y, 999, self.world.homes.keys()) 
+            if all_homes:
+                self.move_towards(all_homes[0], all_homes[1])
+            else:
+                self.move_exploring()
+
+        elif self.state == "SEEKING_REMOTE_SPOT":
+            self.move_exploring()
+        
+        elif self.state == "GOING_HOME_TO_FARM":
+            if self.home_location:
+                dist = get_distance(self.x, self.y, self.home_location[0], self.home_location[1])
+                if dist <= 5.0:
+                    self.state = "PLANTING" 
+                else:
+                    self.move_towards(self.home_location[0], self.home_location[1])
+            else:
+                self.state = "PLANTING" 
+
+        elif self.state == "PLANTING":
+            if self.is_clear_tile(self.x, self.y):
+                if self.fruit_seeds_carried > 0:
+                    self.plant_fruit_seed()
+                elif self.seeds_carried > 0:
+                    self.plant_seed()
+                elif self.wood_seeds_carried > 0:
+                    self.plant_tree()
+            else:
+                self.move_randomly(persistent_chance=0.0)
+
+        elif self.state == "GOING_HOME_TO_PLANT_WOOD":
+            if self.home_location:
+                dist = get_distance(self.x, self.y, self.home_location[0], self.home_location[1])
+                if dist <= 5.0:
+                    self.state = "PLANTING_WOOD"
+                else:
+                    self.move_towards(self.home_location[0], self.home_location[1])
+            else:
+                self.state = "PLANTING_WOOD"
+
+        elif self.state == "PLANTING_WOOD":
+            if self.is_clear_tile(self.x, self.y):
+                self.plant_tree()
+            else:
+                self.move_randomly(speed_factor=0.5, persistent_chance=0.0)
+                
+        elif self.state == "BUILDING_CAMPFIRE":
+            if self.is_clear_tile(self.x, self.y):
+                self.build_campfire()
+            else:
+                self.move_randomly(speed_factor=0.5, persistent_chance=0.0)
+
+        elif self.state == "SHARING":
+            nearby_agents = self.world.get_nearest_agents(self.x, self.y, vision_radius, self)
+            # Prioritize critically low agents (energy < 40)
+            needy_agents = [a for a in agents if a.energy < 40 and a.food_carried < 1 and len(a.fruit_carried) == 0] 
+            
+            # If no critically needy agents, target standard needy agents (energy < 70)
+            if not needy_agents:
+                 needy_agents = [a for a in agents if a.energy < 70 and a.food_carried < 1 and len(a.fruit_carried) == 0] 
+
+            if needy_agents:
+                target = needy_agents[0]
+                if get_distance(self.x, self.y, target.x, target.y) < 2.0:
+                    # --- MODIFIED: Share fruit first, then food, then wood ---
+                    if len(self.fruit_carried) > 0:
+                        # Check if target can carry more fruit
+                        if len(target.fruit_carried) < MAX_FRUIT_CARRIED:
+                            fruit_type = self.fruit_carried.pop(0)
+                            target.fruit_carried.append(fruit_type)
+                            self.state = "WANDERING"
+                        else:
+                            self.state = "WANDERING" # Target is full, stop sharing
+                    elif self.food_carried >= 1:
+                        # Check if target can carry more food
+                        if target.food_carried < 2:
+                            self.food_carried -= 1
+                            target.food_carried += 1 
+                            self.state = "WANDERING" 
+                        else:
+                            self.state = "WANDERING" # Target is full, stop sharing
+                    elif self.wood_carried >= 1: 
+                        # Check if target can carry more wood
+                        if target.wood_carried < 3:
+                            self.wood_carried -= 1
+                            target.wood_carried += 1
+                            self.state = "WANDERING"
+                        else:
+                            self.state = "WANDERING" # Target is full, stop sharing
+                    else:
+                         self.state = "WANDERING" 
+                    # --- END MODIFIED ---
+                else:
+                    self.move_towards(target.x, target.y)
+            else:
+                self.state = "WANDERING" 
+
+        elif self.state == "MATING":
+            pass
+        
+        elif self.state == "RETALIATING":
+            attacker = self.world.get_agent_by_id(self.was_attacked_by)
+            
+            if attacker:
+                dist = get_distance(self.x, self.y, attacker.x, attacker.y)
+                if dist < 2.0:
+                    self.attack(attacker, attack_type='COMBAT_RETALIATION') 
+                    self.was_attacked_by = None 
+                else:
+                    self.move_towards(attacker.x, attacker.y) 
+            else:
+                self.was_attacked_by = None
+                self.state = "WANDERING"
+
+        # --- NEW: Vengeance State ---
+        elif self.state == "AVENGING":
+            target_parent = self.world.get_agent_by_id(self.avenging_target_id)
+            
+            if target_parent:
+                
+                # --- NEW: Recruit nearby agents (The 'Posse' logic) ---
+                vision_radius = int(self.genes['vision'])
+                potential_recruits = [
+                    a for a in self.world.get_nearest_agents(self.x, self.y, vision_radius, self)
+                    if a.id != target_parent.id and a.avenging_target_id is None
+                ]
+                
+                for recruit in potential_recruits:
+                    roll = random.random()
+                    chance = recruit.genes['aggression'] * 0.5 
+                    
+                    p = recruit.get_personality()
+                    if p == PERSONALITY_AGGRESSIVE_COOPERATOR:
+                        chance += 0.4 
+                    elif p == PERSONALITY_COOPERATIVE:
+                        chance += 0.1 
+                    elif p == PERSONALITY_ISOLATED:
+                        chance -= 0.3 
+                    
+                    if roll < chance:
+                        recruit.state = "AVENGING"
+                        recruit.avenging_target_id = self.avenging_target_id 
+                        recruit.vengeance_timer = VENGEANCE_DURATION
+                # --- END: Recruit logic ---
+                
+                dist = get_distance(self.x, self.y, target_parent.x, target_parent.y)
+                if dist < 2.0:
+                    self.attack(target_parent, attack_type='COMBAT_VENDETTA')
+                else:
+                    self.move_towards(target_parent.x, target_parent.y) 
+            else:
+                self.avenging_target_id = None
+                self.vengeance_timer = 0
+                self.state = "WANDERING"
+        # --- END: Vengeance State ---
+        
+        # --- NEW: Seeking Mate State ---
+        elif self.state == "SEEKING_MATE":
+            eligible_partners = []
+            vision_radius = int(self.genes['vision']) 
+            
+            nearby_agents = self.world.get_nearest_agents(self.x, self.y, vision_radius, self)
+
+            for agent in nearby_agents:
+                if agent.age >= ADULT_AGE and \
+                   agent.energy > agent.genes['mating_drive'] and \
+                   agent.mate_cooldown == 0:
+                    eligible_partners.append(agent)
+
+            if eligible_partners:
+                eligible_partners.sort(key=lambda p: get_distance(self.x, self.y, p.x, p.y))
+                target = eligible_partners[0]
+
+                if get_distance(self.x, self.y, target.x, target.y) < 2.0:
+                    self.mate(target)
+                else:
+                    self.move_towards(target.x, target.y)
+            else:
+                self.move_exploring()
+        # --- END NEW ---
+        
+        elif self.state == "SEEKING_SOCIAL": 
+            # MODIFIED: Prioritize Campfire over Agents/Library for social
+            nearby_campfire_pos = self.world.get_nearest(self.x, self.y, vision_radius, self.world.campfires.keys())
+            
+            if nearby_campfire_pos:
+                 # Move to a spot NEAR the campfire (radius 2)
+                 dist = get_distance(self.x, self.y, nearby_campfire_pos[0], nearby_campfire_pos[1])
+                 if dist > 2.0:
+                     self.move_towards(nearby_campfire_pos[0], nearby_campfire_pos[1])
+                 else:
+                     # I'm next to the fire, now look for an agent nearby to chat
+                     happy_agents = self.world.get_nearest_agents(self.x, self.y, 3, exclude_self=self)
+                     if happy_agents:
+                         target_agent = happy_agents[0]
+                         if get_distance(self.x, self.y, target_agent.x, target_agent.y) < 2.0:
+                             self.communicate(target_agent)
+                         else:
+                             self.move_towards(target_agent.x, target_agent.y)
+                     else:
+                         self.state = "SOCIAL_HAPPY" # Linger by the fire
+                 return
+            
+            # Fallback 1: Seek Agent
+            happy_agents = self.world.get_nearest_agents(self.x, self.y, 3, exclude_self=self)
+            happy_and_pausing = [
+                a for a in happy_agents 
+                if a.energy > PAUSE_ENERGY_THRESHOLD and a.social > PAUSE_SOCIAL_THRESHOLD
+            ]
+            
+            if happy_and_pausing:
+                happy_and_pausing.sort(key=lambda a: get_distance(self.x, self.y, a.x, a.y))
+                target_agent = happy_and_pausing[0]
+            elif agents:
+                target_agent = agents[0]
+            else:
+                target_agent = None
+                
+            if target_agent:
+                if get_distance(self.x, self.y, target_agent.x, target_agent.y) < 2.0:
+                    self.communicate(target_agent)
+                else:
+                    self.move_towards(target_agent.x, target_agent.y)
+            
+            # Fallback 2: Seek Library
+            else:
+                if self.memory['library']:
+                    lx, ly = self.memory['library']
+                    self.move_towards(lx, ly)
+                    self.state = "SEEKING_LIBRARY" 
+                else:
+                    self.move_exploring()
+            
+        elif self.state == "SOCIAL_HAPPY": 
+            if self.energy > PAUSE_ENERGY_THRESHOLD and self.social > PAUSE_SOCIAL_THRESHOLD:
+                
+                # Still linger, but chance to broadcast skill nearby
+                nearby_campfire_pos = self.world.get_nearest(self.x, self.y, 2, self.world.campfires.keys())
+                if nearby_campfire_pos and random.random() < 0.1 and (self.x, self.y) != nearby_campfire_pos:
+                    self.broadcast_skill_to_library()
+                
+                elif random.random() < 0.2 and self.memory['library']: 
+                    lx, ly = self.memory['library']
+                    if get_distance(self.x, self.y, lx, ly) > 5.0:
+                        self.move_towards(lx, ly)
+                        self.state = "SEEKING_LIBRARY" 
+                        return
+                
+                pass 
+            else:
+                self.move_randomly(speed_factor=0.5, persistent_chance=0.0) 
+
+        elif self.state == "SOCIAL_SAD": 
+            self.love = clamp(self.love + LOVE_GAIN_REST, 0, STARTING_LOVE)
+            
+            if self.energy < 20 and best_food_target:
+                self.move_towards(best_food_target[0], best_food_target[1])
+            
+            elif self.social < 10:
+                # Prioritize a campfire or agent to relieve sadness
+                nearby_campfire_pos = self.world.get_nearest(self.x, self.y, vision_radius, self.world.campfires.keys())
+                if agents:
+                    self.move_towards(agents[0].x, agents[0].y)
+                elif nearby_campfire_pos:
+                    self.move_towards(nearby_campfire_pos[0], nearby_campfire_pos[1])
+                else:
+                    if self.memory['library']:
+                        lx, ly = self.memory['library']
+                        self.move_towards(lx, ly)
+                        self.state = "SEEKING_LIBRARY"
+                    else:
+                        self.move_exploring()
+            else:
+                 self.move_exploring() 
+            
+        elif self.state == "WANDERING":
+            if self.energy > PAUSE_ENERGY_THRESHOLD and self.social > PAUSE_SOCIAL_THRESHOLD:
+                
+                # Chance to linger by a fire and contribute knowledge
+                nearby_campfire_pos = self.world.get_nearest(self.x, self.y, 2, self.world.campfires.keys())
+                if nearby_campfire_pos and random.random() < 0.1 and (self.x, self.y) != nearby_campfire_pos:
+                    self.broadcast_skill_to_library()
+                
+                elif random.random() < 0.2 and self.memory['library']: 
+                    lx, ly = self.memory['library']
+                    if get_distance(self.x, self.y, lx, ly) > 5.0:
+                        self.move_towards(lx, ly)
+                        self.state = "SEEKING_LIBRARY" 
+                        return
+                
+                pass 
+            else:
+                if food_in_sight: 
+                    for pos in food_in_sight:
+                        self.memory['food'].add(pos)
+                if wood_in_sight:
+                    for pos in wood_in_sight:
+                        self.memory['wood'].add(pos)
+                if fruit_in_sight:
+                    for pos in fruit_in_sight:
+                        self.memory['fruit'].add(pos)
+                self.move_exploring()
+        
+        elif self.state == "SEEKING_LIBRARY": 
+            lx, ly = self.memory['library']
+            
+            self.skills['navigation'] = clamp(self.skills['navigation'] + 0.001, 0, 3.0) # <--- MODIFIED: Capped at 3.0
+            
+            if get_distance(self.x, self.y, lx, ly) < 2.0:
+                self.skills['social'] = clamp(self.skills['social'] + 0.01, 0, 10.0)
+                self.state = "WANDERING"
+                
+            else:
+                 self.move_towards(lx, ly)
+            
+        elif self.state == "COMMUNICATING":
+            pass 
+
+
+    # --- MODIFIED: Is Clear Tile (For Building/Planting) ---
+    def is_clear_tile(self, x, y):
+        """Helper to check if a tile is empty for building/planting. (Now checks agents)."""
+        pos = (x, y)
+        if pos == self.world.library_location: return False
+        if pos in self.world.homes: return False
+        if pos in self.world.food: return False
+        if pos in self.world.wood: return False
+        if pos in self.world.growing_plants: return False
+        if pos in self.world.growing_trees: return False 
+        if pos in self.world.campfires: return False
+        if pos in self.world.fruits: return False
+        if pos in self.world.growing_fruit_bushes: return False
+        
+        # NEW: Check for other agents on the tile
+        for agent in self.world.agents:
+            if agent != self and agent.x == x and agent.y == y:
+                # EXCEPTION 1: Library (communal space)
+                if pos == self.world.library_location:
+                    continue 
+                
+                # EXCEPTION 2: Shared Home (family only)
+                if self.home_location == pos:
+                    home_data = self.world.homes.get(pos)
+                    if home_data:
+                        owner_id = home_data.get('owner_id')
+                        owner_agent = self.world.get_agent_by_id(owner_id)
+                        is_family = (owner_id is not None) and (agent.id in owner_agent.children_ids if owner_agent else False)
+                        
+                        # If the other agent is family, it is NOT an obstacle for planting/building *at home*.
+                        if owner_id == agent.id or is_family:
+                            continue
+                
+                # If there's another agent and it's not a special case, the tile is NOT clear.
+                return False
+                
+        return True
+    
+    # --- MODIFIED: Is Obstacle (For Movement) ---
+    def is_obstacle(self, x, y):
+        """Checks if a tile is an obstacle (another agent's home, campfire, or occupied space)."""
+        pos = (x, y)
+        
+        # 1. Structures and Resources
+        if pos in self.world.campfires: # Cannot stand ON the fire
+            return True 
+        
+        # 2. Homes/Building (only other agents' homes are obstacles)
+        if pos in self.world.homes:
+            home_data = self.world.homes[(x, y)]
+            if home_data.get('owner_id') != self.id and home_data.get('owner_id') is not None:
+                return True
+                
+        # 3. Other Agents (Prevent cohabitation except for specific shared spaces)
+        for agent in self.world.agents:
+            if agent != self and agent.x == x and agent.y == y:
+                
+                # EXCEPTION 1: Library
+                if pos == self.world.library_location:
+                    continue 
+                    
+                # EXCEPTION 2: Shared Home (If *I* own or am family to the home they are standing on)
+                if self.home_location == pos:
+                    home_data = self.world.homes.get(pos)
+                    if home_data:
+                        owner_id = home_data.get('owner_id')
+                        is_owner = (self.id == owner_id)
+                        owner_agent = self.world.get_agent_by_id(owner_id)
+                        is_family = (owner_id is not None) and (self.id in owner_agent.children_ids if owner_agent else False)
+                        
+                        # If the spot they occupy is MY communal home, it's not an obstacle for ME.
+                        if is_owner or is_family:
+                            continue 
+                
+                # If another agent is there, and it wasn't a library or my home tile, it's an obstacle.
+                return True
+
+        return False
+
+    def move_towards(self, target_x, target_y):
+        """Moves one step towards a target coordinate."""
+        self.exploration_vector = (0, 0)
+        
+        steps = int(self.genes['speed'])
+        if self.speed_buff_timer > 0:
+            steps += 2
+        if steps < 1:
+            steps = 1
+        
+        for _ in range(steps):
+            dx, dy = 0, 0
+            if self.x < target_x: dx = 1
+            elif self.x > target_x: dx = -1
+            if self.y < target_y: dy = 1
+            elif self.y > target_y: dy = -1
+            
+            new_x = clamp(self.x + dx, 0, self.world.width - 1)
+            new_y = clamp(self.y + dy, 0, self.world.height - 1)
+            
+            # MODIFIED: Check for obstacle and prevent move if so.
+            if not self.is_obstacle(new_x, new_y):
+                self.x = new_x
+                self.y = new_y
+            else:
+                # NEW: Sliding logic to bypass obstacles
+                slide_x = clamp(self.x + dx, 0, self.world.width - 1)
+                slide_y = clamp(self.y + dy, 0, self.world.height - 1)
+                
+                moved = False
+                
+                # Try to slide in X only
+                if dx != 0 and not self.is_obstacle(slide_x, self.y):
+                    self.x = slide_x
+                    moved = True
+                # Try to slide in Y only
+                elif dy != 0 and not self.is_obstacle(self.x, slide_y):
+                    self.y = slide_y
+                    moved = True
+                
+                if not moved:
+                    # --- FIX: Deadlock Guard / FREEZE PREVENTION ---
+                    # Stuck or blocked by multiple things, stop movement for this step and force a re-evaluation
+                    self.exploration_vector = (random.randint(-1, 1), random.randint(-1, 1))
+                    
+                    # NEW: Set a short timer (5 turns) to force genuine random exploration next turn
+                    self.stuck_timer = 5
+                    
+                    # *** NEW CRITICAL FIX: Forget the target that caused the problem ***
+                    target_tuple = (target_x, target_y)
+                    if self.state in ["FORAGING", "FORAGING_FRUIT"]:
+                        self.memory['food'].discard(target_tuple)
+                        self.memory['fruit'].discard(target_tuple)
+                    elif self.state == "GETTING_WOOD":
+                        self.memory['wood'].discard(target_tuple)
+                    # ************************************************
+                    
+                    break 
+            
+            self.skills['navigation'] = clamp(self.skills['navigation'] + 0.001, 0, 3.0) # <--- MODIFIED: Capped at 3.0
+            cost_multiplier = 1.0 - (self.skills['navigation'] * 0.15) 
+            if cost_multiplier < 0.25: cost_multiplier = 0.25
+            
+            self.energy -= (0.05) * cost_multiplier 
+
+    def move_randomly(self, speed_factor=1.0, persistent_chance=0.0):
+        """Moves randomly (0.0 = wiggle) or persistently (0.8 = explore)."""
+        steps = int(self.genes['speed'] * speed_factor)
+        if self.speed_buff_timer > 0:
+            steps += 2
+        if steps < 1: 
+            steps = 1
+        
+        for _ in range(steps):
+            stuck = False
+            if self.exploration_vector != (0, 0):
+                new_x = clamp(self.x + self.exploration_vector[0], 0, self.world.width - 1)
+                new_y = clamp(self.y + self.exploration_vector[1], 0, self.world.height - 1)
+                if new_x == self.x and new_y == self.y:
+                    stuck = True 
+
+            if self.exploration_vector == (0, 0) or stuck or random.random() > persistent_chance:
+                # Loop to find a valid non-zero vector
+                for _ in range(4): # Limit attempts
+                    self.exploration_vector = (random.randint(-1, 1), random.randint(-1, 1))
+                    if self.exploration_vector != (0, 0):
+                        break
+                if self.exploration_vector == (0, 0): # If it still failed to find a non-zero vector
+                    break
+            
+            dx, dy = self.exploration_vector
+            
+            new_x = clamp(self.x + dx, 0, self.world.width - 1)
+            new_y = clamp(self.y + dy, 0, self.world.height - 1)
+            
+            # MODIFIED: Check for obstacle and prevent move if so.
+            if not self.is_obstacle(new_x, new_y):
+                self.x = new_x
+                self.y = new_y
+            else:
+                self.exploration_vector = (0, 0)
+                break 
+            
+            self.skills['navigation'] = clamp(self.skills['navigation'] + 0.001, 0, 3.0) # <--- MODIFIED: Capped at 3.0
+            cost_multiplier = 1.0 - (self.skills['navigation'] * 0.15) 
+            if cost_multiplier < 0.25: cost_multiplier = 0.25
+            
+            self.energy -= (0.05) * cost_multiplier
+
+    def move_exploring(self):
+        """Helper function to call move_randomly with smart settings."""
+        self.move_randomly(speed_factor=1.0, persistent_chance=0.8)
+
+    def get_closest_combined_target(self, resource_type, visible_resources):
+        """
+        Combines visible resources and memories to find the single closest target.
+        """
+        possible_targets = set()
+        
+        possible_targets.update(visible_resources)
+        
+        if resource_type in self.memory:
+            possible_targets.update(self.memory[resource_type])
+        
+        if not possible_targets:
+            return None
+            
+        nearest_item = None
+        min_dist = float('inf')
+        
+        for (ix, iy) in possible_targets:
+            dist = get_distance(self.x, self.y, ix, iy)
+            if dist < min_dist:
+                min_dist = dist
+                nearest_item = (ix, iy)
+                
+        return nearest_item
+
+    def consume_food(self):
+        """Consumes 1 unit of food carried."""
+        if self.food_carried > 0:
+            self.food_carried -= 1
+            self.skills['foraging'] = clamp(self.skills['foraging'] + 0.1, 0, 10.0) 
+            # Use the new FOOD_BASE_ENERGY_VALUE constant
+            energy_gain = FOOD_BASE_ENERGY_VALUE + (self.skills['foraging'] * 20) 
+            self.energy += energy_gain
+            self.love = clamp(self.love + LOVE_GAIN_EAT, 0, STARTING_LOVE)
+
+            # --- NEW: Environmental Degradation from Foraging ---
+            decay_amount = ENV_DECAY_FOOD_GATHER * (1.0 - (self.skills['foraging'] / 10.0))
+            self.world.environmental_health = clamp(self.world.environmental_health - decay_amount, 0, ENV_HEALTH_MAX)
+            # --- END NEW ---
+
+            # --- NEW: Chance to drop a food seed based on foraging skill ---
+            foraging_chance = FOOD_SEED_BASE_CHANCE + (self.skills['foraging'] * 0.05)
+            
+            # FIX: Check max capacity before adding seeds
+            if random.random() < foraging_chance and self.seeds_carried < MAX_FOOD_SEEDS_CARRIED:
+                self.seeds_carried += 1
+            # --- END NEW ---
+
+            self.state = "WANDERING"
+
+    def consume_fruit(self):
+        """Consumes 1 unit of fruit carried."""
+        if len(self.fruit_carried) > 0:
+            fruit_type = self.fruit_carried.pop(0)
+            self.skills['foraging'] = clamp(self.skills['foraging'] + 0.1, 0, 10.0)
+            
+            if fruit_type == 'energy':
+                self.energy += FRUIT_BENEFIT_ENERGY_VAL 
+            elif fruit_type == 'social':
+                self.energy += FRUIT_BENEFIT_SOCIAL_ENERGY_VAL
+                self.social = clamp(self.social + FRUIT_BENEFIT_SOCIAL_SOCIAL_VAL, 0, 100)
+            elif fruit_type == 'speed':
+                self.energy += FRUIT_BENEFIT_SPEED_ENERGY_VAL 
+                self.speed_buff_timer = FRUIT_BENEFIT_SPEED_DURATION
+                
+            self.love = clamp(self.love + LOVE_GAIN_EAT, 0, STARTING_LOVE)
+
+            # --- NEW: Environmental Degradation from Foraging ---
+            decay_amount = ENV_DECAY_FOOD_GATHER * (1.0 - (self.skills['foraging'] / 10.0))
+            self.world.environmental_health = clamp(self.world.environmental_health - decay_amount, 0, ENV_HEALTH_MAX)
+            # --- END NEW ---
+
+            # --- NEW: Chance to drop a fruit seed based on foraging skill ---
+            foraging_chance = FRUIT_SEED_BASE_CHANCE + (self.skills['foraging'] * 0.05)
+            
+            # FIX: Check max capacity before adding fruit seeds
+            if random.random() < foraging_chance and self.fruit_seeds_carried < STARTING_FRUIT_SEEDS_MAX: # MAX_FRUIT_SEEDS_CARRIED constant used here
+                self.fruit_seeds_carried += 1
+            # --- END NEW ---
+
+            self.state = "WANDERING"
+
+    def pickup_food(self):
+        """Picks up food from the current tile into inventory (max 2)."""
+        if (self.x, self.y) in self.world.food and self.food_carried < 2: 
+            self.world.food.remove((self.x, self.y))
+            if (self.x, self.y) in self.world.food_freshness:
+                del self.world.food_freshness[(self.x, self.y)]
+            self.food_carried += 1
+            self.memory['food'].discard((self.x, self.y))
+            self.state = "WANDERING"
+
+    def pickup_fruit(self):
+        """Picks up fruit from the current tile into inventory."""
+        pos = (self.x, self.y)
+        if pos in self.world.fruits and len(self.fruit_carried) < MAX_FRUIT_CARRIED: 
+            fruit_type = self.world.fruit_types.get(pos)
+            if fruit_type:
+                self.world.fruits.remove(pos)
+                del self.world.fruit_types[pos]
+                
+                self.fruit_carried.append(fruit_type)
+                
+                self.memory['fruit'].discard(pos)
+                self.state = "WANDERING"
+
+    def take_wood(self):
+        """Takes 1 wood from the world tile into inventory (max 3)."""
+        if (self.x, self.y) in self.world.wood and self.wood_carried < 3: 
+            self.world.wood.remove((self.x, self.y))
+            self.wood_carried += 1
+            
+            # --- NEW: Environmental Degradation from Wood Gathering ---
+            decay_amount = ENV_DECAY_WOOD_GATHER * (1.0 - (self.skills['foraging'] / 10.0))
+            self.world.environmental_health = clamp(self.world.environmental_health - decay_amount, 0, ENV_HEALTH_MAX)
+            # --- END NEW ---
+            
+            # FIX: Check max capacity before adding wood seeds
+            if random.random() < WOOD_SEED_CHANCE and self.wood_seeds_carried < MAX_WOOD_SEEDS_CARRIED:
+                self.wood_seeds_carried += 1
+
+            self.memory['wood'].discard((self.x, self.y))
+            self.state = "WANDERING"
+
+    def build_home(self):
+        wood_cost = 3 - int(self.skills['building'] * 0.5)
+        if wood_cost < 1: wood_cost = 1 
+        
+        if self.wood_carried >= wood_cost:
+            self.wood_carried -= wood_cost
+            
+            self.world.homes[(self.x, self.y)] = {'owner_id': self.id, 'durability': HOME_DURABILITY_START}
+            self.home_location = (self.x, self.y) 
+            
+            self.state = "WANDERING"
+            self.skills['building'] = clamp(self.skills['building'] + 0.5, 0, 4.0) 
+    
+    def build_campfire(self):
+        wood_cost = CAMPFIRE_WOOD_COST - int(self.skills['building'] * 0.5)
+        if wood_cost < 1: wood_cost = 1 
+        
+        if self.wood_carried >= wood_cost:
+            self.wood_carried -= wood_cost
+            self.world.campfires[(self.x, self.y)] = CAMPFIRE_BURN_TIME
+            self.campfire_location = (self.x, self.y) 
+            self.skills['building'] = clamp(self.skills['building'] + 0.2, 0, 4.0)
+            self.state = "WANDERING"
+            
+    def attack(self, target, attack_type='COMBAT_AGGRESSION'): 
+        energy_cost = 10 - (self.skills['combat'] * 1.0) 
+        if energy_cost < 2: energy_cost = 2 
+        
+        damage = 15 + (self.skills['combat'] * 8) 
+        
+        self.state = "ATTACKING"
+        self.energy -= energy_cost
+        self.energy += 10 
+        
+        target.energy -= damage
+        self.skills['combat'] = clamp(self.skills['combat'] + 0.2, 0, 10.0) 
+        
+        self.love = clamp(self.love - 5.0, 0, STARTING_LOVE) 
+        
+        target.was_attacked_by = self.id
+        
+        if target.energy <= 0:
+            target.die(attack_type) 
+        
+    def mate(self, partner):
+        self.state = "MATING"
+        partner.state = "MATING"
+        
+        # FIX: Reduced energy cost to mate from 40 to 20
+        self.energy -= 20
+        partner.energy -= 20
+        
+        self.mate_cooldown = 600
+        partner.mate_cooldown = 600
+        
+        num_children = random.randint(1, 3) 
+        
+        for _ in range(num_children):
+            # Gene Mixing
+            new_genes = {}
+            for gene in self.genes:
+                avg_gene = (self.genes[gene] + partner.genes[gene]) / 2
+                min_val, max_val, mut_rate = GENE_RANGES[gene]
+                mutation = random.uniform(-mut_rate, mut_rate) * (max_val - min_val)
+                new_genes[gene] = clamp(avg_gene + mutation, min_val, max_val)
+            
+            new_agent = self.world.add_agent(self.x, self.y, genes=new_genes)
+            if new_agent:
+                new_agent.skills = {k: 0.0 for k in self.skills}
+                new_agent.home_location = None
+                
+                new_agent.parent_ids = {self.id, partner.id}
+                
+                self.children_ids.add(new_agent.id)
+                partner.children_ids.add(new_agent.id)
+            
+        self.social = 100.0 
+        self.contentment_buff_timer = 25 
+        partner.social = 100.0
+        partner.contentment_buff_timer = 25
+
+    def share_skills(self, partner):
+        """Agents share knowledge when communicating."""
+        skills_to_share = ['foraging', 'building', 'navigation', 'farming', 'combat', 'social']
+        learning_rate = 0.01 
+        
+        for skill in skills_to_share:
+            self.memory.setdefault('global_news', {}) # Ensure global_news exists before using it
+            partner.memory.setdefault('global_news', {}) # Ensure global_news exists before using it
+            
+            self_skill = self.skills[skill]
+            partner_skill = partner.skills[skill]
+            
+            # Use the actual max skill for clamping, which for navigation is now 3.0
+            max_skill = 10.0
+            if skill == 'building':
+                max_skill = 4.0
+            elif skill == 'navigation':
+                max_skill = 3.0 # <-- Match the new gene cap
+            
+            if self_skill > partner_skill:
+                partner.skills[skill] = clamp(partner_skill + learning_rate, 0, max_skill)
+                if self_skill > 2.0: 
+                    # Global knowledge update is capped at 10.0 for all
+                    self.world.global_skill_knowledge[skill] = clamp(self.world.global_skill_knowledge.get(skill, 0.0) + 0.001, 0, 10.0)
+            elif partner_skill > self_skill:
+                self.skills[skill] = clamp(self_skill + learning_rate, 0, max_skill)
+                if partner_skill > 2.0:
+                    self.world.global_skill_knowledge[skill] = clamp(self.world.global_skill_knowledge.get(skill, 0.0) + 0.001, 0, 10.0)
+
+        if self.memory['library'] and not partner.memory['library']:
+            partner.memory['library'] = self.memory['library']
+        elif partner.memory['library'] and not self.memory['library']:
+            self.memory['library'] = partner.memory['library']
+
+    def broadcast_skill_to_library(self):
+        """
+        When lingering by a fire, contribute a small amount of the agent's
+        best skill to the global knowledge pool.
+        """
+        if not self.skills:
+            return
+            
+        highest_skill_name = max(self.skills, key=self.skills.get)
+        highest_skill_value = self.skills[highest_skill_name]
+        
+        if highest_skill_value > 1.0:
+            current_global = self.world.global_skill_knowledge.get(highest_skill_name, 0.0)
+            if highest_skill_value > current_global:
+                 self.world.global_skill_knowledge[highest_skill_name] = clamp(current_global + 0.005, 0, 10.0)
+
+    def communicate(self, partner):
+        self.state = "COMMUNICATING" 
+        partner.state = "COMMUNICATING" 
+        
+        # --- NEW: Personality Conflict Check ---
+        self_personality = self.get_personality()
+        partner_personality = partner.get_personality()
+        
+        conflict_detected = False
+        if partner_personality in PERSONALITY_CONFLICTS.get(self_personality, []):
+            conflict_detected = True
+        elif self_personality in PERSONALITY_CONFLICTS.get(partner_personality, []):
+            conflict_detected = True
+            
+        if conflict_detected:
+            conflict_chance = self.genes['aggression'] * 0.8
+            if self_personality == PERSONALITY_AGGRESSIVE_COOPERATOR:
+                 conflict_chance = self.genes['aggression'] * 1.5
+            
+            if random.random() < conflict_chance:
+                self.attack(partner, attack_type='COMBAT_CONFLICT')
+                return
+        # --- END NEW: Personality Conflict Check ---
+        
+        self.energy -= 1.0 
+        partner.energy -= 1.0
+        
+        self.skills['social'] = clamp(self.skills['social'] + 0.001, 0, 10.0) 
+        partner.skills['social'] = clamp(partner.skills['social'] + 0.001, 0, 10.0) 
+        
+        social_gain = 50 + (self.skills['social'] * 10)
+        partner_social_gain = 20 + (partner.skills['social'] * 5)
+        
+        self.social = clamp(self.social + social_gain, 0, 100)
+        partner.social = clamp(partner.social + partner_social_gain, 0, 100)
+        
+        self.social_buff_timer = 20 
+        partner.social_buff_timer = 20 
+        
+        love_gain = LOVE_GAIN_SOCIAL
+        if self.apathy_timer > 0:
+            love_gain /= 2
+            
+        self.love = clamp(self.love + love_gain, 0, STARTING_LOVE)
+        
+        love_gain_partner = LOVE_GAIN_SOCIAL
+        if partner.apathy_timer > 0:
+            love_gain_partner /= 2
+            
+        partner.love = clamp(partner.love + love_gain_partner, 0, STARTING_LOVE)
+        
+        # --- MODIFIED: NEWS SHARING (Only share if the world is in crisis) ---
+        
+        # 1. Food Crisis News
+        if len(self.world.food) < CRITICAL_FOOD_COUNT:
+            # Propagate the news to the partner's memory
+            partner.memory.setdefault('global_news', {})['food_crisis'] = True
+            # The agent who started the chat is also reminded/refreshed of the news
+            self.memory.setdefault('global_news', {})['food_crisis'] = True
+
+        # 2. Population Crisis News
+        if len(self.world.agents) < MIN_POPULATION_TARGET:
+            partner.memory.setdefault('global_news', {})['low_population'] = True
+            self.memory.setdefault('global_news', {})['low_population'] = True
+            
+        # --- END MODIFIED: NEWS SHARING ---
+
+        self.share_skills(partner) # Share skills and library location
+        
+        if len(self.world.food) < STARTING_FOOD and \
+           self.seeds_carried >= 1 and partner.seeds_carried >= 1:
+            
+            total_seeds = self.seeds_carried + partner.seeds_carried
+            if total_seeds >= 3:
+                self.seeds_carried = 0
+                partner.seeds_carried = 0
+                
+                lx, ly = self.world.library_location
+                plant_loc = (lx, ly) 
+                if not self.is_clear_tile(lx, ly):
+                    plant_loc = (self.x, self.y)
+                
+                self.world.food.add(plant_loc)
+                self.world.food_freshness[plant_loc] = FOOD_FRESHNESS
+                
+                self.state = "FORAGING"
+                partner.state = "FORAGING"
+                return 
+        
+        if self.age >= ADULT_AGE and self.energy > self.genes['mating_drive'] and self.mate_cooldown == 0 and \
+           partner.age >= ADULT_AGE and partner.energy > partner.genes['mating_drive'] and partner.mate_cooldown == 0:
+            
+            self.mate(partner)
+
+    def plant_seed(self):
+        """Plants a food seed at the current location."""
+        if self.seeds_carried > 0:
+            self.seeds_carried -= 1
+            self.energy -= 10 
+            
+            self.world.growing_plants[(self.x, self.y)] = GROW_TIME
+            
+            self.skills['farming'] = clamp(self.skills['farming'] + 0.2, 0, 10.0)
+            
+            # --- NEW: Environmental Healing from Planting ---
+            heal_amount = ENV_HEAL_PLANT_BASE * (self.skills['farming'] / 10.0)
+            self.world.environmental_health = clamp(self.world.environmental_health + heal_amount, 0, ENV_HEALTH_MAX)
+            # --- END NEW ---
+            
+            self.state = "WANDERING"
+
+    def plant_fruit_seed(self):
+        """Plants a fruit seed at the current location."""
+        if self.fruit_seeds_carried > 0:
+            self.fruit_seeds_carried -= 1
+            self.energy -= 10 
+            
+            self.world.growing_fruit_bushes[(self.x, self.y)] = FRUIT_GROW_TIME
+            self.world.fruit_types[(self.x, self.y)] = random.choice(['energy', 'social', 'speed'])
+            
+            self.skills['farming'] = clamp(self.skills['farming'] + 0.2, 0, 10.0)
+            
+            # --- NEW: Environmental Healing from Planting ---
+            heal_amount = ENV_HEAL_PLANT_BASE * (self.skills['farming'] / 10.0)
+            self.world.environmental_health = clamp(self.world.environmental_health + heal_amount, 0, ENV_HEALTH_MAX)
+            # --- END NEW ---
+            
+            self.state = "WANDERING"
+
+    def plant_tree(self):
+        """Plants a wood seed at the current location."""
+        if self.wood_seeds_carried > 0:
+            self.wood_seeds_carried -= 1
+            self.energy -= 10 
+            
+            self.world.growing_trees[(self.x, self.y)] = TREE_GROW_TIME
+            
+            self.skills['farming'] = clamp(self.skills['farming'] + 0.2, 0, 10.0)
+            
+            # --- NEW: Environmental Healing from Planting ---
+            heal_amount = ENV_HEAL_PLANT_BASE * (self.skills['farming'] / 10.0)
+            self.world.environmental_health = clamp(self.world.environmental_health + heal_amount, 0, ENV_HEALTH_MAX)
+            # --- END NEW ---
+            
+            self.state = "WANDERING"
+
+    def die(self, reason='UNKNOWN'):
+        """Removes the agent from the world and makes their home 'unclaimed'."""
+        
+        # --- NEW: Vengeance System ---
+        if self.age < ADULT_AGE and self.parent_ids:
+            witnesses = []
+            for agent in self.world.agents:
+                if agent.id == self.id or agent.id in self.parent_ids:
+                    continue 
+                
+                vision_radius = int(agent.genes['vision'])
+                dist = get_distance(agent.x, agent.y, self.x, self.y)
+                
+                if dist <= vision_radius:
+                    witnesses.append(agent)
+            
+            if witnesses:
+                closest_parent_agent = None
+                min_dist_to_parent = float('inf')
+                
+                for p_id in self.parent_ids:
+                    parent = self.world.get_agent_by_id(p_id)
+                    if parent:
+                        dist = get_distance(self.x, self.y, parent.x, parent.y)
+                        if dist < min_dist_to_parent:
+                            min_dist_to_parent = dist
+                            closest_parent_agent = parent
+                
+                if closest_parent_agent:
+                    for witness in witnesses:
+                        witness.state = "AVENGING"
+                        witness.avenging_target_id = closest_parent_agent.id
+                        witness.vengeance_timer = VENGEANCE_DURATION 
+        # --- END: Vengeance System ---
+        
+        # --- NEW: Check for Sickness-Induced Death (Override reason) ---
+        if self.sickness_timer > 0:
+            if reason in ['STARVATION_ADULT', 'STARVATION_CHILD', 'NATURAL_DEATH_OLD']:
+                reason = 'STARVATION_SICKNESS'
+        # --- END NEW ---
+        
+        self.world.death_causes[reason] = self.world.death_causes.get(reason, 0) + 1
+        
+        death_location = (self.x, self.y)
+        
+        # --- MODIFIED: Drop ALL carried items ---
+        # Drop wood
+        for _ in range(self.wood_carried):
+            self.world.wood.add(death_location)
+            
+        # Drop food
+        for _ in range(self.food_carried):
+            self.world.food.add(death_location)
+            self.world.food_freshness[death_location] = FOOD_FRESHNESS
+            
+        # Drop fruit
+        for fruit_type in self.fruit_carried:
+            self.world.add_fruit(death_location, fruit_type)
+            
+        # --- NEW: Auto-plant all carried seeds ---
+        self.world.auto_plant_on_death(
+            death_location, 
+            self.seeds_carried, 
+            self.wood_seeds_carried, 
+            self.fruit_seeds_carried
+        )
+        # --- END MODIFIED ---
+        
+        # Remove self from any parent's child list
+        dying_agent_id = self.id
+        for parent_id in self.parent_ids:
+            parent = self.world.get_agent_by_id(parent_id)
+            if parent and dying_agent_id in parent.children_ids:
+                parent.children_ids.discard(dying_agent_id)
+        
+        if self in self.world.agents:
+            self.world.agents.remove(self)
+            
+        if self.home_location and self.home_location in self.world.homes:
+            self.world.homes[self.home_location]['owner_id'] = None
+
+# --- WORLD CLASS ---
+
+class World:
+    def __init__(self, width, height):
+        self.width = width
+        self.height = height
+        self.turn = 0
+        self.next_agent_id = 0 
+        
+        self.agents = []
+        self.food = set()
+        self.wood = set()
+        # --- NEW: Fruit tracking ---
+        self.fruits = set()
+        self.fruit_types = {} # (x,y) -> 'energy'/'social'/'speed'
+        self.growing_fruit_bushes = {} # (x,y) -> timer
+        # --- END NEW ---
+        
+        self.generation_count = 0
+        
+        # --- NEW: Environmental Health Tracker ---
+        self.environmental_health = ENV_HEALTH_MAX
+        # --- END NEW ---
+        
+        self.death_causes = {
+            'MAX_AGE': 0, 
+            'STARVATION_ADULT': 0, 
+            'STARVATION_CHILD': 0, 
+            'NATURAL_DEATH_OLD': 0, 
+            'STARVATION_SICKNESS': 0,
+            'UNKNOWN': 0,
+            # --- MODIFIED: Specific Combat Deaths ---
+            'COMBAT_VENDETTA': 0,
+            'COMBAT_CONFLICT': 0,
+            'COMBAT_RETALIATION': 0,
+            'COMBAT_AGGRESSION': 0
+            # --- END MODIFIED ---
+        }
+        
+        self.homes = {} 
+        
+        self.growing_plants = {} 
+        self.growing_trees = {} 
+        self.food_freshness = {} 
+        self.campfires = {} 
+
+        # Global Knowledge Pool (for the 'Library' effect)
+        self.global_skill_knowledge = {
+            'foraging': 0.0,
+            'social': 0.0,
+            'building': 0.0, 
+            'navigation': 0.0,
+            'combat': 0.0,
+            'farming': 0.0 
+        }
+        # Library Location
+        self.library_location = (self.width // 2, self.height // 2)
+
+        # Pre-initialize stats dictionary
+        self.stats = {}
+        for gene in GENE_RANGES:
+            self.stats['avg_{}'.format(gene)] = 0.0
+        self.stats.update({
+            'avg_foraging_skill': 0.0,
+            'avg_social_skill': 0.0,
+            'avg_building_skill': 0.0,
+            'avg_navigation_skill': 0.0,
+            'avg_combat_skill': 0.0,
+            'avg_farming_skill': 0.0 
+        })
+        self.stats.update({'population': 0, 'homes_built': 0, 'active_campfires': 0})
+        
+        # Make constants accessible
+        self.MIN_POPULATION_TARGET = MIN_POPULATION_TARGET
+        self.MAX_POPULATION_TARGET = MAX_POPULATION_TARGET
+
+
+    def get_next_agent_id(self):
+        """Returns a unique ID for a new agent."""
+        self.next_agent_id += 1
+        return self.next_agent_id
+
+    def get_agent_by_id(self, agent_id):
+        """Finds an agent instance by its unique ID."""
+        for agent in self.agents:
+            if agent.id == agent_id:
+                return agent
+        return None
+
+    def get_empty_home(self):
+        """Finds the first available unclaimed home."""
+        for pos, data in self.homes.items():
+            if data['owner_id'] is None:
+                return pos
+        return None
+
+    def add_agent(self, x=None, y=None, genes=None):
+        if x is None:
+            x = random.randint(0, self.width - 1)
+        if y is None:
+            y = random.randint(0, self.height - 1)
+        
+        agent = Agent(x, y, self, genes)
+        
+        if genes is None and len(self.agents) < STARTING_AGENTS:
+            agent.genes = agent.create_random_genes(stabilize=True)
+            
+        self.agents.append(agent)
+        return agent 
+
+    def add_fruit(self, pos, fruit_type):
+        """Adds a fruit of a specific type to a tile, replacing if necessary."""
+        if not self.is_tile_clear_for_planting(pos, check_agents=True):
+            nearby_empty = self.get_empty_tiles_near(pos, 1)
+            if nearby_empty:
+                pos = nearby_empty[0]
+            else:
+                return
+                
+        self.fruits.add(pos)
+        self.fruit_types[pos] = fruit_type
+
+    def spawn_resources(self):
+        """Spawns new food and wood on the map."""
+        
+        # --- NEW: Apply Environmental Health as Food Yield Multiplier ---
+        food_yield_multiplier = self.environmental_health / ENV_HEALTH_MAX
+        
+        # Cap the number of new resources based on health
+        food_spawn_count = int(5 * food_yield_multiplier)
+        wood_spawn_count = int(3 * food_yield_multiplier)
+        # --- END NEW ---
+        
+        if self.turn % FOOD_SPAWN_RATE == 0:
+            for _ in range(food_spawn_count): 
+                if len(self.food) < (self.width * self.height * 0.1):
+                    tile = self.get_random_empty_tile()
+                    if tile is not None:
+                        x, y = tile 
+                        self.food.add((x, y))
+                        self.food_freshness[(x,y)] = FOOD_FRESHNESS 
+
+        if self.turn % WOOD_SPAWN_RATE == 0:
+            for _ in range(wood_spawn_count): 
+                if len(self.wood) < (self.width * self.height * 0.05):
+                    tile = self.get_random_empty_tile()
+                    if tile is not None:
+                        x, y = tile
+                        self.wood.add((x, y))
+        
+        # --- NEW: Spawn Fruit ---
+        fruit_spawn_count = int(2 * food_yield_multiplier) 
+        if self.turn % FRUIT_SPAWN_RATE == 0:
+            for _ in range(fruit_spawn_count): 
+                if len(self.fruits) < (self.width * self.height * 0.05):
+                    tile = self.get_random_empty_tile()
+                    if tile is not None:
+                        self.add_fruit(tile, random.choice(['energy', 'social', 'speed']))
+
+    def update_world_objects(self):
+        """Update all plants, food freshness, and home durability."""
+        
+        # --- NEW: Passive Environmental Health Recovery ---
+        self.environmental_health = clamp(self.environmental_health + ENV_PASSIVE_RECOVERY_RATE, 0, ENV_HEALTH_MAX)
+        # --- END NEW ---
+        
+        # 1. Update Growing Plants (Food)
+        for pos, timer in list(self.growing_plants.items()):
+            timer -= 1
+            if timer <= 0:
+                del self.growing_plants[pos]
+                if self.is_tile_clear_for_planting(pos):
+                    self.food.add(pos)
+                    self.food_freshness[pos] = FOOD_FRESHNESS 
+            else:
+                self.growing_plants[pos] = timer 
+                
+        # 1.5. Update Growing Trees (Wood)
+        for pos, timer in list(self.growing_trees.items()):
+            timer -= 1
+            if timer <= 0:
+                del self.growing_trees[pos]
+                if self.is_tile_clear_for_planting(pos):
+                    self.wood.add(pos) 
+            else:
+                self.growing_trees[pos] = timer 
+        
+        # --- NEW: 1.8. Update Growing Fruit Bushes ---
+        for pos, timer in list(self.growing_fruit_bushes.items()):
+            timer -= 1
+            if timer <= 0:
+                del self.growing_fruit_bushes[pos]
+                fruit_type = self.fruit_types.get(pos)
+                if fruit_type and self.is_tile_clear_for_planting(pos):
+                    self.fruits.add(pos)
+            else:
+                self.growing_fruit_bushes[pos] = timer
+        # --- END NEW ---
+                
+        # 2. Update Food Spoilage
+        for pos, timer in list(self.food_freshness.items()):
+            timer -= 1
+            if timer <= 0:
+                del self.food_freshness[pos]
+                if pos in self.food:
+                    self.food.remove(pos)
+            else:
+                self.food_freshness[pos] = timer
+                
+        # 3. Update Campfires
+        for pos, timer in list(self.campfires.items()):
+            timer -= 1
+            if timer <= 0:
+                del self.campfires[pos]
+            else:
+                self.campfires[pos] = timer
+                # --- NEW: Campfire Pollution ---
+                self.environmental_health = clamp(self.environmental_health - ENV_DECAY_CAMPFIRE_POLLUTION, 0, ENV_HEALTH_MAX)
+                # --- END NEW ---
+                
+        # 4. Update Home Decay 
+        if self.turn % HOME_DECAY_RATE == 0:
+            for pos, data in list(self.homes.items()):
+                data['durability'] -= 1
+                if data['durability'] <= 0:
+                    del self.homes[pos]
+                    
+                    for _ in range(3):
+                        self.wood.add(pos)
+                        
+                    if data['owner_id'] is not None:
+                        for agent in self.agents:
+                            if agent.id == data['owner_id']:
+                                agent.home_location = None
+                                break
+
+    def is_tile_clear_for_planting(self, pos, check_agents=False):
+        """
+        Helper to check if a tile is empty for building/planting.
+        Used by the World for spawning/growth, doesn't need the complex agent check.
+        """
+        x, y = pos
+        if not (0 <= x < self.width and 0 <= y < self.height):
+            return False
+            
+        if pos == self.library_location: return False
+        if pos in self.homes: return False
+        if pos in self.food: return False
+        if pos in self.wood: return False
+        if pos in self.growing_plants: return False
+        if pos in self.growing_trees: return False 
+        if pos in self.campfires: return False
+        if pos in self.fruits: return False
+        if pos in self.growing_fruit_bushes: return False
+        
+        if check_agents:
+            if any(agent.x == x and agent.y == y for agent in self.agents):
+                return False
+                
+        return True
+
+    def get_empty_tiles_near(self, origin_pos, max_count):
+        """
+        Finds up to max_count empty, plantable tiles spiraling out from origin_pos.
+        """
+        empty_tiles = []
+        origin_x, origin_y = origin_pos
+        radius = 1
+        
+        if self.is_tile_clear_for_planting(origin_pos):
+            empty_tiles.append(origin_pos)
+            if len(empty_tiles) == max_count:
+                return empty_tiles
+        
+        while len(empty_tiles) < max_count and radius < 10: 
+            for i in range(-radius, radius + 1):
+                for j in [-radius, radius]:
+                    check_pos = (origin_x + i, origin_y + j)
+                    if self.is_tile_clear_for_planting(check_pos):
+                        if check_pos not in empty_tiles: empty_tiles.append(check_pos)
+                        if len(empty_tiles) == max_count: return empty_tiles
+                for j in [-radius, radius]:
+                    check_pos = (origin_x + j, origin_y + i)
+                    if self.is_tile_clear_for_planting(check_pos):
+                        if check_pos not in empty_tiles: empty_tiles.append(check_pos)
+                        if len(empty_tiles) == max_count: return empty_tiles
+            radius += 1
+        
+        return empty_tiles
+    
+    def auto_plant_on_death(self, origin_pos, food_seeds, wood_seeds, fruit_seeds):
+        """Finds empty tiles and plants all seeds from a dying agent."""
+        total_seeds = food_seeds + wood_seeds + fruit_seeds
+        if total_seeds == 0:
+            return
+            
+        empty_tiles = self.get_empty_tiles_near(origin_pos, total_seeds)
+        
+        tile_index = 0
+        
+        for _ in range(food_seeds):
+            if tile_index < len(empty_tiles):
+                pos = empty_tiles[tile_index]
+                self.growing_plants[pos] = GROW_TIME
+                tile_index += 1
+            else: break
+            
+        for _ in range(wood_seeds):
+            if tile_index < len(empty_tiles):
+                pos = empty_tiles[tile_index]
+                self.growing_trees[pos] = TREE_GROW_TIME
+                tile_index += 1
+            else: break
+            
+        for _ in range(fruit_seeds):
+            if tile_index < len(empty_tiles):
+                pos = empty_tiles[tile_index]
+                self.growing_fruit_bushes[pos] = FRUIT_GROW_TIME
+                self.fruit_types[pos] = random.choice(['energy', 'social', 'speed'])
+                tile_index += 1
+            else: break
+
+    def get_random_empty_tile(self):
+        """Finds a random tile that isn't occupied by anything."""
+        attempts = 10
+        for _ in range(attempts):
+            x = random.randint(0, self.width - 1)
+            y = random.randint(0, self.height - 1)
+            pos = (x, y)
+            
+            if self.is_tile_clear_for_planting(pos, check_agents=True):
+                return x, y
+        return None 
+
+    def update_environment_feedback(self):
+        """Apply effects from the environment back onto the world and agents."""
+        
+        # 1. Check for Sickness
+        if self.environmental_health < ENV_SICKNESS_THRESHOLD:
+            for agent in self.agents:
+                if agent.sickness_timer == 0 and random.random() < ENV_SICKNESS_CHANCE:
+                    agent.sickness_timer = ENV_SICKNESS_DURATION
+                    
+        # 2. Check for Overpopulation Density Decay
+        for _ in range(5): 
+            if not self.agents: break
+            agent = random.choice(self.agents)
+            
+            nearby_count = 0
+            for other_agent in self.agents:
+                if agent.id == other_agent.id: continue
+                if get_distance(agent.x, agent.y, other_agent.x, other_agent.y) < ENV_OVERPOPULATION_RADIUS:
+                    nearby_count += 1
+                    
+            if nearby_count > ENV_OVERPOPULATION_THRESHOLD:
+                self.environmental_health = clamp(self.environmental_health - ENV_OVERPOPULATION_DECAY, 0, ENV_HEALTH_MAX)
+                break 
+
+    def update(self):
+        """Main update loop for the world."""
+        self.turn += 1
+        
+        if self.turn % MAX_AGE == 0:
+            self.generation_count += 1
+        
+        for agent in self.agents[:]:
+            if agent in self.agents:
+                agent.update()
+            
+        self.spawn_resources()
+        
+        self.update_world_objects()
+        
+        self.update_environment_feedback() 
+        
+        self.calculate_stats()
+        
+    def calculate_stats(self):
+        """Calculates and updates the stats dictionary."""
+        adult_agents = [agent for agent in self.agents if agent.age >= ADULT_AGE]
+        
+        if not adult_agents:
+            agents_for_stats = self.agents
+        else:
+            agents_for_stats = adult_agents
+            
+        if not agents_for_stats:
+            for k in self.stats: self.stats[k] = 0
+            self.stats['avg_mating_drive'] = 0 
+            self.stats['population'] = 0
+            self.stats['homes_built'] = 0
+            self.stats['active_campfires'] = 0
+            
+            total_deaths = 0
+            for reason, count in self.death_causes.items():
+                if reason != 'TOTAL_DEATHS':
+                    total_deaths += count
+            self.death_causes['TOTAL_DEATHS'] = total_deaths
+            
+            if 'UNKNOWN' in self.death_causes:
+                del self.death_causes['UNKNOWN']
+            return
+            
+        num_agents = len(agents_for_stats)
+            
+        self.stats['population'] = len(self.agents) 
+        self.stats['homes_built'] = len(self.homes) 
+        self.stats['active_campfires'] = len(self.campfires)
+        
+        for gene in GENE_RANGES:
+            avg_key = 'avg_{}'.format(gene) 
+            total = sum(agent.genes[gene] for agent in agents_for_stats)
+            self.stats[avg_key] = total / num_agents
+            
+        skill_list = ['foraging', 'social', 'building', 'navigation', 'combat', 'farming']
+        for skill in skill_list:
+            avg_key = 'avg_{}_skill'.format(skill)
+            total = sum(agent.skills[skill] for agent in agents_for_stats)
+            self.stats[avg_key] = total / num_agents
+            
+        total_deaths = 0
+        for reason, count in self.death_causes.items():
+            if reason != 'TOTAL_DEATHS':
+                total_deaths += count
+        self.death_causes['TOTAL_DEATHS'] = total_deaths
+        
+        if 'UNKNOWN' in self.death_causes:
+            del self.death_causes['UNKNOWN']
+
+    def render(self):
+        """Renders the current state of the world to the console."""
+        
+        grid = [[(Style.DIM + Fore.WHITE + '.') for _ in range(self.width)] for _ in range(self.height)]
+        
+        # 1. Draw AGENTS first
+        for agent in self.agents:
+            is_at_home = agent.home_location is not None and (agent.x, agent.y) == agent.home_location
+            if is_at_home:
+                continue 
+                
+            color = Style.NORMAL + Fore.CYAN 
+            char = '?' 
+
+            if agent.sickness_timer > 0:
+                color = Style.NORMAL + Fore.GREEN
+
+            if agent.apathy_timer > 0:
+                color = Style.DIM + Fore.WHITE
+                char = 's' 
+
+            if agent.speed_buff_timer > 0:
+                color = Style.BRIGHT + Fore.BLUE
+
+            if agent.state == "WANDERING":
+                char = 'A'
+                if agent.social_buff_timer == 0: 
+                    color = Style.BRIGHT + Fore.CYAN
+            elif agent.state == "FORAGING" or agent.state == "FORAGING_FRUIT": 
+                char = 'f'
+                if agent.social_buff_timer == 0:
+                    color = Style.NORMAL + Fore.CYAN
+            elif agent.state == "BUILDING":
+                char = 'b'
+                color = Style.BRIGHT + Fore.YELLOW
+            
+            elif agent.state == "WANDERING_TO_BUILD":
+                char = 'B'
+                color = Style.NORMAL + Fore.BLUE
+            elif agent.state == "SEEKING_COMMUNITY":
+                char = 'C'
+                color = Style.BRIGHT + Fore.BLUE
+            elif agent.state == "SEEKING_REMOTE_SPOT":
+                char = 'S'
+                color = Style.DIM + Fore.BLUE
+                
+            elif agent.state == "GETTING_WOOD":
+                char = 'w' 
+                color = Style.NORMAL + Fore.YELLOW
+            
+            elif agent.state == "PLANTING" or agent.state == "PLANTING_WOOD":
+                char = 'p'
+                if agent.social_buff_timer == 0:
+                    color = Style.NORMAL + Fore.GREEN
+            elif agent.state == "GOING_HOME_TO_FARM" or agent.state == "GOING_HOME_TO_PLANT_WOOD":
+                char = 'G'
+                color = Style.BRIGHT + Fore.GREEN
+            elif agent.state == "SHARING":
+                char = 'g'
+                color = Style.BRIGHT + Fore.WHITE
+                    
+            elif agent.state == "BUILDING_CAMPFIRE":
+                char = 'c'
+                color = Style.NORMAL + Fore.RED
+            
+            elif agent.state == "REPAIRING_HOME":
+                char = 'E' 
+                color = Style.BRIGHT + Fore.YELLOW
+            elif agent.state == "CLAIMING_HOME":
+                char = 'k' 
+                color = Style.BRIGHT + Fore.BLUE
+            
+            elif agent.state == "REFUELING_CAMPFIRE":
+                char = 'R' 
+                color = Style.BRIGHT + Fore.RED
+            
+            elif agent.state == "MATING":
+                char = 'm'
+                color = Style.BRIGHT + Fore.MAGENTA 
+            elif agent.state == "SEEKING_MATE":
+                char = 'M'
+                color = Style.BRIGHT + Fore.MAGENTA
+            elif agent.state == "ATTACKING":
+                char = 'X'
+                color = Style.BRIGHT + Fore.RED 
+            
+            elif agent.state == "RETALIATING":
+                char = 'r'
+                color = Style.BRIGHT + Fore.RED
+            
+            elif agent.state == "AVENGING":
+                char = 'V'
+                color = Style.BRIGHT + Fore.RED
+            
+            elif agent.state == "SEEKING_SOCIAL":
+                char = 't'
+                if agent.social_buff_timer == 0:
+                    color = Style.NORMAL + Fore.WHITE
+            elif agent.state == "COMMUNICATING":
+                char = 'T'
+                color = Style.BRIGHT + Fore.WHITE 
+            
+            elif agent.state == "SEEKING_LIBRARY": 
+                char = 'L' 
+                color = Style.BRIGHT + Fore.MAGENTA 
+            
+            elif agent.state == "SOCIAL_HAPPY": 
+                char = 'o' 
+                color = Style.BRIGHT + Fore.MAGENTA
+            
+            elif agent.state == "SOCIAL_SAD":
+                char = 's'
+                color = Style.DIM + Fore.MAGENTA 
+                
+            if agent.apathy_timer > 0 and char != 's':
+                 color = Style.DIM + Fore.WHITE 
+                 
+            if agent.speed_buff_timer > 0 and char not in ['X', 'r', 'V', 'm', 'M', 's', 'T']:
+                 color = Style.BRIGHT + Fore.BLUE
+            
+            if agent.sickness_timer > 0 and char not in ['s', 'X', 'r', 'V', 'm', 'M']:
+                color = Style.NORMAL + Fore.GREEN
+                 
+            grid[agent.y][agent.x] = color + char + Style.RESET_ALL
+
+        # 2. Draw Resources
+        for (x, y) in self.food:
+            grid[y][x] = Style.BRIGHT + Fore.GREEN + 'F'
+        for (x, y) in self.wood:
+            grid[y][x] = Style.BRIGHT + Fore.YELLOW + 'W'
+        for (x, y) in self.fruits:
+            fruit_type = self.fruit_types.get((x,y))
+            if fruit_type == 'energy':
+                grid[y][x] = Style.BRIGHT + Fore.RED + 'R'
+            elif fruit_type == 'social':
+                grid[y][x] = Style.BRIGHT + Fore.MAGENTA + 'P'
+            elif fruit_type == 'speed':
+                grid[y][x] = Style.BRIGHT + Fore.BLUE + 'B'
+            else:
+                grid[y][x] = Style.BRIGHT + Fore.WHITE + '?' 
+        for (x, y) in self.growing_plants:
+            grid[y][x] = Style.NORMAL + Fore.GREEN + 'P'
+        for (x, y) in self.growing_trees:
+            grid[y][x] = Style.DIM + Fore.YELLOW + 'T'
+        for (x, y) in self.growing_fruit_bushes:
+            grid[y][x] = Style.DIM + Fore.MAGENTA + 'b'
+        for (x, y) in self.campfires:
+            grid[y][x] = Style.BRIGHT + Fore.RED + 'C'
+
+        # 3. Draw HOMES last
+        for (x, y), data in self.homes.items():
+            if data['durability'] < 2:
+                grid[y][x] = Style.NORMAL + Fore.BLUE + 'h' 
+            else:
+                grid[y][x] = Style.BRIGHT + Fore.BLUE + 'H' 
+            
+        # 4. Draw the LIBRARY 
+        lx, ly = self.library_location
+        grid[ly][lx] = Style.BRIGHT + Fore.MAGENTA + 'L'
+        
+        output_buffer = []
+        
+        output_buffer.append("\033[H") 
+        
+        output_buffer.append("--- A-Life Simulation --- Turn: {} --- Generation: {} ---".format(self.turn, self.generation_count))
+        for row in grid:
+            output_buffer.append(" ".join(row)) 
+            
+        output_buffer.append(Style.BRIGHT + "--- LEGEND ---" + Style.RESET_ALL)
+        output_buffer.append(
+            (Style.BRIGHT + Fore.WHITE + " Any" + Style.RESET_ALL + ": 'Wellbeing' Buff") + " | " + 
+            (Style.BRIGHT + Fore.BLUE + "Any" + Style.RESET_ALL + ": 'Speed' Buff") + " | " +
+            (Style.NORMAL + Fore.GREEN + "Any" + Style.RESET_ALL + ": 'Sick' Debuff")
+        )
+        
+        output_buffer.append(
+            (Style.BRIGHT + Fore.CYAN + " A" + Style.RESET_ALL + ": Wander") + " | " +
+            (Style.NORMAL + Fore.CYAN + " f" + Style.RESET_ALL + ": Forage (Food/Fruit)") + " | " + 
+            (Style.BRIGHT + Fore.MAGENTA + " L" + Style.RESET_ALL + ": Seek Library") + " | " +
+            (Style.BRIGHT + Fore.MAGENTA + " o" + Style.RESET_ALL + ": Happy/Linger") 
+        )
+        output_buffer.append(
+            (Style.DIM + Fore.MAGENTA + " s" + Style.RESET_ALL + ": Sad/Crisis/Apathy") + " | " +
+            (Style.NORMAL + Fore.WHITE + " t" + Style.RESET_ALL + ": Seek Social") + " | " +
+            (Style.BRIGHT + Fore.WHITE + " T" + Style.RESET_ALL + ": Communicate")
+        )
+        output_buffer.append(
+            (Style.BRIGHT + Fore.WHITE + " g" + Style.RESET_ALL + ": Share") + " | " + 
+            (Style.BRIGHT + Fore.RED + " X" + Style.RESET_ALL + ": Attack") + " | " +
+            (Style.BRIGHT + Fore.RED + " r" + Style.RESET_ALL + ": Retaliate") + " | " + 
+            (Style.BRIGHT + Fore.RED + " V" + Style.RESET_ALL + ": Avenge") + " | " + 
+            (Style.BRIGHT + Fore.MAGENTA + " m" + Style.RESET_ALL + ": Mate") + " | " + 
+            (Style.BRIGHT + Fore.MAGENTA + " M" + Style.RESET_ALL + ": Seek Mate")
+        )
+        output_buffer.append(
+            (Style.NORMAL + Fore.YELLOW + " w" + Style.RESET_ALL + ": Get Wood") + " | " +
+            (Style.BRIGHT + Fore.YELLOW + " b" + Style.RESET_ALL + ": Build Home") + " | " +
+            (Style.BRIGHT + Fore.YELLOW + " E" + Style.RESET_ALL + ": Repair Home")
+        )
+        output_buffer.append(
+            (Style.NORMAL + Fore.BLUE + " B" + Style.RESET_ALL + ": Seek Spot") + " | " +
+            (Style.BRIGHT + Fore.BLUE + " C" + Style.RESET_ALL + ": Seek Comm.") + " | " +
+            (Style.BRIGHT + Fore.BLUE + " k" + Style.RESET_ALL + ": Claim Home")
+        )
+        output_buffer.append(
+            (Style.NORMAL + Fore.RED + " c" + Style.RESET_ALL + ": Build Fire") + " | " +
+            (Style.BRIGHT + Fore.RED + " R" + Style.RESET_ALL + ": Refuel Fire") 
+        )
+
+        output_buffer.append(
+            (Style.NORMAL + Fore.GREEN + " p" + Style.RESET_ALL + ": Plant (Food/Tree/Fruit)") + " | " + 
+            (Style.BRIGHT + Fore.GREEN + " G" + Style.RESET_ALL + ": Go Home to Plant")
+        )
+        
+        output_buffer.append(
+            (Style.BRIGHT + Fore.GREEN + " F" + Style.RESET_ALL + ": Food") + " | " +
+            (Style.NORMAL + Fore.GREEN + " P" + Style.RESET_ALL + ": Plant") + " | " +
+            (Style.DIM + Fore.YELLOW + " T" + Style.RESET_ALL + ": Tree") + " | " +
+            (Style.BRIGHT + Fore.YELLOW + " W" + Style.RESET_ALL + ": Wood")
+        )
+        output_buffer.append(
+            (Style.BRIGHT + Fore.RED + " R" + Style.RESET_ALL + ": Energy Fruit") + " | " +
+            (Style.BRIGHT + Fore.MAGENTA + " P" + Style.RESET_ALL + ": Social Fruit") + " | " +
+            (Style.BRIGHT + Fore.BLUE + " B" + Style.RESET_ALL + ": Speed Fruit") + " | " +
+            (Style.DIM + Fore.MAGENTA + " b" + Style.RESET_ALL + ": Growing Bush")
+        )
+        output_buffer.append(
+            (Style.BRIGHT + Fore.BLUE + " H" + Style.RESET_ALL + ": Home") + " | " +
+            (Style.NORMAL + Fore.BLUE + " h" + Style.RESET_ALL + ": Damaged Home") + " | " +
+            (Style.BRIGHT + Fore.RED + " C" + Style.RESET_ALL + ": Campfire") + " | " +
+            (Style.BRIGHT + Fore.MAGENTA + " L" + Style.RESET_ALL + ": Library Location")
+        )
+        
+        output_buffer.append(Style.BRIGHT + "--- SIMULATION STATS ---" + Style.RESET_ALL)
+
+        pop_str = "Population: {:<3}".format(self.stats.get('population', 0))
+        home_str = "Homes Built: {:<3}".format(self.stats.get('homes_built', 0))
+        fire_str = "Active Campfires: {:<3}".format(self.stats.get('active_campfires', 0))
+        output_buffer.append("{}   |   {}   |   {}".format(pop_str, home_str, fire_str))
+        
+        env_health_color = Fore.GREEN if self.environmental_health > 70 else (Fore.YELLOW if self.environmental_health > 30 else Fore.RED)
+        output_buffer.append(Style.BRIGHT + "Environmental Health: " + env_health_color + "{:>5.1f}%".format(self.environmental_health) + Style.RESET_ALL)
+        
+        output_buffer.append(Style.BRIGHT + "--- AVERAGE GENES (This is the 'Evolution'!) ---" + Style.RESET_ALL)
+        output_buffer.append(Fore.CYAN + "  Vision:     " + Style.RESET_ALL + "{:>5.2f} (How far they see)".format(self.stats.get('avg_vision', 0)))
+        output_buffer.append(Fore.CYAN + "  Speed:      " + Style.RESET_ALL + "{:>5.2f} (How fast they move)".format(self.stats.get('avg_speed', 0)))
+        output_buffer.append(Fore.CYAN + "  Metabolism: " + Style.RESET_ALL + "{:>5.2f} (Energy burn. Lower is better)".format(self.stats.get('avg_metabolism', 0)))
+        output_buffer.append(Fore.RED + "  Aggression: " + Style.RESET_ALL + "{:>5.2f} (Chance to attack others)".format(self.stats.get('avg_aggression', 0)))
+        output_buffer.append(Fore.BLUE + "  Builder:    " + Style.RESET_ALL + "{:>5.2f} (Tendency to build)".format(self.stats.get('avg_builder', 0)))
+        output_buffer.append(Fore.MAGENTA + "  MatingDrive:" + Style.RESET_ALL + "{:>5.0f} (Energy needed to mate)".format(self.stats.get('avg_mating_drive', 0)))
+        output_buffer.append(Fore.WHITE + "  Sociability:" + Style.RESET_ALL + "{:>5.2f} (Need to be social)".format(self.stats.get('avg_sociability', 0)))
+        output_buffer.append(Fore.GREEN + "  Farming:    " + Style.RESET_ALL + "{:>5.2f} (Tendency to plant seeds)".format(self.stats.get('avg_farming', 0)))
+        output_buffer.append(Fore.MAGENTA + "  Personality:" + Style.RESET_ALL + "{:>5.2f} (Average of the 4 types)".format(self.stats.get('avg_personality', 0))) 
+        output_buffer.append(Fore.CYAN + "  Navigation: " + Style.RESET_ALL + "{:>5.2f} (Tendency to learn efficient movement)".format(self.stats.get('avg_navigation', 0))) # Added missing navigation gene stat
+
+        output_buffer.append(Style.BRIGHT + "--- AVERAGE SKILLS (This is 'Learning'!) ---" + Style.RESET_ALL)
+        output_buffer.append(Fore.GREEN + "  Foraging Skill: " + Style.RESET_ALL + "{:>5.2f} (Get more energy/seeds from food)".format(self.stats.get('avg_foraging_skill', 0)))
+        output_buffer.append(Fore.WHITE + "  Social Skill:   " + Style.RESET_ALL + "{:>5.2f} (Get more social from chat)".format(self.stats.get('avg_social_skill', 0)))
+        output_buffer.append(Fore.BLUE + "  Building Skill: " + Style.RESET_ALL + "{:>5.2f} (Use less wood to build)".format(self.stats.get('avg_building_skill', 0)))
+        output_buffer.append(Fore.CYAN + "  Naviga. Skill:  " + Style.RESET_ALL + "{:>5.2f} (Use less energy to move)".format(self.stats.get('avg_navigation_skill', 0)))
+        output_buffer.append(Fore.RED + "  Combat Skill:   " + Style.RESET_ALL + "{:>5.2f} (Deal more combat damage)".format(self.stats.get('avg_combat_skill', 0)))
+        output_buffer.append(Fore.GREEN + "  Farming Skill:  " + Style.RESET_ALL + "{:>5.2f} (Learn from planting)".format(self.stats.get('avg_farming_skill', 0)))
+
+        output_buffer.append(Style.BRIGHT + "--- GLOBAL KNOWLEDGE LIBRARY (Communal Learning) ---" + Style.RESET_ALL)
+        
+        knowledge = self.global_skill_knowledge
+        output_buffer.append(Fore.GREEN + "  Foraging: " + Style.RESET_ALL + "{:>5.2f}".format(knowledge.get('foraging', 0.0)) + " | " +
+                             Fore.BLUE + "Building: " + Style.RESET_ALL + "{:>5.2f}".format(knowledge.get('building', 0.0)) + " | " +
+                             Fore.CYAN + "Naviga: " + Style.RESET_ALL + "{:>5.2f}".format(knowledge.get('navigation', 0.0)))
+        output_buffer.append(Fore.WHITE + "  Social:   " + Style.RESET_ALL + "{:>5.2f}".format(knowledge.get('social', 0.0)) + " | " +
+                             Fore.RED + "Combat:   " + Style.RESET_ALL + "{:>5.2f}".format(knowledge.get('combat', 0.0)) + " | " +
+                             Fore.GREEN + "Farming:  " + Style.RESET_ALL + "{:>5.2f}".format(knowledge.get('farming', 0.0)))
+
+        output_buffer.append(Style.BRIGHT + "--- DEATH ANALYSIS ---" + Style.RESET_ALL)
+        total_deaths = self.death_causes.get('TOTAL_DEATHS', 0) 
+        
+        if total_deaths > 0:
+            for reason, count in self.death_causes.items():
+                if reason != 'TOTAL_DEATHS' and count > 0:
+                    percent = (float(count) / total_deaths) * 100 
+                    output_buffer.append("  {:<20}: {} ({:>5.1f}%)".format(reason, count, percent))
+        else:
+            output_buffer.append("  No deaths recorded yet.")
+
+        print("\n".join(output_buffer) + Style.RESET_ALL)
+
+
+    def get_nearest(self, x, y, radius, item_set):
+        """Finds the nearest item in a set within a radius."""
+        nearest_item = None
+        min_dist = float('inf')
+        
+        items = item_set
+        if isinstance(item_set, dict):
+            items = item_set.keys()
+            
+        for (ix, iy) in items:
+            dist = get_distance(x, y, ix, iy)
+            if dist <= radius and dist < min_dist:
+                min_dist = dist
+                nearest_item = (ix, iy)
+        return nearest_item
+
+    def get_nearest_in_set(self, x, y, radius, item_set):
+        """Finds all items in a set within a radius and returns a list of coordinates."""
+        found_items = []
+        items = item_set
+        if isinstance(item_set, dict):
+            items = item_set.keys()
+            
+        for (ix, iy) in items:
+            dist = get_distance(x, y, ix, iy)
+            if dist <= radius:
+                found_items.append((ix, iy))
+        return found_items
+
+    def get_nearest_agents(self, x, y, radius, exclude_self=None):
+        """Finds nearest agents within a radius."""
+        nearby_agents = []
+        for agent in self.agents:
+            if agent == exclude_self:
+                continue
+            dist = get_distance(x, y, agent.x, agent.y)
+            if dist <= radius:
+                nearby_agents.append(agent)
+        return nearby_agents
+
+# --- MAIN EXECUTION ---
+
+if __name__ == "__main__":
+    
+    # 1. Initialize the World
+    world = World(WORLD_WIDTH, WORLD_HEIGHT)
+    
+    # 2. Add starting agents and resources
+    for _ in range(STARTING_AGENTS):
+        world.add_agent() 
+    for _ in range(STARTING_FOOD):
+        tile = world.get_random_empty_tile()
+        if tile:
+            world.food.add(tile)
+            world.food_freshness[tile] = FOOD_FRESHNESS
+    for _ in range(STARTING_WOOD):
+        tile = world.get_random_empty_tile()
+        if tile:
+            world.wood.add(tile)
+    for _ in range(STARTING_FRUIT_BUSHES):
+        tile = world.get_random_empty_tile()
+        if tile:
+            world.add_fruit(tile, random.choice(['energy', 'social', 'speed']))
+        
+    # 3. Run the simulation loop
+    
+    if os.name == 'nt':
+        os.system('cls')
+    else:
+        os.system('clear') 
+        
+    try:
+        while True:
+            world.update()
+            world.render()
+            time.sleep(SIM_SPEED)
+            
+            if world.stats['population'] == 0 and world.turn > 100:
+                print("\n--- SIMULATION END: All agents have died. ---\n")
+                break
+            if world.stats['population'] > (WORLD_WIDTH * WORLD_HEIGHT * 0.5):
+                print("\n--- SIMULATION END: Overpopulation! ---\n")
+                break
+                
+    except KeyboardInterrupt:
+        print("\n--- Simulation stopped by user. ---\n")
+    finally:
+        print(Style.RESET_ALL)
