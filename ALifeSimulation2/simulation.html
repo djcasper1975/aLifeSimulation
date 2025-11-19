@@ -892,59 +892,59 @@
         };
 
         // These are the hard-coded defaults (SYNCHRONIZED WITH PYTHON life_simulation.py)
-        const defaultSimSettings = {
-            // NEW DISPLAY SETTING
+          const defaultSimSettings = {
+            // --- DISPLAY SETTINGS ---
             DISPLAY_WORLD_LIGHT_MODE: false, 
-            DISPLAY_EMOJI_MODE: true, // NEW: Default ON
-            DEVELOPER_MODE_TOGGLE: false, // Default: Developer Mode Off
+            DISPLAY_EMOJI_MODE: true, 
+            DEVELOPER_MODE_TOGGLE: false, 
             
+            // --- MISSING VARIABLES FIXED HERE (Required for Gen 2 logic) ---
+            STARTING_SOCIAL_MAX: 100,
+            STARTING_SOCIAL_MIN: 50,
+
             // --- SIMULATION LIFE STAGE CONSTANTS ---
             ADULT_AGE: 300,
             OLD_AGE: 1500,
             MAX_AGE: 2000,
             
-            // Love Parameters (Developer Controls)
+            // Love Parameters
             STARTING_LOVE: 10, 
             LOVE_GAIN_EAT: 2.0,
             LOVE_GAIN_SOCIAL: 2.0, 
             LOVE_GAIN_REST: 0.5,
             LOVE_LOSS_STRUGGLE: 5, 
-            PASSIVE_LOVE_GAIN: 0.1, // Increased recovery for stability
+            PASSIVE_LOVE_GAIN: 0.1,
 
             // PAUSE THRESHOLDS
             PAUSE_ENERGY_THRESHOLD: 100,
             PAUSE_SOCIAL_THRESHOLD: 80, 
 
-            // --- ENVIRONMENTAL DEGRADATION CONSTANTS (NEW) ---
+            // --- ENVIRONMENTAL DEGRADATION CONSTANTS ---
             ENV_HEALTH_MAX: 100.0,
-            ENV_PASSIVE_RECOVERY_RATE: 0.20, // Increased recovery
-            ENV_DECAY_FOOD_GATHER: 0.01,   // Reduced decay
-            ENV_DECAY_WOOD_GATHER: 0.01,   // Reduced decay
-            ENV_HEAL_PLANT_BASE: 5.0,    // Increased base heal
-            ENV_DECAY_CAMPFIRE_POLLUTION: 0.01, // Reduced pollution
+            ENV_PASSIVE_RECOVERY_RATE: 0.20, 
+            ENV_DECAY_FOOD_GATHER: 0.01,   
+            ENV_DECAY_WOOD_GATHER: 0.01,   
+            ENV_HEAL_PLANT_BASE: 5.0,    
+            ENV_DECAY_CAMPFIRE_POLLUTION: 0.01, 
             ENV_OVERPOPULATION_RADIUS: 5,      
             ENV_OVERPOPULATION_THRESHOLD: 10,   
-            ENV_OVERPOPULATION_DECAY: 0.01, // Reduced decay
+            ENV_OVERPOPULATION_DECAY: 0.01, 
             ENV_SICKNESS_THRESHOLD: 20.0,      
             ENV_SICKNESS_CHANCE: 0.0001,        
             ENV_SICKNESS_DURATION: 100,        
             ENV_SICKNESS_METABOLISM_PENALTY: 0.2, 
-            // --- END ENVIRONMENTAL ---
 
-            // --- APATHY SYSTEM CONSTANTS (NEW) ---
-            APATHY_DURATION: 100, // Increased duration
+            // --- APATHY & VENGEANCE SYSTEM ---
+            APATHY_DURATION: 100, 
             APATHY_METABOLISM_PENALTY: 0.5,
             APATHY_SOCIAL_LOSS_MULTIPLIER: 2.0,
-            // --- END APATHY ---
-            
-            // --- VENGEANCE SYSTEM (NEW) ---
             VENGEANCE_DURATION: 50,
-            // --- END VENGEANCE ---
             
-            // --- CRITICAL SURVIVAL THRESHOLDS (SYNCHRONIZED) ---
+            // --- POPULATION & CRITICAL THRESHOLDS ---
             MIN_POPULATION_TARGET: 16, 
+            LOW_POPULATION_THRESHOLD: 4, // Added from Gen 1
             CRITICAL_FOOD_COUNT: 70, 
-            MAX_POPULATION_TARGET: 150, // Reduced max pop target
+            MAX_POPULATION_TARGET: 150, 
 
             // --- SIMULATION PARAMETERS ---
             WORLD_WIDTH: 70,
@@ -958,7 +958,7 @@
             FOOD_SPAWN_RATE: 20,
             WOOD_SPAWN_RATE: 50,
 
-            // --- FRUIT PARAMETERS (NEW) ---
+            // --- FRUIT PARAMETERS ---
             STARTING_FRUIT_BUSHES: 10,      
             FRUIT_SPAWN_RATE: 300,          
             FRUIT_GROW_TIME: 20,            
@@ -970,10 +970,9 @@
             FRUIT_BENEFIT_SOCIAL_SOCIAL_VAL: 100, 
             FRUIT_BENEFIT_SPEED_ENERGY_VAL: 50,  
             FRUIT_BENEFIT_SPEED_DURATION: 30,     
-            // --- END FRUIT ---
 
             // Farming Parameters
-            FOOD_FRESHNESS: 300, // Longer food life
+            FOOD_FRESHNESS: 300, 
             GROW_TIME: 15, 
 
             // Tree Parameters
@@ -982,36 +981,34 @@
             FOOD_SEED_BASE_CHANCE: 1.2,
 
             // Campfire Parameters
-            CAMPFIRE_BURN_TIME: 500, // Longer burn time
+            CAMPFIRE_BURN_TIME: 500, 
             CAMPFIRE_WOOD_COST: 4, 
             CAMPFIRE_REFUEL_THRESHOLD: 150, 
 
             // Home Durability
             HOME_DURABILITY_START: 5,
-            HOME_DECAY_RATE: 800, // Much slower decay
+            HOME_DECAY_RATE: 800, 
 
-            // --- Advanced Core Settings (Developer Controls) ---
-            // Agent Core Physics
+            // --- CORE PHYSICS (Developer Controls) ---
             STARTING_ENERGY: 250, 
-            CHILD_METABOLISM_CAP: 0.25, // Hardcoded in Python agent loop
-            CHILD_DEATH_THRESHOLD: 10, // Hardcoded in Python agent loop
-            ADULT_ENERGY_RETURN_ON_ATTACK: 10, // Hardcoded in Python attack()
-            CHILD_PARENTAL_COST: 0.2, // Hardcoded in Python update()
-            HOME_METABOLISM_MULTIPLIER: 0.5, // Hardcoded in Python update()
-            CAMPFIRE_METABOLISM_MULTIPLIER: 0.9, // Hardcoded in Python update()
-            HOME_ENERGY_GAIN_RATE: 2.0, // Hardcoded in Python update()
-            HOME_SOCIAL_GAIN_RATE: 0.5, // Hardcoded in Python update()
-            HOME_MAX_ENERGY_THRESHOLD: 150, // Hardcoded in Python update()
-            CAMPFIRE_SOCIAL_GAIN_RATE: 0.5, // Hardcoded in Python update()
-            ADULT_FORAGE_THRESHOLD: 70, // Hardcoded in Python decide_state()
-            CHILD_FORAGE_THRESHOLD: 120, // Hardcoded in Python decide_state()
-            SOCIAL_SEEK_THRESHOLD: 60, // Hardcoded in Python decide_state()
-            MATE_ENERGY_BASE_CHECK: 100, // Hardcoded in Python decide_state()
-            MOVE_BASE_ENERGY_COST: 0.05, // Hardcoded in Python move_towards()
-            NAV_MIN_COST_MULTIPLIER: 0.25, // Hardcoded in Python move_towards()
-            STUCK_TIMER_DURATION: 5, // Hardcoded freeze fix value
-            HOME_WOOD_RETURN_ON_DECAY: 3, // Hardcoded in World.update_world_objects()
-
+            CHILD_METABOLISM_CAP: 0.25, 
+            CHILD_DEATH_THRESHOLD: 10, 
+            ADULT_ENERGY_RETURN_ON_ATTACK: 10, 
+            CHILD_PARENTAL_COST: 0.2, 
+            HOME_METABOLISM_MULTIPLIER: 0.5, 
+            CAMPFIRE_METABOLISM_MULTIPLIER: 0.9, 
+            HOME_ENERGY_GAIN_RATE: 2.0, 
+            HOME_SOCIAL_GAIN_RATE: 0.5, 
+            HOME_MAX_ENERGY_THRESHOLD: 150, 
+            CAMPFIRE_SOCIAL_GAIN_RATE: 0.5, 
+            ADULT_FORAGE_THRESHOLD: 70, 
+            CHILD_FORAGE_THRESHOLD: 120, 
+            SOCIAL_SEEK_THRESHOLD: 60, 
+            MATE_ENERGY_BASE_CHECK: 100, 
+            MOVE_BASE_ENERGY_COST: 0.05, 
+            NAV_MIN_COST_MULTIPLIER: 0.25, 
+            STUCK_TIMER_DURATION: 5, 
+            HOME_WOOD_RETURN_ON_DECAY: 3, 
 
             // Inventory & Limits
             MAX_FOOD_CARRY: 3,
@@ -1023,7 +1020,7 @@
             STARTING_FRUIT_SEEDS_MAX: 1,
             PROXIMITY_CHAT_RADIUS: 1.5, 
 
-            // Mating & Combat (Balanced)
+            // Mating & Combat
             HOME_WOOD_COST: 4,
             FOOD_ENERGY_GAIN_BASE: 180,
             MATE_ENERGY_COST: 100, 
@@ -1039,26 +1036,27 @@
             LIBRARY_SOCIAL_GAIN: 1.0, 
             SOCIAL_GAIN_BASE: 50, 
             SOCIAL_GAIN_PARTNER_BASE: 20, 
-            SKILL_FORAGE_ENERGY_BONUS_BASE: 20, // Hardcoded in Python consume_food()
-            SKILL_COMBAT_DAMAGE_BONUS_BASE: 8, // Hardcoded in Python attack()
+            SKILL_FORAGE_ENERGY_BONUS_BASE: 20, 
+            SKILL_COMBAT_DAMAGE_BONUS_BASE: 8, 
 
-            // --- NEW SYSTEM: Global Skill Focus ---
+            // Global Skill Focus
             GLOBAL_SKILL_FOCUS: 'farming',
             GLOBAL_SKILL_BOOST: 0.00005, 
             
-            // --- GENE PARAMETERS (Developer Controls) ---
+            // --- GENE PARAMETERS (Fixed to allow mating) ---
             GENE_VISION_MIN: 3.0, GENE_VISION_MAX: 10.0, GENE_VISION_MUTATE_RATE: 0.05, 
             GENE_SPEED_MIN: 1.0, GENE_SPEED_MAX: 2.0, GENE_SPEED_MUTATE_RATE: 0.05, 
             GENE_METABOLISM_MIN: 0.5, GENE_METABOLISM_MAX: 1.0, GENE_METABOLISM_MUTATE_RATE: 0.05, 
             GENE_AGGRESSION_MIN: 0.0, GENE_AGGRESSION_MAX: 0.5, GENE_AGGRESSION_MUTATE_RATE: 0.05, 
             GENE_BUILDER_MIN: 0.0, GENE_BUILDER_MAX: 0.8, GENE_BUILDER_MUTATE_RATE: 0.05,
-            GENE_MATING_DRIVE_MIN: 123.0, GENE_MATING_DRIVE_MAX: 160.0, GENE_MATING_DRIVE_MUTATE_RATE: 2.0,
+            // Lowered from 123-160 to 90-110 so agents have enough energy to mate
+            GENE_MATING_DRIVE_MIN: 90.0, GENE_MATING_DRIVE_MAX: 110.0, GENE_MATING_DRIVE_MUTATE_RATE: 2.0,
             GENE_SOCIABILITY_MIN: 0.0, GENE_SOCIABILITY_MAX: 1.0, GENE_SOCIABILITY_MUTATE_RATE: 0.05,
             GENE_FARMING_MIN: 0.0, GENE_FARMING_MAX: 1.0, GENE_FARMING_MUTATE_RATE: 0.05,
             GENE_PERSONALITY_MIN: 1.0, GENE_PERSONALITY_MAX: 4.0, GENE_PERSONALITY_MUTATE_RATE: 0.1,
             GENE_NAVIGATION_MIN: 0.0, GENE_NAVIGATION_MAX: 3.0, GENE_NAVIGATION_MUTATE_RATE: 0.05,
 
-            // --- SKILL MAXES (Developer Controls) ---
+            // --- SKILL MAXES ---
             SKILL_FORAGE_MAX: 10.0,
             SKILL_SOCIAL_MAX: 10.0,
             SKILL_BUILD_MAX: 4.0, 
@@ -1066,7 +1064,7 @@
             SKILL_COMBAT_MAX: 10.0,
             SKILL_FARM_MAX: 10.0,
 
-            // --- SKILL GAIN RATES/IMPACTS (Developer Controls) ---
+            // --- SKILL GAIN RATES ---
             SKILL_GAIN_FORAGE: 0.005, 
             SKILL_GAIN_FARMING: 0.01, 
             SKILL_GAIN_COMBAT: 0.05, 
