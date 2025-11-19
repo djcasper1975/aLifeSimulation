@@ -1008,9 +1008,9 @@
             HOME_METABOLISM_MULTIPLIER: 0.5,
             CAMPFIRE_METABOLISM_MULTIPLIER: 0.9,
             HOME_ENERGY_GAIN_RATE: 2.0,
-            HOME_SOCIAL_GAIN_RATE: 0.5,
+            HOME_SOCIAL_GAIN_RATE: 0.05,
             HOME_MAX_ENERGY_THRESHOLD: 150,
-            CAMPFIRE_SOCIAL_GAIN_RATE: 0.5,
+            CAMPFIRE_SOCIAL_GAIN_RATE: 0.05,
             ADULT_FORAGE_THRESHOLD: 70,
             CHILD_FORAGE_THRESHOLD: 120,
             SOCIAL_SEEK_THRESHOLD: 60,
@@ -1033,8 +1033,8 @@
             // Mating & Combat
             HOME_WOOD_COST: 4,
             FOOD_ENERGY_GAIN_BASE: 180,
-            MATE_ENERGY_COST: 100, 
-            MATE_COOLDOWN: 1000, 
+            MATE_ENERGY_COST: 60, 
+            MATE_COOLDOWN: 200, 
             MAX_CHILDREN_PER_BIRTH: 2,
             ATTACK_DAMAGE_BASE: 10,
             ATTACK_COST_BASE: 5,
@@ -1044,8 +1044,8 @@
             GLOBAL_KNOWLEDGE_LEARN_RATE: 0.00005, 
             SKILL_SHARING_RATE: 0.0005,
             LIBRARY_SOCIAL_GAIN: 1.0, 
-            SOCIAL_GAIN_BASE: 50, 
-            SOCIAL_GAIN_PARTNER_BASE: 20, 
+            SOCIAL_GAIN_BASE: 10, 
+            SOCIAL_GAIN_PARTNER_BASE: 5, 
             SKILL_FORAGE_ENERGY_BONUS_BASE: 20,
             SKILL_COMBAT_DAMAGE_BONUS_BASE: 8,
 
@@ -1061,7 +1061,7 @@
             GENE_BUILDER_MIN: 0.0, GENE_BUILDER_MAX: 0.8, GENE_BUILDER_MUTATE_RATE: 0.05,
             
             // FIX: Lowered from 123-160. Agents will now actually decide to mate.
-            GENE_MATING_DRIVE_MIN: 90.0, GENE_MATING_DRIVE_MAX: 110.0, GENE_MATING_DRIVE_MUTATE_RATE: 2.0,
+            GENE_MATING_DRIVE_MIN: 60.0, GENE_MATING_DRIVE_MAX: 80.0, GENE_MATING_DRIVE_MUTATE_RATE: 2.0,
             
             GENE_SOCIABILITY_MIN: 0.0, GENE_SOCIABILITY_MAX: 1.0, GENE_SOCIABILITY_MUTATE_RATE: 0.05,
             GENE_FARMING_MIN: 0.0, GENE_FARMING_MAX: 1.0, GENE_FARMING_MUTATE_RATE: 0.05,
@@ -1687,13 +1687,18 @@
                     }
                 }
 
-                // Mandate 3: Seek Mate if population news is active and population is below max pop (SYNCHRONIZED)
-                if (hasNewsOfLowPop && this.world.agents.length < simSettings.MAX_POPULATION_TARGET && this.age >= simSettings.ADULT_AGE &&
-                    this.energy > this.genes['mating_drive'] && this.mate_cooldown === 0) {
-                    
-                    this.state = "SEEKING_MATE";
-                    return; 
-                }
+// Mandate 3: Seek Mate if population news is active OR if population is critically low visible
+const populationIsCritical = this.world.agents.length < simSettings.MIN_POPULATION_TARGET;
+
+if ((hasNewsOfLowPop || populationIsCritical) && 
+    this.world.agents.length < simSettings.MAX_POPULATION_TARGET && 
+    this.age >= simSettings.ADULT_AGE &&
+    this.energy > this.genes['mating_drive'] && 
+    this.mate_cooldown === 0) {
+    
+    this.state = "SEEKING_MATE";
+    return; 
+}
                 
                 // Environmental Crisis Priority (SYNCHRONIZED: Only react if sick OR if environmental health is low and I have no other tasks)
                 const envLowThreshold = simSettings.ENV_SICKNESS_THRESHOLD;
@@ -2890,10 +2895,9 @@
                     }
                 }
                 
-                this.social = 100.0;
-                this.contentment_buff_timer = 25; 
-                partner.social = 100.0;
-                partner.contentment_buff_timer = 25;
+                // Just a boost, so they might still want to talk to others soon
+this.social = Math.min(this.social + 20, 100); 
+partner.social = Math.min(partner.social + 20, 100);
             }
 
             shareSkills(partner) {
@@ -3620,24 +3624,27 @@
             }
 
             update() {
-                // FEATURE IMPLEMENTATION: Emergency Intervention (Infinite Game)
-                if (this.agents.length < simSettings.MIN_POPULATION_TARGET) {
-                    // Add "LOW_POPULATION_THRESHOLD" amount of adults to save the simulation
-                    const rescueCount = simSettings.LOW_POPULATION_THRESHOLD;
-                    
-                    for (let i = 0; i < rescueCount; i++) {
-                         const newAgent = this.addAgent();
-                         if (newAgent) {
-                             // Make them adults immediately so they can work/mate
-                             newAgent.age = simSettings.ADULT_AGE;
-                             newAgent.energy = simSettings.STARTING_ENERGY * 1.5; // Buffer energy
-                             newAgent.social = 100; // Prevent immediate depression
-                             
-                             // Log the intervention so the user understands the sudden spawns
-                             this.logDeath(this.turn, 'RESCUE_INTERVENTION', newAgent.id, null, null);
-                         }
-                    }
-                }
+// FEATURE IMPLEMENTATION: Extinction Protocol (Infinite Game)
+if (this.agents.length === 0) {
+    const rescueCount = simSettings.LOW_POPULATION_THRESHOLD;
+    console.log(`Extinction event detected. Respawing ${rescueCount} agents.`);
+
+    for (let i = 0; i < rescueCount; i++) {
+         const newAgent = this.addAgent();
+         if (newAgent) {
+             newAgent.age = simSettings.ADULT_AGE;
+             newAgent.energy = simSettings.STARTING_ENERGY * 1.5; 
+             newAgent.social = 40; 
+             
+             // --- NEW: INJECT KNOWLEDGE ---
+             // Force them to know the population is low immediately
+             newAgent.memory.global_news.low_population = true;
+             // -----------------------------
+
+             this.logDeath(this.turn, 'EXTINCTION_EVENT_RESPAWN', newAgent.id, null, null);
+         }
+    }
+}
 
                 this.turn++;
                 
@@ -4600,10 +4607,7 @@ resetBtn.onclick = () => {
                 renderer.render();
                 updateStatsDisplay(world);
 
-                if (world.stats.population === 0 && world.turn > 100) {
-                    console.log("--- SIMULATION END: All agents have died. ---");
-                    clearInterval(interval);
-                }
+
                 // SYNCHRONIZED: Use the Python overpopulation check
                 if (world.agents.length > (simSettings.WORLD_WIDTH * simSettings.WORLD_HEIGHT * 0.5)) {
                     console.log("--- SIMULATION END: Overpopulation! ---");
