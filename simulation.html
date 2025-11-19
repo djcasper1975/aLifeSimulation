@@ -217,7 +217,6 @@
                                 <label for="STARTING_WOOD">Starting Wood</label>
                                 <input type="number" id="STARTING_WOOD" name="STARTING_WOOD" step="1">
                             </div>
-                            <!-- MIN_POPULATION_TARGET moved to Mating section -->
                             <div>
                                 <label for="CRITICAL_FOOD_COUNT">Critical Food (Crisis Trigger)</label>
                                 <input type="number" id="CRITICAL_FOOD_COUNT" name="CRITICAL_FOOD_COUNT" step="1">
@@ -604,8 +603,6 @@
                             </div>
                         </div>
                         
-                        <!-- REMOVED MATING & COMBAT BLOCK from DEVELOPER SETTINGS -->
-
                         <div class="fieldset-subheader sm:col-span-2">Learning & Skill Impact Multipliers</div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
@@ -1081,6 +1078,7 @@
         // --- UTILITY FUNCTIONS ---
 
         function clamp(value, minVal, maxVal) {
+            if (isNaN(value)) return minVal; // Critical: If value is NaN, clamp to minVal (usually 0)
             return Math.max(minVal, Math.min(value, maxVal));
         }
 
@@ -1365,6 +1363,10 @@
 
                 this.energy -= metabolismCost;
                 
+                // CRITICAL FIX: Clamp Energy immediately after cost application to prevent NaN/Infinity creep
+                this.energy = clamp(this.energy, 0.0, Infinity);
+                this.love = clamp(this.love, 0.0, simSettings.STARTING_LOVE); 
+                
                 if (this.mate_cooldown > 0) {
                     this.mate_cooldown--;
                 }
@@ -1427,6 +1429,13 @@
                 }
                 // --- End Global Knowledge Retrieval ---
 
+                // CRITICAL FIX: Skill Data Integrity Check (Prevent NaN propagation)
+                for (const skill of SKILL_LIST) {
+                    if (isNaN(this.skills[skill]) || this.skills[skill] === Infinity || this.skills[skill] === -Infinity) {
+                        this.skills[skill] = 0.0; // Reset corrupted skill to 0
+                    }
+                }
+                
                 if (this.energy <= 0) {
                     if (!this.world.agents.includes(this)) {
                         return;
@@ -2283,7 +2292,14 @@
                     this.food_carried--;
                     this.skills.foraging = clamp(this.skills.foraging + simSettings.SKILL_GAIN_FORAGE, 0, SKILL_MAXES.foraging); 
                     const energyGain = simSettings.FOOD_ENERGY_GAIN_BASE + (this.skills.foraging * simSettings.SKILL_FORAGE_ENERGY_BONUS); 
-                    this.energy += energyGain;
+                    
+                    // CRITICAL FIX: Check for NaN energyGain due to skill corruption
+                    if (isNaN(energyGain)) {
+                         this.energy += simSettings.FOOD_ENERGY_GAIN_BASE;
+                    } else {
+                         this.energy += energyGain;
+                    }
+
                     this.love = clamp(this.love + simSettings.LOVE_GAIN_EAT, 0, simSettings.STARTING_LOVE);
                     
                     const decayAmount = simSettings.ENV_DECAY_FOOD_GATHER * (1.0 - (this.skills.foraging / SKILL_MAXES.foraging));
@@ -2303,15 +2319,22 @@
                     const fruitType = this.fruit_carried.pop();
                     this.skills.foraging = clamp(this.skills.foraging + simSettings.SKILL_GAIN_FORAGE, 0, SKILL_MAXES.foraging);
                     
-                    if (fruitType === 'energy') { this.energy += simSettings.FRUIT_BENEFIT_ENERGY_VAL; } 
+                    let socialBonus = 0;
+                    let energyBonus = 0;
+
+                    if (fruitType === 'energy') { energyBonus = simSettings.FRUIT_BENEFIT_ENERGY_VAL; } 
                     else if (fruitType === 'social') {
-                        this.energy += simSettings.FRUIT_BENEFIT_SOCIAL_ENERGY_VAL;
-                        this.social = clamp(this.social + simSettings.FRUIT_BENEFIT_SOCIAL_SOCIAL_VAL, 0, 100);
+                        energyBonus = simSettings.FRUIT_BENEFIT_SOCIAL_ENERGY_VAL;
+                        socialBonus = simSettings.FRUIT_BENEFIT_SOCIAL_SOCIAL_VAL;
                     } else if (fruitType === 'speed') {
-                        this.energy += simSettings.FRUIT_BENEFIT_SPEED_ENERGY_VAL;
+                        energyBonus = simSettings.FRUIT_BENEFIT_SPEED_ENERGY_VAL;
                         this.speed_buff_timer = simSettings.FRUIT_BENEFIT_SPEED_DURATION;
                     }
                     
+                    // CRITICAL FIX: Check for NaN bonus values
+                    if (!isNaN(energyBonus)) { this.energy += energyBonus; } 
+                    if (!isNaN(socialBonus)) { this.social = clamp(this.social + socialBonus, 0, 100); }
+
                     this.love = clamp(this.love + simSettings.LOVE_GAIN_EAT, 0, simSettings.STARTING_LOVE);
 
                     const decayAmount = simSettings.ENV_DECAY_FOOD_GATHER * (1.0 - (this.skills.foraging / SKILL_MAXES.foraging));
@@ -3163,6 +3186,12 @@
                     const avgKey = `avg_${skill}_skill`;
                     const total = agentsForStats.reduce((sum, agent) => sum + agent.skills[skill], 0);
                     this.stats[avgKey] = total / numAgents;
+                }
+                    
+                for (const skill in this.globalSkillKnowledge) {
+                    if (isNaN(this.globalSkillKnowledge[skill])) {
+                        this.globalSkillKnowledge[skill] = 0.0;
+                    }
                 }
                     
                 let totalDeaths = 0;
