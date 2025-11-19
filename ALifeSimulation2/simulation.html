@@ -4271,18 +4271,71 @@
 
         // --- Settings Management Functions ---
 
-        function loadSettings() {
+function loadSettings() {
             try {
                 const storedSettings = localStorage.getItem(SETTINGS_STORAGE_KEY);
                 if (storedSettings) {
                     const parsedSettings = JSON.parse(storedSettings);
-                    // Merge, prioritizing stored over defaults, but ensuring defaults fill any gaps
+                    
+                    // DATA SANITIZATION FIX:
+                    // Loop through the loaded settings. If the *default* setting is a number,
+                    // force the loaded setting to be a Number(). This fixes the "10010" bug
+                    // if you have "bad" string data currently saved in your browser.
+                    for (const key in parsedSettings) {
+                        if (defaultSimSettings.hasOwnProperty(key)) {
+                            const defaultType = typeof defaultSimSettings[key];
+                            
+                            if (defaultType === 'number') {
+                                parsedSettings[key] = Number(parsedSettings[key]);
+                            } else if (defaultType === 'boolean') {
+                                // Ensure string "true"/"false" becomes actual boolean
+                                if (typeof parsedSettings[key] === 'string') {
+                                    parsedSettings[key] = parsedSettings[key] === 'true';
+                                }
+                            }
+                        }
+                    }
+
+                    // Merge, prioritizing stored over defaults
                     return { ...defaultSimSettings, ...parsedSettings };
                 }
             } catch (e) {
                 console.error("Failed to load settings from localStorage", e);
             }
             return { ...defaultSimSettings };
+        }
+
+        function getSettingsFromForm() {
+            const newSettings = {};
+            
+            // ITERATE OVER DEFAULTS INSTEAD OF DOM ELEMENTS
+            // This ensures we strictly respect the data type (Number vs String vs Boolean)
+            // of the original setting, regardless of what the HTML input thinks it is.
+            for (const key in defaultSimSettings) {
+                const input = document.getElementById(key);
+                
+                // If the input exists in the HTML form
+                if (input) {
+                    const defaultVal = defaultSimSettings[key];
+                    const defaultType = typeof defaultVal;
+
+                    if (defaultType === 'boolean') {
+                        newSettings[key] = input.checked;
+                    } else if (defaultType === 'number') {
+                        // Force conversion to Float
+                        const val = parseFloat(input.value);
+                        // Safety check: if user cleared box (NaN), use default
+                        newSettings[key] = isNaN(val) ? defaultVal : val;
+                    } else {
+                        // It's a string (like the dropdown menus)
+                        newSettings[key] = input.value;
+                    }
+                } else {
+                    // If setting exists in defaults but has no HTML input, keep default
+                    newSettings[key] = defaultSimSettings[key];
+                }
+            }
+            return newSettings;
         }
 
         function saveSettings(settings) {
