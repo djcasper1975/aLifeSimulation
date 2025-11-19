@@ -213,7 +213,7 @@
                 <button id="closeSettingsBtn" class="text-gray-400 hover:text-white">&times;</button>
             </div>
             
-            <form id="settingsForm" class="p-6 overflow-y-auto flex-1 min-h-0">
+            <form id="settingsForm" class="p-6 overflow-y-auto flex-1 min-h-0" autocomplete="off">
                 <div>
                     
                     <fieldset>
@@ -4385,29 +4385,38 @@ function loadSettings() {
             }
         }
         
-        function getSettingsFromForm() {
-            const newSettings = {};
-            const form = document.getElementById('settingsForm');
-            // Select both inputs and selects
-            const inputs = form.querySelectorAll('input, select'); 
-            
-            inputs.forEach(input => {
-                if (input.type === 'number') {
-                    const value = parseFloat(input.value);
-                    if (!isNaN(value)) {
-                        newSettings[input.id] = value;
-                    } else {
-                        // Fall back to default if input is empty or invalid
-                        newSettings[input.id] = defaultSimSettings[input.id];
-                    }
-                } else if (input.type === 'checkbox') {
-                    newSettings[input.id] = input.checked;
-                } else if (input.tagName === 'SELECT') {
-                    newSettings[input.id] = input.value;
-                }
-            });
-            return { ...defaultSimSettings, ...newSettings };
+function getSettingsFromForm() {
+    const newSettings = {};
+    
+    // Loop through every setting in your defaults
+    for (const key in defaultSimSettings) {
+        const input = document.getElementById(key);
+        
+        // If the input doesn't exist in the HTML, skip it
+        if (!input) continue;
+        
+        const defaultValue = defaultSimSettings[key];
+        const defaultType = typeof defaultValue;
+
+        // 1. Handle Checkboxes (Boolean)
+        if (input.type === 'checkbox') {
+            newSettings[key] = input.checked;
+        } 
+        // 2. Handle Numbers (Integers & Decimals)
+        // We look at the default value to know if this SHOULD be a number
+        else if (defaultType === 'number') {
+            const val = parseFloat(input.value);
+            // If user typed nonsense, use the default. Otherwise use the number.
+            newSettings[key] = isNaN(val) ? defaultValue : val;
+        } 
+        // 3. Handle Strings (Dropdowns/Selects)
+        else {
+            newSettings[key] = input.value;
         }
+    }
+    
+    return { ...defaultSimSettings, ...newSettings };
+}
         
         function setupModalControls() {
             const modal = document.getElementById('settingsModal');
@@ -4439,13 +4448,21 @@ function loadSettings() {
                 }
             };
             
-            resetBtn.onclick = () => {
-                if (confirm('Are you sure you want to reset all settings to their defaults? This will clear your saved settings and restart the simulation.')) {
-                    clearSettings();
-                    modal.classList.add('hidden');
-                    location.reload();
-                }
-            };
+// Inside setupModalControls function...
+
+resetBtn.onclick = () => {
+    if (window.confirm('Are you sure you want to reset all settings to their defaults?')) {
+        // 1. Delete the saved data
+        clearSettings();
+        
+        // 2. Force the HTML inputs to clear
+        document.getElementById('settingsForm').reset();
+        
+        // 3. Hide modal and reload to apply defaults
+        modal.classList.add('hidden');
+        location.reload();
+    }
+};
             
             saveBtn.onclick = () => {
                 simSettings = getSettingsFromForm();
