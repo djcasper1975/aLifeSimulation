@@ -760,32 +760,33 @@
         </div>
     </div>
     <div class="w-full">
-        <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4">
-            <div>
-                <h1 class="text-4xl font-bold text-cyan-400">A-Life: Web Simulation (Enhanced)</h1>
-                <p class="text-gray-400 mb-6">A JavaScript implementation of the Python Life Simulation. See evolution in action!</p>
-            </div>
+        <div class="flex flex-col xl:flex-row justify-between xl:items-center mb-6 gap-4">
+    <div>
+        <h1 class="text-4xl font-bold text-cyan-400">A-Life: Web Simulation (Enhanced)</h1>
+        <p class="text-gray-400">A JavaScript implementation of the Python Life Simulation. See evolution in action!</p>
+    </div>
+    
+    <div class="flex flex-col sm:flex-row gap-3 w-full xl:w-auto">
+        
+        <div class="flex flex-wrap gap-2 sm:flex-nowrap">
+            <button id="openSettingsBtn" class="flex-1 sm:flex-none px-5 py-2.5 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-lg shadow-md whitespace-nowrap">
+                Settings
+            </button>
             
-            <div class="flex flex-col sm:flex-row space-x-4">
-                <div class="flex space-x-4 mb-4 sm:mb-0">
-                    <button id="openSettingsBtn" class="px-5 py-2.5 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-lg shadow-md">
-                        Settings
-                    </button>
-                    
-                    <button id="interventionDropFood" class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg shadow-md">
-                        Drop Supplies 🍎
-                    </button>
-                    
-                    <button id="interventionCrisis" class="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg shadow-md">
-                        Trigger Crisis ⚠️
-                    </button>
-                </div>
-                
-                <a href="agent_mechanics_guide.html" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-md hidden sm:block">
-                    How it Works
-                </a>
-            </div>
+            <button id="interventionDropFood" class="flex-1 sm:flex-none px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg shadow-md whitespace-nowrap">
+                Drop Supplies 🍎
+            </button>
+            
+            <button id="interventionCrisis" class="flex-1 sm:flex-none px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg shadow-md whitespace-nowrap">
+                Trigger Crisis ⚠️
+            </button>
         </div>
+        
+        <a href="agent_mechanics_guide.html" class="block w-full sm:w-auto text-center px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-md whitespace-nowrap">
+            How it Works
+        </a>
+    </div>
+</div>
 
         <div class="flex space-x-4 mb-4 items-center">
             <button id="pauseBtn" class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold rounded-lg shadow-md">
