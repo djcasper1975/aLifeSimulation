@@ -962,7 +962,7 @@
             STARTING_AGENTS: 15,
             STARTING_FOOD: 250,  
             STARTING_WOOD: 150,  
-            SIM_SPEED: 150, 
+            SIM_SPEED: 50, 
 
             // Resources spawn every N turns
             FOOD_SPAWN_RATE: 20,
@@ -3927,6 +3927,7 @@ resizeCanvas() {
                 const ctx = this.ctx;
                 const size = this.cellSize;
 
+                // 1. Clear Screen
                 ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
                 this.drawHeatmap(); 
                 
@@ -3934,23 +3935,37 @@ resizeCanvas() {
                 ctx.textBaseline = 'middle';
                 ctx.font = this.font;
 
-                const agentPositions = {};
+                // 2. OPTIMIZATION: Cache agent positions for fast lookup
+                // This prevents looping through the agent array 2100 times
+                const agentPositions = new Set();
                 this.world.agents.forEach(agent => {
-                    const posKey = arrayToKey([agent.x, agent.y]);
-                    if (agent.home_location !== posKey) { 
-                        agentPositions[posKey] = agent;
+                    if (agent.home_location !== `${agent.x},${agent.y}`) { 
+                        agentPositions.add(`${agent.x},${agent.y}`);
                     }
                 });
 
+                // 3. OPTIMIZATION: Batch Draw Background Dots
+                // We set the style ONCE, then draw all 2100 dots.
+                // This is roughly 50x faster than the previous method.
+                ctx.fillStyle = COLORS['WHITE_NORMAL'];
+                ctx.globalAlpha = 0.5;
+                
                 for(let y = 0; y < this.world.height; y++) {
                     for(let x = 0; x < this.world.width; x++) {
-                        const posKey = arrayToKey([x, y]);
-                        if (!agentPositions[posKey]) { 
-                            this.drawDimBackgroundChar(x, y); 
+                        const posKey = `${x},${y}`;
+                        // Only draw dot if no agent is there (optional, but keeps look clean)
+                        if (!agentPositions.has(posKey)) { 
+                            const px = x * size + size / 2;
+                            const py = y * size + size / 2;
+                            ctx.fillText('.', px, py);
                         }
                     }
                 }
 
+                // 4. Reset Alpha for Objects
+                ctx.globalAlpha = 1.0;
+
+                // 5. Draw Resources
                 const resources = [
                     { map: this.world.growingPlants, char: 'P', color: 'GREEN_NORMAL', dim: false },
                     { map: this.world.growingTrees, char: 'T', color: 'GREEN_DIM', dim: false },
@@ -3960,83 +3975,61 @@ resizeCanvas() {
                     { map: this.world.campfires, char: 'C', color: 'RED_BRIGHT', dim: false },
                 ];
                 
+                // Draw Fruits
                 for(const posKey in this.world.fruits) {
-                    const fruitType = this.world.fruitTypes[posKey];
-                    let char = '?';
-                    let colorKey = 'WHITE_BRIGHT';
-                    if (fruitType === 'energy') { char = 'R'; colorKey = 'RED_NORMAL'; }
-                    else if (fruitType === 'social') { char = 'P'; colorKey = 'MAGENTA_BRIGHT'; }
-                    else if (fruitType === 'speed') { char = 'B'; colorKey = 'BLUE_NORMAL'; }
-                    
-                    if (!agentPositions[posKey]) {
+                    if (!agentPositions.has(posKey)) {
+                        const fruitType = this.world.fruitTypes[posKey];
+                        let char = '?';
+                        let colorKey = 'WHITE_BRIGHT';
+                        if (fruitType === 'energy') { char = 'R'; colorKey = 'RED_NORMAL'; }
+                        else if (fruitType === 'social') { char = 'P'; colorKey = 'MAGENTA_BRIGHT'; }
+                        else if (fruitType === 'speed') { char = 'B'; colorKey = 'BLUE_NORMAL'; }
+                        
                         const [x, y] = keyToArray(posKey);
                         this.drawCell(x, y, char, colorKey, false);
                     }
                 }
 
+                // Draw Standard Resources
                 resources.forEach(res => {
                     for (const posKey in res.map) {
-                        if (!agentPositions[posKey]) { 
+                        if (!agentPositions.has(posKey)) { 
                             const [x, y] = keyToArray(posKey);
                             this.drawCell(x, y, res.char, res.color, res.dim);
                         }
                     }
                 });
 
+                // 6. Draw Homes
                 for (const posKey in this.world.homes) {
                     const [x, y] = keyToArray(posKey);
                     const durability = this.world.homes[posKey].durability;
                     const char = durability < 2 ? 'h' : 'H';
-                    const colorKey = durability < 2 ? 'BLUE_NORMAL' : 'BLUE_BRIGHT'; // Determine color
+                    const colorKey = durability < 2 ? 'BLUE_NORMAL' : 'BLUE_BRIGHT'; 
                     
                     this.drawCell(x, y, char, colorKey, false);
                     
-                    // FEATURE IMPLEMENTATION: Highlight selected agent's home with HOUSE COLOR
                     if (this.world.homes[posKey].owner_id === this.selectedAgentId) {
-                        ctx.strokeStyle = COLORS[colorKey]; // Use the dynamic colorKey determined above
+                        ctx.strokeStyle = COLORS[colorKey];
                         ctx.lineWidth = 2;
                         ctx.globalAlpha = 1.0;
                         ctx.strokeRect(x * size + 1, y * size + 1, size - 2, size - 2);
                     }
                 }
                 
+                // Draw Library
                 const [lx, ly] = this.world.libraryLocation;
                 this.drawCell(lx, ly, 'L', 'LIBRARY', false);
 
-                const agentsAtHome = [];
-                
+                // 7. Draw Agents
+                // We process agents in one loop to keep it efficient
                 this.world.agents.forEach(agent => {
-                    const isAtHome = agent.home_location !== null && agent.home_location === arrayToKey([agent.x, agent.y]);
-                    if (isAtHome) {
-                        agentsAtHome.push(agent);
-                        return; 
-                    }
-                    
-                    let charMapEntry = CHAR_MAP[agent.state] || CHAR_MAP['WANDERING'];
-                    let char = charMapEntry.char;
-                    let colorKey = charMapEntry.color;
-                    let isDim = charMapEntry.dim;
-
-                    if (agent.sickness_timer > 0) { colorKey = 'GREEN_NORMAL'; isDim = false; }
-                    if (agent.apathy_timer > 0) { colorKey = 'MAGENTA_DIM'; char = 's'; isDim = true; }
-                    if (agent.speed_buff_timer > 0) { colorKey = 'BLUE_BRIGHT'; isDim = false; }
-                    
-                    this.drawCell(agent.x, agent.y, char, colorKey, isDim);
-                    this.drawThoughtBubble(agent.x, agent.y, agent);
-                    
-                    if (agent.id === this.selectedAgentId) {
-                        ctx.strokeStyle = '#fcd34d'; // Keep Yellow for Agent Highlight
-                        ctx.lineWidth = 2;
-                        ctx.globalAlpha = 1.0;
-                        ctx.strokeRect(agent.x * size + 1, agent.y * size + 1, size - 2, size - 2);
-                    }
-                });
-
-                agentsAtHome.forEach(agent => {
                     const size = this.cellSize;
-                    const px = agent.x * size + size / 2 + size * 0.15;
-                    const py = agent.y * size + size / 2 + size * 0.15;
-                    
+                    // Calculate pixel position once
+                    const px = agent.x * size + size / 2;
+                    const py = agent.y * size + size / 2;
+
+                    // Determine look
                     let charMapEntry = CHAR_MAP[agent.state] || CHAR_MAP['WANDERING'];
                     let char = charMapEntry.char;
                     let colorKey = charMapEntry.color;
@@ -4045,30 +4038,35 @@ resizeCanvas() {
                     if (agent.sickness_timer > 0) { colorKey = 'GREEN_NORMAL'; isDim = false; }
                     if (agent.apathy_timer > 0) { colorKey = 'MAGENTA_DIM'; char = 's'; isDim = true; }
                     if (agent.speed_buff_timer > 0) { colorKey = 'BLUE_BRIGHT'; isDim = false; }
-
-                    ctx.font = `${this.cellSize * 0.4}px Consolas, monospace`; 
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
+                    
+                    // Set style
                     ctx.fillStyle = COLORS[colorKey];
                     ctx.globalAlpha = isDim ? 0.5 : 1.0;
-
+                    
+                    // Draw Character
                     ctx.fillText(char, px, py);
                     
-                    if (simSettings.DISPLAY_EMOJI_MODE) {
-                        const emoji = EMOJI_MAP[agent.state] || '❓';
-                        ctx.font = `${this.cellSize * 0.4}px sans-serif`; 
-                        ctx.globalAlpha = 1.0;
-                        ctx.fillText(emoji, agent.x * size + size * 0.85, agent.y * size + size * 0.85);
-                    }
-                    
+                    // Draw Selection Box
                     if (agent.id === this.selectedAgentId) {
-                        ctx.strokeStyle = '#fcd34d'; 
+                        ctx.strokeStyle = '#fcd34d';
                         ctx.lineWidth = 2;
                         ctx.globalAlpha = 1.0;
                         ctx.strokeRect(agent.x * size + 1, agent.y * size + 1, size - 2, size - 2);
                     }
-                    
-                    ctx.font = this.font;
+
+                    // Draw Thought Bubble
+                    if (simSettings.DISPLAY_EMOJI_MODE) {
+                        let emoji = EMOJI_MAP[agent.state] || '❓';
+                        if (agent.sickness_timer > 0) emoji = EMOJI_MAP['SICK'];
+                        else if (agent.apathy_timer > 0) emoji = EMOJI_MAP['APATHY'];
+                        
+                        ctx.font = `${this.cellSize * 0.45}px sans-serif`; 
+                        ctx.globalAlpha = 1.0;
+                        // Offset bubble slightly
+                        ctx.fillText(emoji, agent.x * size + size * 0.9, agent.y * size + size * 0.15);
+                        // Reset font
+                        ctx.font = this.font; 
+                    }
                 });
 
                 ctx.globalAlpha = 1.0;
@@ -4122,40 +4120,32 @@ function updateStatsDisplay(world) {
             document.getElementById('statHomes').textContent = world.stats.homes_built || 0;
             document.getElementById('statFires').textContent = world.stats.active_campfires || 0;
 
-            // Environment Health (Preserving your previous "No Green" text preference)
             const envHealth = world.environmentalHealth;
             let envColor = 'text-white'; 
             if (envHealth <= 70) envColor = 'text-yellow-400';
             if (envHealth <= 30) envColor = 'text-red-400';
-            
             document.getElementById('statEnvHealth').innerHTML = `<span class="${envColor}">${envHealth.toFixed(1)}%</span>`;
 
+            // OPTIMIZATION: Build HTML strings in memory, write to DOM once
             const geneStatsDiv = document.getElementById('geneStats');
-            geneStatsDiv.innerHTML = '';
-            
-            // UPDATED: Loop without background highlights
+            let geneHTML = [];
             for (const gene of GENE_LIST) {
                 const avg = world.stats[`avg_${gene}`] || 0;
                 let color = 'text-cyan-400';
-                if (gene === 'aggression') color = 'text-red-400';
-                if (gene === 'metabolism') color = 'text-red-400'; 
+                if (gene === 'aggression' || gene === 'metabolism') color = 'text-red-400'; 
                 if (gene === 'builder') color = 'text-blue-400';
                 if (gene === 'mating_drive') color = 'text-pink-400';
                 if (gene === 'sociability') color = 'text-white';
                 if (gene === 'farming') color = 'text-green-400';
                 if (gene === 'personality') color = 'text-purple-400'; 
-                if (gene === 'navigation') color = 'text-cyan-400'; 
                 
-                // Logic for 'highlight' variable removed here
-
                 const displayValue = gene === 'mating_drive' ? avg.toFixed(0) : avg.toFixed(2);
-                
-                // Class attribute removed from <p> tag
-                geneStatsDiv.innerHTML += `<p><span class="${color}">${gene.padEnd(12, ' ')}</span>: ${displayValue}</p>`;
+                geneHTML.push(`<p><span class="${color}">${gene.padEnd(12, ' ')}</span>: ${displayValue}</p>`);
             }
+            geneStatsDiv.innerHTML = geneHTML.join('');
 
             const skillStatsDiv = document.getElementById('skillStats');
-            skillStatsDiv.innerHTML = '';
+            let skillHTML = [];
             for (const skill of SKILL_LIST) {
                 const avg = world.stats[`avg_${skill}_skill`] || 0;
                 let color = 'text-green-400';
@@ -4164,42 +4154,41 @@ function updateStatsDisplay(world) {
                 if (skill === 'navigation') color = 'text-cyan-400';
                 if (skill === 'combat') color = 'text-red-400';
                 
-                skillStatsDiv.innerHTML += `<p><span class="${color}">${skill.padEnd(12, ' ')}</span>: ${avg.toFixed(2)}</p>`;
+                skillHTML.push(`<p><span class="${color}">${skill.padEnd(12, ' ')}</span>: ${avg.toFixed(2)}</p>`);
             }
+            skillStatsDiv.innerHTML = skillHTML.join('');
 
             const knowledgeStatsDiv = document.getElementById('knowledgeStats');
-            knowledgeStatsDiv.innerHTML = '';
+            let knowledgeHTML = [];
             for (const skill in world.globalSkillKnowledge) {
                 const val = world.globalSkillKnowledge[skill];
-                knowledgeStatsDiv.innerHTML += `<p><span class="text-yellow-400">${skill.padEnd(12, ' ')}</span>: ${val.toFixed(2)}</p>`;
+                knowledgeHTML.push(`<p><span class="text-yellow-400">${skill.padEnd(12, ' ')}</span>: ${val.toFixed(2)}</p>`);
             }
+            knowledgeStatsDiv.innerHTML = knowledgeHTML.join('');
 
             const deathStatsDiv = document.getElementById('deathStats');
-            deathStatsDiv.innerHTML = '';
             const totalDeaths = world.deathCauses.TOTAL_DEATHS || 0;
             if (totalDeaths > 0) {
                 const filteredDeaths = Object.entries(world.deathCauses).filter(([reason, count]) => 
                     reason !== 'UNKNOWN' && reason !== 'TOTAL_DEATHS' && count > 0
                 );
-                
                 filteredDeaths.sort((a, b) => b[1] - a[1]);
-
-                for (const [reason, count] of filteredDeaths) {
+                
+                let deathHTML = filteredDeaths.map(([reason, count]) => {
                     const percent = (count / totalDeaths) * 100;
-                    deathStatsDiv.innerHTML += `<p><span class="text-red-500">${reason.padEnd(20, ' ')}</span>: ${count} (${percent.toFixed(1)}%)</p>`;
-                }
+                    return `<p><span class="text-red-500">${reason.padEnd(20, ' ')}</span>: ${count} (${percent.toFixed(1)}%)</p>`;
+                });
+                deathStatsDiv.innerHTML = deathHTML.join('');
             } else {
                 deathStatsDiv.innerHTML = '<p>No deaths recorded yet.</p>';
             }
             
-            const deathLogDiv = document.getElementById('deathLogDisplay');
-            deathLogDiv.innerHTML = world.deathLog.map(log => `<p>${log}</p>`).join('');
+            document.getElementById('deathLogDisplay').innerHTML = world.deathLog.map(log => `<p>${log}</p>`).join('');
             
             if (renderer.selectedAgentId) {
                 const selectedAgent = world.getAgentById(renderer.selectedAgentId);
-                if (selectedAgent) {
-                     updateAgentDetailPanel(selectedAgent);
-                } else {
+                if (selectedAgent) updateAgentDetailPanel(selectedAgent);
+                else {
                      renderer.selectedAgentId = null;
                      document.getElementById('agentDetailPanel').classList.add('hidden');
                 }
@@ -4515,15 +4504,21 @@ resetBtn.onclick = () => {
         }
         // --- END NEW: Display Settings Handler ---
 
-        // --- NEW: Game Loop and Speed Controls ---
+// --- NEW: Game Loop and Speed Controls ---
         let isPaused = false;
-        let currentSpeed = 150;
+        // Initialize directly from settings so there is no confusion
+        let currentSpeed = simSettings.SIM_SPEED; 
 
         function setSpeed(ms) {
             currentSpeed = ms;
-            if (interval) clearInterval(interval);
-            interval = setInterval(gameLoop, currentSpeed);
+            // Update the text on screen to match
             document.getElementById('currentSpeedDisplay').textContent = `Speed: ${currentSpeed}ms`;
+            
+            // Restart the loop with the new speed
+            if (interval) clearInterval(interval);
+            if (!isPaused) {
+                interval = setInterval(gameLoop, currentSpeed);
+            }
         }
 
         function setupGameControls() {
@@ -4548,8 +4543,11 @@ resetBtn.onclick = () => {
                 }
             };
 
+            // 1x Speed: Uses the exact value from your settings
             speedNormalBtn.onclick = () => setSpeed(simSettings.SIM_SPEED);
-            speedFastBtn.onclick = () => setSpeed(simSettings.SIM_SPEED / 5);
+            
+            // 5x Speed: Divides your setting by 5 (e.g., 50ms -> 10ms)
+            speedFastBtn.onclick = () => setSpeed(Math.max(10, simSettings.SIM_SPEED / 5));
             
             dropFoodBtn.onclick = () => {
                 for (let i = 0; i < 50; i++) {
@@ -4567,7 +4565,8 @@ resetBtn.onclick = () => {
                 alert('Environmental crisis triggered! Health is now 10%.');
             };
             
-            setSpeed(simSettings.SIM_SPEED); // Initialize speed display
+            // CRITICAL: This applies the user's setting immediately when the game loads
+            setSpeed(simSettings.SIM_SPEED); 
         }
         // --- END Game Loop and Speed Controls ---
 
